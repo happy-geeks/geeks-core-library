@@ -6,10 +6,12 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Web;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using GeeksCoreLibrary.Modules.GclReplacements.Enums;
 using GeeksCoreLibrary.Modules.GclReplacements.Extensions;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Models;
@@ -49,7 +51,7 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
     }
 
     /// <inheritdoc />
-    public IEnumerable<IEnumerable<string>> DoReplacements(string input, DataSet replaceData, bool forQuery = false, bool caseSensitive = false, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode", bool isFromUnsafeSource = false)
+    public IEnumerable<IEnumerable<string>> DoReplacements(string input, DataSet replaceData, bool forQuery = false, bool caseSensitive = false, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode", UnsafeSources? unsafeSource = null)
     {
         if (replaceData == null || replaceData.Tables.Count == 0)
         {
@@ -58,12 +60,12 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
 
         foreach (DataTable dataTable in replaceData.Tables)
         {
-            yield return DoReplacements(input, dataTable, forQuery, caseSensitive, prefix, suffix, defaultFormatter, isFromUnsafeSource);
+            yield return DoReplacements(input, dataTable, forQuery, caseSensitive, prefix, suffix, defaultFormatter, unsafeSource);
         }
     }
 
     /// <inheritdoc />
-    public IEnumerable<string> DoReplacements(string input, DataTable replaceData, bool forQuery = false, bool caseSensitive = false, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode", bool isFromUnsafeSource = false)
+    public IEnumerable<string> DoReplacements(string input, DataTable replaceData, bool forQuery = false, bool caseSensitive = false, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode", UnsafeSources? unsafeSource = null)
     {
         if (replaceData == null || replaceData.Rows.Count == 0)
         {
@@ -72,12 +74,12 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
 
         foreach (DataRow dataRow in replaceData.Rows)
         {
-            yield return DoReplacements(input, dataRow, forQuery, caseSensitive, prefix, suffix, defaultFormatter, isFromUnsafeSource);
+            yield return DoReplacements(input, dataRow, forQuery, caseSensitive, prefix, suffix, defaultFormatter, unsafeSource);
         }
     }
 
     /// <inheritdoc />
-    public string DoReplacements(string input, DataRow replaceData, bool forQuery = false, bool caseSensitive = false, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode", bool isFromUnsafeSource = false)
+    public string DoReplacements(string input, DataRow replaceData, bool forQuery = false, bool caseSensitive = false, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode", UnsafeSources? unsafeSource = null)
     {
         if (replaceData == null)
         {
@@ -90,11 +92,11 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
             dataDictionary.Add(column.ColumnName, replaceData[column]);
         }
 
-        return DoReplacements(input, dataDictionary, prefix, suffix, forQuery, defaultFormatter, isFromUnsafeSource);
+        return DoReplacements(input, dataDictionary, prefix, suffix, forQuery, defaultFormatter, unsafeSource);
     }
 
     /// <inheritdoc />
-    public string DoReplacements(string input, IEnumerable<KeyValuePair<string, string>> replaceData, bool forQuery = false, bool caseSensitive = false, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode", bool isFromUnsafeSource = false)
+    public string DoReplacements(string input, IEnumerable<KeyValuePair<string, string>> replaceData, bool forQuery = false, bool caseSensitive = false, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode", UnsafeSources? unsafeSource = null)
     {
         if (replaceData == null)
         {
@@ -107,11 +109,11 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
             dataDictionary.Add(key, value);
         }
 
-        return DoReplacements(input, dataDictionary, prefix, suffix, forQuery, defaultFormatter, isFromUnsafeSource);
+        return DoReplacements(input, dataDictionary, prefix, suffix, forQuery, defaultFormatter, unsafeSource);
     }
 
     /// <inheritdoc />
-    public string DoReplacements(string input, IEnumerable<KeyValuePair<string, StringValues>> replaceData, bool forQuery = false, bool caseSensitive = false, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode", bool isFromUnsafeSource = false)
+    public string DoReplacements(string input, IEnumerable<KeyValuePair<string, StringValues>> replaceData, bool forQuery = false, bool caseSensitive = false, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode", UnsafeSources? unsafeSource = null)
     {
         if (replaceData == null)
         {
@@ -124,11 +126,11 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
             dataDictionary.Add(key, value.ToString());
         }
 
-        return DoReplacements(input, dataDictionary, prefix, suffix, forQuery, defaultFormatter, isFromUnsafeSource);
+        return DoReplacements(input, dataDictionary, prefix, suffix, forQuery, defaultFormatter, unsafeSource);
     }
 
     /// <inheritdoc />
-    public string DoReplacements(string input, ISession replaceData, bool forQuery = false, bool caseSensitive = false, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode", bool isFromUnsafeSource = false)
+    public string DoReplacements(string input, ISession replaceData, bool forQuery = false, bool caseSensitive = false, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode", UnsafeSources? unsafeSource = null)
     {
         var dataDictionary = new Dictionary<string, object>(caseSensitive ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
         foreach (var item in replaceData.Keys)
@@ -141,11 +143,11 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
             dataDictionary.Add(item, Encoding.UTF8.GetString(rawValue));
         }
 
-        return DoReplacements(input, dataDictionary, prefix, suffix, forQuery, defaultFormatter, isFromUnsafeSource);
+        return DoReplacements(input, dataDictionary, prefix, suffix, forQuery, defaultFormatter, unsafeSource);
     }
 
     /// <inheritdoc />
-    public string DoReplacements(string input, JToken replaceData, bool forQuery = false, bool caseSensitive = true, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode", bool isFromUnsafeSource = false)
+    public string DoReplacements(string input, JToken replaceData, bool forQuery = false, bool caseSensitive = true, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode", UnsafeSources? unsafeSource = null)
     {
         if (replaceData == null)
         {
@@ -167,7 +169,7 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
         }
 
         // Do the replacements for the current level.
-        output = DoReplacements(output, dataDictionary, prefix, suffix, forQuery, defaultFormatter, isFromUnsafeSource);
+        output = DoReplacements(output, dataDictionary, prefix, suffix, forQuery, defaultFormatter, unsafeSource);
 
         // Repeat the process for each object in the current level until the bottom is reached.
         foreach (var jToken in replaceData)
@@ -178,7 +180,7 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
                     switch (item.Value.Type)
                     {
                         case JTokenType.Object:
-                            output = DoReplacements(output, item.Value, forQuery, caseSensitive, prefix, suffix, defaultFormatter, isFromUnsafeSource);
+                            output = DoReplacements(output, item.Value, forQuery, caseSensitive, prefix, suffix, defaultFormatter, unsafeSource);
                             break;
                         case JTokenType.Array:
                         {
@@ -189,7 +191,7 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
                                     continue;
                                 }
 
-                                output = DoReplacements(output, subItem, forQuery, caseSensitive, prefix, suffix, defaultFormatter, isFromUnsafeSource);
+                                output = DoReplacements(output, subItem, forQuery, caseSensitive, prefix, suffix, defaultFormatter, unsafeSource);
                             }
 
                             break;
@@ -198,7 +200,7 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
 
                     break;
                 case JObject jObject:
-                    output = DoReplacements(output, jObject, forQuery, caseSensitive, prefix, suffix, defaultFormatter, isFromUnsafeSource);
+                    output = DoReplacements(output, jObject, forQuery, caseSensitive, prefix, suffix, defaultFormatter, unsafeSource);
                     break;
                 case JArray jArray:
                 {
@@ -209,7 +211,7 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
                             continue;
                         }
 
-                        output = DoReplacements(output, subItem, forQuery, caseSensitive, prefix, suffix, defaultFormatter, isFromUnsafeSource);
+                        output = DoReplacements(output, subItem, forQuery, caseSensitive, prefix, suffix, defaultFormatter, unsafeSource);
                     }
 
                     break;
@@ -221,7 +223,7 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
     }
 
     /// <inheritdoc />
-    public string DoReplacements(string input, IDictionary<string, object> replaceData, string prefix = "{", string suffix = "}", bool forQuery = false, string defaultFormatter = "HtmlEncode", bool isFromUnsafeSource = false)
+    public string DoReplacements(string input, IDictionary<string, object> replaceData, string prefix = "{", string suffix = "}", bool forQuery = false, string defaultFormatter = "HtmlEncode", UnsafeSources? unsafeSource = null)
     {
         if (replaceData == null || replaceData.Count == 0)
         {
@@ -263,11 +265,16 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
             var value = Convert.ToString(replaceData[variableName], new CultureInfo("en-US"));
 
             // If the value comes from un untrusted source (e.g. user input), we need to strip HTML tags to prevent XSS attacks.
-            if (isFromUnsafeSource)
+            if (unsafeSource.HasValue)
             {
                 value = value.StripHtml();
+                value = unsafeSource switch
+                {
+                    UnsafeSources.HttpRequest => HttpUtility.UrlEncode(value),
+                    _ => throw new ArgumentOutOfRangeException(nameof(unsafeSource), unsafeSource, null)
+                };
             }
-            
+
             if (String.IsNullOrWhiteSpace(value))
             {
                 if (!String.IsNullOrEmpty(variable.DefaultValue))
@@ -280,7 +287,7 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
                 continue;
             }
 
-            if (skipFormatters || !variable.Formatters.Any())
+            if (skipFormatters || variable.Formatters.Count == 0)
             {
                 // Simply replace the variable if there are no formatters found.
                 if (forQuery)
@@ -578,7 +585,7 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
 
         var optionalParameterCount = methodParameters.Count(p => p.IsOptional);
 
-        // The reason for the -1 is because the first parameter of an extension method is always the value of the type it's extending.
+        // The reason for the -1 is that the first parameter of an extension method is always the value of the type it's extending.
         // Therefore, that parameter should not be added in the count.
         var totalParameterCount = methodParameters.Length - 1;
         var minimumParameterCount = totalParameterCount - optionalParameterCount;
@@ -634,7 +641,7 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
     }
 
     /// <summary>
-    /// Converts the type of a string value to the given <see cref="Type"/>.
+    /// Converts a string value to the given <see cref="Type"/>.
     /// </summary>
     /// <param name="input">The string that needs conversion.</param>
     /// <param name="type">The <see cref="Type"/> the string needs be converted to.</param>

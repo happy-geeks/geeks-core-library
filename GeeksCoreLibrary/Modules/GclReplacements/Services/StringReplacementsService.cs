@@ -10,6 +10,7 @@ using GeeksCoreLibrary.Components.Account.Interfaces;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Modules.GclReplacements.Enums;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
@@ -232,21 +233,21 @@ public class StringReplacementsService(
         // GET variables.
         if (httpContextAccessor.HttpContext.Items.ContainsKey(Constants.WiserUriOverrideForReplacements) && httpContextAccessor.HttpContext.Items[Constants.WiserUriOverrideForReplacements] is Uri wiserUriOverride)
         {
-            input = replacementsMediator.DoReplacements(input, QueryHelpers.ParseQuery(wiserUriOverride.Query), forQuery, defaultFormatter: String.Empty, isFromUnsafeSource: true);
+            input = replacementsMediator.DoReplacements(input, QueryHelpers.ParseQuery(wiserUriOverride.Query), forQuery, defaultFormatter: String.Empty, unsafeSource: UnsafeSources.HttpRequest);
         }
         else
         {
-            input = replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Request.Query, forQuery, defaultFormatter: String.Empty, isFromUnsafeSource: true);
+            input = replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Request.Query, forQuery, defaultFormatter: String.Empty, unsafeSource: UnsafeSources.HttpRequest);
         }
 
         // POST variables.
         if (httpContextAccessor.HttpContext.Request.HasFormContentType)
         {
-            input = replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Request.Form, forQuery, defaultFormatter: String.Empty, isFromUnsafeSource: true);
+            input = replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Request.Form, forQuery, defaultFormatter: String.Empty, unsafeSource: UnsafeSources.HttpRequest);
         }
 
         // Cookies.
-        input = replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Request.Cookies, forQuery, defaultFormatter: String.Empty, isFromUnsafeSource: true);
+        input = replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Request.Cookies, forQuery, defaultFormatter: String.Empty, unsafeSource: UnsafeSources.HttpRequest);
 
         // Request cache.
         input = replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Items.Select(x => new KeyValuePair<string, string>(x.Key?.ToString(), x.Value?.ToString())), forQuery, defaultFormatter: defaultFormatter);
