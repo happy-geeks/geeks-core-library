@@ -35,7 +35,7 @@ public class CachedBarcodesService : IBarcodesService
         byte[] fileBytes;
 
         // Retrieve the path of the cache directory.
-        var cacheBasePath = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
+        var cacheBasePath = FileSystemHelpers.GetFileCacheDirectory(webHostEnvironment);
         if (String.IsNullOrWhiteSpace(cacheBasePath))
         {
             // Log a warning if the directory doesn't exist, and generate a new barcode.
@@ -55,7 +55,7 @@ public class CachedBarcodesService : IBarcodesService
 
         // Generate new barcode if it doesn't exist yet or if it's older than one hour.
         fileBytes = barcodesService.GenerateBarcode(input, format, width, height);
-        FileSystemHelpers.SaveFileToContentFilesFolder(webHostEnvironment, filename, fileBytes);
+        FileSystemHelpers.SaveToFileCacheDirectory(webHostEnvironment, filename, fileBytes);
         return fileBytes;
     }
 }
