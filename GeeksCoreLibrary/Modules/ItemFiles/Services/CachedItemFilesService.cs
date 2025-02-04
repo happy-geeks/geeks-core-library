@@ -118,7 +118,7 @@ public class CachedItemFilesService(IOptions<GclSettings> gclSettings, IItemFile
             return false;
         }
 
-        var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
+        var localDirectory = FileSystemHelpers.GetFileCacheDirectory(webHostEnvironment);
         if (!Directory.Exists(localDirectory))
         {
             return false;
@@ -141,7 +141,7 @@ public class CachedItemFilesService(IOptions<GclSettings> gclSettings, IItemFile
             return (null, DateTime.MinValue);
         }
 
-        var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);;
+        var localDirectory = FileSystemHelpers.GetFileCacheDirectory(webHostEnvironment);;
         var fileLocation = Path.Combine(localDirectory, localFilename);
 
         var fileBytes = await File.ReadAllBytesAsync(fileLocation);

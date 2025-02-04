@@ -2,6 +2,7 @@
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Models;
 using Microsoft.AspNetCore.Hosting;
 
@@ -9,7 +10,7 @@ namespace GeeksCoreLibrary.Core.Helpers;
 
 public static class FileSystemHelpers
 {
-    public static string GetContentFilesFolderPath(IWebHostEnvironment webHostEnvironment)
+    public static string GetFileCacheDirectory(IWebHostEnvironment webHostEnvironment)
     {
         if (webHostEnvironment == null)
         {
@@ -31,16 +32,94 @@ public static class FileSystemHelpers
         return !Directory.Exists(result) ? null : result;
     }
 
-    public static string SaveFileToContentFilesFolder(IWebHostEnvironment webHostEnvironment, string filename, byte[] fileBytes)
+    /// <summary>
+    /// Get the full path to the public files directory.
+    /// As the name indicates, this is for storing files that are public and can be accessed by anyone.
+    /// So make sure you don't store any sensitive information in this directory.
+    /// </summary>
+    /// <param name="webHostEnvironment">The <see cref="IWebHostEnvironment"/> that provides information about the web hosting environment an application is running in.</param>
+    /// <returns>If the directory exists, it returns the absolute path to the directory. Otherwise, it returns <c>null</c>.</returns>
+    public static string GetPublicFilesDirectory(IWebHostEnvironment webHostEnvironment)
     {
         if (webHostEnvironment == null)
         {
             return null;
         }
 
-        var path = Path.Combine(GetContentFilesFolderPath(webHostEnvironment), Path.GetFileName(filename));
-        File.WriteAllBytes(Path.Combine(GetContentFilesFolderPath(webHostEnvironment), Path.GetFileName(filename)), fileBytes);
-        return path;
+        var result = Path.Combine(webHostEnvironment.WebRootPath, Constants.PublicFilesDirectoryName);
+        return !Directory.Exists(result) ? null : result;
+    }
+
+    public static string SaveToFileCacheDirectory(IWebHostEnvironment webHostEnvironment, string filename, byte[] fileBytes)
+    {
+        if (webHostEnvironment == null)
+        {
+            return null;
+        }
+
+        var directoryLocation = GetFileCacheDirectory(webHostEnvironment);
+        if (String.IsNullOrWhiteSpace(directoryLocation))
+        {
+            return null;
+        }
+
+        var fileLocation = Path.Combine(directoryLocation, Path.GetFileName(filename));
+        File.WriteAllBytes(fileLocation, fileBytes);
+        return fileLocation;
+    }
+
+    /// <summary>
+    /// Save a file to the public files directory.
+    /// As the name indicates, this is for storing files that are public and can be accessed by anyone.
+    /// So make sure you don't store any sensitive information in this directory.
+    /// </summary>
+    /// <param name="webHostEnvironment">The <see cref="IWebHostEnvironment"/> that provides information about the web hosting environment an application is running in.</param>
+    /// <param name="filename">The name of the file (including extension). Any directory or location information will be stripped, only the name of the file will be used.</param>
+    /// <param name="fileBytes">The byte array with the contents of the file.</param>
+    /// <returns>If the file was saved successfully, then the absolute path to the file will be returned. Otherwise, <c>null</c> will be returned.</returns>
+    public static string SaveToPublicFilesDirectory(IWebHostEnvironment webHostEnvironment, string filename, byte[] fileBytes)
+    {
+        if (webHostEnvironment == null)
+        {
+            return null;
+        }
+
+        var directoryLocation = GetPublicFilesDirectory(webHostEnvironment);
+        if (String.IsNullOrWhiteSpace(directoryLocation))
+        {
+            return null;
+        }
+
+        var fileLocation = Path.Combine(directoryLocation, Path.GetFileName(filename));
+        File.WriteAllBytes(fileLocation, fileBytes);
+        return fileLocation;
+    }
+
+    /// <summary>
+    /// Save a file to the public files directory.
+    /// As the name indicates, this is for storing files that are public and can be accessed by anyone.
+    /// So make sure you don't store any sensitive information in this directory.
+    /// </summary>
+    /// <param name="webHostEnvironment">The <see cref="IWebHostEnvironment"/> that provides information about the web hosting environment an application is running in.</param>
+    /// <param name="filename">The name of the file (including extension). Any directory or location information will be stripped, only the name of the file will be used.</param>
+    /// <param name="fileBytes">The byte array with the contents of the file.</param>
+    /// <returns>If the file was saved successfully, then the absolute path to the file will be returned. Otherwise, <c>null</c> will be returned.</returns>
+    public static async Task<string> SaveToPublicFilesDirectoryAsync(IWebHostEnvironment webHostEnvironment, string filename, byte[] fileBytes)
+    {
+        if (webHostEnvironment == null)
+        {
+            return null;
+        }
+
+        var directoryLocation = GetPublicFilesDirectory(webHostEnvironment);
+        if (String.IsNullOrWhiteSpace(directoryLocation))
+        {
+            return null;
+        }
+
+        var fileLocation = Path.Combine(directoryLocation, Path.GetFileName(filename));
+        await File.WriteAllBytesAsync(fileLocation, fileBytes);
+        return fileLocation;
     }
 
     public static string GetMediaTypeByMagicNumber(byte[] fileBytes)

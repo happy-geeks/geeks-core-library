@@ -339,7 +339,6 @@ public class HtmlToPdfConverterService(
         databaseConnection.AddParameter("itemId", itemId);
         databaseConnection.AddParameter("propertyName", backgroundPropertyName);
         var getImageResult = await databaseConnection.GetAsync($"""
-                                                                
                                                                                 SELECT content, file_name
                                                                                 FROM `{WiserTableNames.WiserItemFile}`
                                                                                 WHERE item_id = ?itemId AND property_name = ?propertyName
@@ -361,7 +360,7 @@ public class HtmlToPdfConverterService(
             return null;
         }
 
-        var filePath = FileSystemHelpers.SaveFileToContentFilesFolder(webHostEnvironment, filename, content);
-        return filePath.Replace(webHostEnvironment.WebRootPath, "").Replace(@"\", "/");
+        var filePath = await FileSystemHelpers.SaveToPublicFilesDirectoryAsync(webHostEnvironment, filename, content);
+        return filePath?.Replace(webHostEnvironment.WebRootPath, "")?.Replace(@"\", "/");
     }
 }

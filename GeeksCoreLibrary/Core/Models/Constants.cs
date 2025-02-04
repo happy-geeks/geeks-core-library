@@ -6,6 +6,7 @@ public class Constants
     public const string AppDataDirectoryName = "App_Data";
     public const string OutputCacheDirectoryName = "OutputCache";
     public const string FilesCacheDirectoryName = "FilesCache";
+    public const string PublicFilesDirectoryName = "PublicFiles";
 
     // Keys for the JSON object that we need to read, from the "options" column in the table "wiser_entityproperty".
     public const string FieldTypeKey = "_fieldType";

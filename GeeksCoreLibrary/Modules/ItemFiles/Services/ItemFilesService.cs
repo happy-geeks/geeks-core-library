@@ -67,7 +67,7 @@ public class ItemFilesService(
         }
 
         var entityTypePart = String.IsNullOrWhiteSpace(entityType) ? "" : $"_{entityType}";
-        var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
+        var localDirectory = FileSystemHelpers.GetFileCacheDirectory(webHostEnvironment);
         if (String.IsNullOrWhiteSpace(localDirectory))
         {
             logger.LogError($"Could not retrieve image because the directory '{localDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
@@ -110,7 +110,7 @@ public class ItemFilesService(
         }
 
         var linkTypePart = linkType == 0 ? "" : $"_{linkType}";
-        var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
+        var localDirectory = FileSystemHelpers.GetFileCacheDirectory(webHostEnvironment);
         if (String.IsNullOrWhiteSpace(localDirectory))
         {
             logger.LogError($"Could not retrieve image because the directory '{localDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
@@ -150,7 +150,7 @@ public class ItemFilesService(
         }
 
         var entityTypePart = String.IsNullOrWhiteSpace(entityType) ? "" : $"_{entityType}";
-        var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
+        var localDirectory = FileSystemHelpers.GetFileCacheDirectory(webHostEnvironment);
         if (String.IsNullOrWhiteSpace(localDirectory))
         {
             logger.LogError($"Could not retrieve image because the directory '{localDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
@@ -208,7 +208,7 @@ public class ItemFilesService(
         }
 
         var entityTypePart = String.IsNullOrWhiteSpace(entityType) ? "" : $"_{entityType}";
-        var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
+        var localDirectory = FileSystemHelpers.GetFileCacheDirectory(webHostEnvironment);
         if (String.IsNullOrWhiteSpace(localDirectory))
         {
             logger.LogError($"Could not retrieve image because the directory '{localDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
@@ -251,7 +251,7 @@ public class ItemFilesService(
         }
 
         var entityTypePart = String.IsNullOrWhiteSpace(entityType) ? "" : $"_{entityType}";
-        var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
+        var localDirectory = FileSystemHelpers.GetFileCacheDirectory(webHostEnvironment);
         if (String.IsNullOrWhiteSpace(localDirectory))
         {
             logger.LogError($"Could not retrieve file because the directory '{localDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
@@ -295,7 +295,7 @@ public class ItemFilesService(
         }
 
         var linkTypePart = linkType == 0 ? "" : $"_{linkType}";
-        var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
+        var localDirectory = FileSystemHelpers.GetFileCacheDirectory(webHostEnvironment);
         if (String.IsNullOrWhiteSpace(localDirectory))
         {
             logger.LogError($"Could not retrieve file because the directory '{localDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
@@ -336,7 +336,7 @@ public class ItemFilesService(
         }
 
         var entityTypePart = String.IsNullOrWhiteSpace(entityType) ? "" : $"_{entityType}";
-        var localDirectory = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
+        var localDirectory = FileSystemHelpers.GetFileCacheDirectory(webHostEnvironment);
         if (String.IsNullOrWhiteSpace(localDirectory))
         {
             logger.LogError($"Could not retrieve file because the directory '{localDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
@@ -461,7 +461,7 @@ public class ItemFilesService(
                             var s3Bucket = contentUri.Host;
                             var s3Object = contentUri.LocalPath.TrimStart('/');
 
-                            var localPath = FileSystemHelpers.GetContentFilesFolderPath(webHostEnvironment);
+                            var localPath = FileSystemHelpers.GetFileCacheDirectory(webHostEnvironment);
                             if (await amazonS3Service.DownloadObjectFromBucketAsync(s3Bucket, s3Object, localPath))
                             {
                                 fileBytes = await File.ReadAllBytesAsync(Path.Combine(localPath, s3Object));
