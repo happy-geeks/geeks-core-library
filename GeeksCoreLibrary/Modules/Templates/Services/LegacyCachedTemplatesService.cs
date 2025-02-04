@@ -1,25 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Extensions;
-using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Branches.Interfaces;
-using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Enums;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
 using LazyCache;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
 
@@ -27,16 +21,13 @@ using Newtonsoft.Json.Linq;
 namespace GeeksCoreLibrary.Modules.Templates.Services;
 
 public class LegacyCachedTemplatesService(
-    ILogger<LegacyCachedTemplatesService> logger,
     ITemplatesService templatesService,
     IAppCache cache,
     IOptions<GclSettings> gclSettings,
-    IDatabaseConnection databaseConnection,
     ICacheService cacheService,
     IBranchesService branchesService,
     IObjectsService objectsService,
-    IHttpContextAccessor httpContextAccessor = null,
-    IWebHostEnvironment webHostEnvironment = null)
+    IHttpContextAccessor httpContextAccessor = null)
     : ITemplatesService
 {
     private readonly GclSettings gclSettings = gclSettings.Value;
@@ -49,120 +40,17 @@ public class LegacyCachedTemplatesService(
             throw new ArgumentNullException($"One of the parameters {nameof(id)} or {nameof(name)} must contain a value");
         }
 
-        // Output caching for single/partial templates (such as header and footer).
-        var templateContent = "";
-        var foundInOutputCache = false;
-        string fullCachePath = null;
-        var cacheSettings = !includeContent ? new Template {CachingMode = TemplateCachingModes.NoCaching} : await GetTemplateCacheSettingsAsync(id, name, parentId, parentName);
-        string contentCacheKey = null;
-        if (includeContent && cacheSettings.CachingMode != TemplateCachingModes.NoCaching && cacheSettings.CachingMinutes > 0)
-        {
-            // Get folder and file name.
-            var cacheFolder = FileSystemHelpers.GetOutputCacheDirectory(webHostEnvironment);
-            var cacheFileName = await GetTemplateOutputCacheFileNameAsync(cacheSettings, cacheSettings.Type.ToString());
-
-            switch (cacheSettings.CachingLocation)
-            {
-                case TemplateCachingLocations.InMemory:
-                {
-                    // Cache the template contents in memory.
-                    contentCacheKey = Path.GetFileNameWithoutExtension(cacheFileName);
-                    logger.LogDebug($"Content cache enabled for template '{cacheSettings.Id}', cache in memory with key: {contentCacheKey}.");
-                    templateContent = await cache.GetAsync<string>(contentCacheKey);
-                    foundInOutputCache = !String.IsNullOrEmpty(templateContent);
-                    break;
-                }
-                case TemplateCachingLocations.OnDisk:
-                {
-                    if (String.IsNullOrWhiteSpace(cacheFolder))
-                    {
-                        logger.LogWarning($"Content cache enabled for template '{cacheSettings.Id}' but the cache folder 'contentcache' does not exist. Please create the folder and give it modify rights to the user running the website.");
-                    }
-                    else
-                    {
-                        logger.LogDebug($"Content cache enabled for template '{cacheSettings.Id}', cache file location: {fullCachePath}.");
-
-                        // Check if a cache file already exists and if it hasn't expired yet.
-                        fullCachePath = Path.Combine(cacheFolder, cacheFileName);
-                        var fileInfo = new FileInfo(fullCachePath);
-                        if (fileInfo.Exists)
-                        {
-                            if (fileInfo.LastWriteTimeUtc.AddMinutes(cacheSettings.CachingMinutes) > DateTime.UtcNow)
-                            {
-                                using var fileReader = new StreamReader(fileInfo.OpenRead(), Encoding.UTF8);
-                                var fileContents = await fileReader.ReadToEndAsync();
-                                templateContent = cacheSettings.Type != TemplateTypes.Html
-                                    ? fileContents
-                                    : $"<!-- START PARTIAL TEMPLATE FROM CACHE ({cacheSettings.Id}) -->{fileContents}<!-- END PARTIAL TEMPLATE FROM CACHE ({cacheSettings.Id}) -->";
-                                foundInOutputCache = true;
-                            }
-                            else
-                            {
-                                // Cleanup the old cache file if it has expired.
-                                fileInfo.Delete();
-                            }
-                        }
-                    }
-
-                    break;
-                }
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(cacheSettings.CachingLocation), cacheSettings.CachingLocation.ToString(), null);
-            }
-        }
-
         // Cache the template settings in memory.
-        var cacheName = $"Template_{id}_{name}_{parentId}_{parentName}_{!foundInOutputCache}_{branchesService.GetDatabaseNameFromCookie()}{await GetContentCachingCookieDeviationSuffixAsync()}";
+        var cacheName = $"Template_{id}_{name}_{parentId}_{parentName}_{includeContent}_{branchesService.GetDatabaseNameFromCookie()}{await GetContentCachingCookieDeviationSuffixAsync()}";
 
-        var template = await cache.GetOrAddAsync(cacheName.ToString(),
+        var template = await cache.GetOrAddAsync(cacheName,
             async cacheEntry =>
             {
                 cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
-                return await templatesService.GetTemplateAsync(id, name, type, parentId, parentName, !foundInOutputCache);
+                return await templatesService.GetTemplateAsync(id, name, type, parentId, parentName, includeContent);
             }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
 
-        // Check if a login is required (only for HTML and query templates.
-        if (template.Type.InList(TemplateTypes.Html, TemplateTypes.Query) && template.LoginRequired && template.Id == 0)
-        {
-            // If the template ID is 0, but "LoginRequired" is true, it means no user is logged in.
-            return template;
-        }
-
-        if (!includeContent)
-        {
-            return template;
-        }
-
-        if (foundInOutputCache)
-        {
-            template.Content = templateContent;
-        }
-        else
-        {
-            switch (cacheSettings.CachingLocation)
-            {
-                case TemplateCachingLocations.InMemory:
-                    if (!String.IsNullOrWhiteSpace(contentCacheKey))
-                    {
-                        cache.Add(contentCacheKey, template.Content, DateTimeOffset.UtcNow.AddMinutes(cacheSettings.CachingMinutes));
-                    }
-
-                    break;
-                case TemplateCachingLocations.OnDisk:
-                {
-                    if (!String.IsNullOrEmpty(fullCachePath))
-                    {
-                        await File.WriteAllTextAsync(fullCachePath, template.Content);
-                    }
-
-                    break;
-                }
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(cacheSettings.CachingLocation), cacheSettings.CachingLocation.ToString(), null);
-            }
-        }
-
-        return template;
+        return ObjectCloner.ObjectCloner.DeepClone(template);
     }
 
     /// <inheritdoc />
@@ -292,102 +180,6 @@ public class LegacyCachedTemplatesService(
         return templatesService.HandleImageTemplating(input);
     }
 
-    /// <summary>
-    /// Gets all dynamic content data so that they can be cached.
-    /// </summary>
-    /// <param name="cacheEntry"></param>
-    /// <returns></returns>
-    private async Task<Dictionary<int, DynamicContent>> GetDynamicContentForCachingAsync(ICacheEntry cacheEntry)
-    {
-        var dynamicContent = new Dictionary<int, DynamicContent>();
-        string query = null;
-        var templateVersionPart = "";
-        switch (gclSettings.Environment)
-        {
-            case Environments.Development:
-                // Always get the latest version on development.
-                query = """
-                        SELECT
-                                                        d.id,
-                                                        d.filledvariables, 
-                                                        d.freefield1,
-                                                        d.type,
-                                                        d.version
-                                                    FROM easy_dynamiccontent d
-                                                    JOIN (SELECT id, MAX(version) AS version FROM easy_dynamiccontent GROUP BY id) d2 ON d2.id = d.id AND d2.version = d.version
-                                                    GROUP BY d.id
-                        """;
-                break;
-            case Environments.Test:
-                templateVersionPart = "AND t.istest = 1";
-                break;
-            case Environments.Acceptance:
-                templateVersionPart = "AND t.isacceptance = 1";
-                break;
-            case Environments.Live:
-                templateVersionPart = "AND t.islive = 1";
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(gclSettings.Environment), gclSettings.Environment, null);
-        }
-
-        query ??= $"""
-                   SELECT
-                                               d.id,
-                                               d.filledvariables, 
-                                               d.freefield1,
-                                               d.type,
-                                               d.version
-                                           FROM easy_dynamiccontent d
-                                           JOIN easy_templates t ON t.itemid = d.itemid AND t.version = d.version {templateVersionPart}
-                   
-                                           UNION
-                   
-                                           SELECT
-                                               d.id,
-                                               d.filledvariables, 
-                                               d.freefield1,
-                                               d.type,
-                                               d.version
-                                           FROM easy_dynamiccontent d
-                                           WHERE d.version = 1 
-                                           AND d.itemid = 0
-                   
-                                           GROUP BY id
-                   """;
-
-        var dataTable = await databaseConnection.GetAsync(query);
-        if (dataTable.Rows.Count == 0)
-        {
-            return dynamicContent;
-        }
-
-        foreach (DataRow dataRow in dataTable.Rows)
-        {
-            var contentId = dataRow.Field<int>("id");
-            dynamicContent.Add(contentId, new DynamicContent
-            {
-                Id = contentId,
-                Name = dataRow.Field<string>("freefield1"),
-                SettingsJson = dataRow.Field<string>("filledvariables"),
-                Version = dataRow.Field<int>("version")
-            });
-        }
-
-        cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
-
-        return dynamicContent;
-    }
-
-    /// <summary>
-    /// GetAsync templates from database and write them to the MemoryCache if they are not yet there.
-    /// </summary>
-    private async Task<Dictionary<int, DynamicContent>> CacheDynamicContentAsync()
-    {
-        var cacheName = $"DynamicContent_{branchesService.GetDatabaseNameFromCookie()}";
-        return await cache.GetOrAddAsync(cacheName, GetDynamicContentForCachingAsync, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
-    }
-
     /// <inheritdoc />
     public async Task<DynamicContent> GetDynamicContentData(int contentId)
     {
@@ -396,14 +188,15 @@ public class LegacyCachedTemplatesService(
             throw new ArgumentNullException($"The parameter {nameof(contentId)} must contain a value");
         }
 
-        var cachedDynamicContent = await CacheDynamicContentAsync();
+        var cacheName = $"DynamicContentData_{contentId}_{branchesService.GetDatabaseNameFromCookie()}";
 
-        if (!cachedDynamicContent.ContainsKey(contentId))
-        {
-            return null;
-        }
-
-        return cachedDynamicContent[contentId];
+        return await cache.GetOrAddAsync(cacheName,
+            async cacheEntry =>
+            {
+                cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
+                return await templatesService.GetDynamicContentData(contentId);
+            },
+            cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
     }
 
     /// <inheritdoc />
@@ -468,9 +261,9 @@ public class LegacyCachedTemplatesService(
     }
 
     /// <inheritdoc />
-    public async Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate, string extension = ".html")
+    public async Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate, string extension = ".html", bool useAbsoluteImageUrls = false, bool removeSvgUrlsFromIcons = false)
     {
-        return await templatesService.GetTemplateOutputCacheFileNameAsync(contentTemplate, extension);
+        return await templatesService.GetTemplateOutputCacheFileNameAsync(contentTemplate, extension, useAbsoluteImageUrls, removeSvgUrlsFromIcons);
     }
 
     /// <inheritdoc />

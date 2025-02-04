@@ -1418,7 +1418,7 @@ public class LegacyTemplatesService : ITemplatesService
     }
 
     /// <inheritdoc />
-    public async Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate, string extension = ".html")
+    public async Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate, string extension = ".html", bool useAbsoluteImageUrls = false, bool removeSvgUrlsFromIcons = false)
     {
         var originalUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext);
         var cacheFileName = new StringBuilder($"template_{contentTemplate.Id}_");

@@ -12,7 +12,8 @@ namespace GeeksCoreLibrary.Modules.Templates.Interfaces;
 public interface ITemplatesService
 {
     /// <summary>
-    /// Search for a template and returns it. Must supply either an ID or a name.
+    /// Search for a template and returns it. Must supply either an ID or a name.<br/>
+    /// This will return the unrendered template, with the content as it is in the database. Use <see cref="IPagesService.GetRenderedTemplateAsync"/> for the rendered version.
     /// </summary>
     /// <param name="id">Optional: The ID of the template to get.</param>
     /// <param name="name">Optional: The name of the template to get.</param>
@@ -293,8 +294,10 @@ public interface ITemplatesService
     /// </summary>
     /// <param name="contentTemplate">The <see cref="Template"/>.</param>
     /// <param name="extension">Optional: The extension to use for the file name. Default is ".html".</param>
+    /// <param name="useAbsoluteImageUrls">Whether to force all URLs for images to be absolute. This will add the main domain from the settings to all image URLs that are not absolute yet.</param>
+    /// <param name="removeSvgUrlsFromIcons">Whether to remove SVG URLs from all icons. If true, this removes the URLs from SVG files to allow the template to load SVGs when the HTML is placed inside another website. To use this functionality, the content of the SVG needs to be placed in the HTML, xlink can only load URLs from the same domain, protocol and port.</param>
     /// <returns>The name for the file to cache the contents of the template to.</returns>
-    Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate, string extension = ".html");
+    Task<string> GetTemplateOutputCacheFileNameAsync(Template contentTemplate, string extension = ".html", bool useAbsoluteImageUrls = false, bool removeSvgUrlsFromIcons = false);
 
     /// <summary>
     /// Gets all templates that have an URL regex setup.

@@ -358,6 +358,7 @@ public static class ConfigurationServiceCollectionExtensions
         services.Decorate<IBarcodesService, CachedBarcodesService>();
         services.Decorate<IAmazonS3Service, CachedAmazonS3Service>();
         services.Decorate<IAmazonSecretsManagerService, CachedAmazonSecretsManagerService>();
+        services.Decorate<IPagesService, CachedPagesService>();
 
         if (gclSettings.UseLegacyWiser1TemplateModule)
         {

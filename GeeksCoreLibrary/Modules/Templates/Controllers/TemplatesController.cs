@@ -12,7 +12,6 @@ using System.Data;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Extensions;
@@ -21,7 +20,6 @@ using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Branches.Interfaces;
 using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
-using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Options;
@@ -30,7 +28,15 @@ using Constants = GeeksCoreLibrary.Modules.Templates.Models.Constants;
 namespace GeeksCoreLibrary.Modules.Templates.Controllers;
 
 [Area("Templates")]
-public class TemplatesController(ILogger<TemplatesController> logger, ITemplatesService templatesService, IPagesService pagesService, IDataSelectorsService dataSelectorsService, IWiserItemsService wiserItemsService, IStringReplacementsService stringReplacementsService, IObjectsService objectsService, IBranchesService branchesService, IOptions<GclSettings> gclSettings)
+public class TemplatesController(
+    ILogger<TemplatesController> logger,
+    ITemplatesService templatesService,
+    IPagesService pagesService,
+    IDataSelectorsService dataSelectorsService,
+    IWiserItemsService wiserItemsService,
+    IStringReplacementsService stringReplacementsService,
+    IBranchesService branchesService,
+    IOptions<GclSettings> gclSettings)
     : Controller
 {
     private readonly GclSettings gclSettings = gclSettings.Value;
@@ -39,12 +45,7 @@ public class TemplatesController(ILogger<TemplatesController> logger, ITemplates
     [Route("template.jcl")]
     public async Task<IActionResult> Template()
     {
-        var error = "";
-        var startTime = DateTime.Now;
-        var stopWatch = new Stopwatch();
-        var logRenderingOfTemplate = false;
         var templateId = 0;
-        var templateVersion = 0;
 
         try
         {
@@ -63,19 +64,16 @@ public class TemplatesController(ILogger<TemplatesController> logger, ITemplates
                 return NotFound();
             }
 
+            var useAbsoluteImageUrls = String.Equals(HttpContextHelpers.GetRequestValue(HttpContext, "absoluteImageUrls"), "true", StringComparison.OrdinalIgnoreCase);
+            var removeSvgUrlsFromIcons = String.Equals(HttpContextHelpers.GetRequestValue(HttpContext, "removeSvgUrlsFromIcons"), "true", StringComparison.OrdinalIgnoreCase);
+
             var javascriptTemplates = new List<int>();
             var cssTemplates = new List<int>();
             var externalJavascript = new List<PageResourceModel>();
             var externalCss = new List<PageResourceModel>();
-            var contentTemplate = await templatesService.GetTemplateAsync(templateId, templateName);
+            var contentTemplate = await pagesService.GetRenderedTemplateAsync(templateId, templateName, useAbsoluteImageUrls: useAbsoluteImageUrls, removeSvgUrlsFromIcons: removeSvgUrlsFromIcons);
 
             templateId = contentTemplate.Id;
-            templateVersion = contentTemplate.Version;
-            logRenderingOfTemplate = await templatesService.TemplateRenderingShouldBeLoggedAsync(templateId);
-            if (logRenderingOfTemplate)
-            {
-                stopWatch.Start();
-            }
 
             javascriptTemplates.AddRange(contentTemplate.JavascriptTemplates);
             cssTemplates.AddRange(contentTemplate.CssTemplates);
@@ -85,7 +83,7 @@ public class TemplatesController(ILogger<TemplatesController> logger, ITemplates
                 // If ID is 0 and LoginRequired is true, it means no user is logged in while the template requires a login.
                 if (!contentTemplate.LoginRequired)
                 {
-                    // Login not required; return 404 (Not Found).
+                    // Login isn't required; return 404 (Not Found).
                     return NotFound();
                 }
 
@@ -171,7 +169,7 @@ public class TemplatesController(ILogger<TemplatesController> logger, ITemplates
             // Header template.
             if (useGeneralLayout)
             {
-                contentToWrite.Append(await pagesService.GetGlobalHeader(url, javascriptTemplates, cssTemplates));
+                contentToWrite.Append(await pagesService.GetGlobalHeader(url, javascriptTemplates, cssTemplates, useAbsoluteImageUrls: useAbsoluteImageUrls, removeSvgUrlsFromIcons: removeSvgUrlsFromIcons));
             }
 
             // Content template.
@@ -180,35 +178,10 @@ public class TemplatesController(ILogger<TemplatesController> logger, ITemplates
             // Footer template.
             if (useGeneralLayout)
             {
-                contentToWrite.Append(await pagesService.GetGlobalFooter(url, javascriptTemplates, cssTemplates));
+                contentToWrite.Append(await pagesService.GetGlobalFooter(url, javascriptTemplates, cssTemplates, useAbsoluteImageUrls: useAbsoluteImageUrls, removeSvgUrlsFromIcons: removeSvgUrlsFromIcons));
             }
 
-            var newBodyHtml = await templatesService.DoReplacesAsync(contentToWrite.ToString(), templateType: contentTemplate.Type);
-            newBodyHtml = await dataSelectorsService.ReplaceAllDataSelectorsAsync(newBodyHtml);
-            newBodyHtml = await wiserItemsService.ReplaceAllEntityBlocksAsync(newBodyHtml);
-
-            // Make relative image URls absolute to allow the template to show images when the HTML is placed inside another website.
-            var useAbsoluteImageUrls = String.Equals(HttpContextHelpers.GetRequestValue(context, "absoluteImageUrls"), "true", StringComparison.OrdinalIgnoreCase);
-            if (useAbsoluteImageUrls)
-            {
-                var imagesDomain = await objectsService.FindSystemObjectByDomainNameAsync("maindomain");
-                newBodyHtml = await wiserItemsService.ReplaceRelativeImagesToAbsoluteAsync(newBodyHtml, imagesDomain);
-            }
-
-            // Remove the URLs from SVG files to allow the template to load SVGs when the HTML is placed inside another website.
-            // To use this functionality the content of the SVG needs to be placed in the HTML, xlink can only load URLs from same domain, protocol and port.
-            var removeSvgUrlsFromIcons = String.Equals(HttpContextHelpers.GetRequestValue(context, "removeSvgUrlsFromIcons"), "true", StringComparison.OrdinalIgnoreCase);
-            if (removeSvgUrlsFromIcons)
-            {
-                var regex = new Regex("""<svg(?:[^>]*)>(?:\s*)<use(?:[^>]*)xlink:href="([^>"]*)#(?:[^>"]*)"(?:[^>]*)>""", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-                foreach (Match match in regex.Matches(newBodyHtml))
-                {
-                    if (!String.IsNullOrEmpty(match.Groups[1].Value))
-                    {
-                        newBodyHtml = newBodyHtml.Replace(match.Groups[1].Value, "");
-                    }
-                }
-            }
+            var newBodyHtml = contentToWrite.ToString();
 
             var viewModel = await pagesService.CreatePageViewModelAsync(externalCss, cssTemplates, externalJavascript, javascriptTemplates, newBodyHtml, templateId, useGeneralLayout);
 
@@ -219,10 +192,8 @@ public class TemplatesController(ILogger<TemplatesController> logger, ITemplates
                 {
                     return View(viewModel);
                 }
-                else
-                {
-                    return Content(newBodyHtml, "text/html");
-                }
+
+                return Content(newBodyHtml, "text/html");
             }
 
             // If a component set the status code to a 4xx status code, then return that actual status code
@@ -249,7 +220,6 @@ public class TemplatesController(ILogger<TemplatesController> logger, ITemplates
         catch (Exception exception)
         {
             logger.LogCritical(exception, $"{Constants.TemplateRenderingError} '{templateId}'");
-            error = exception.ToString();
 
             if (gclSettings.Environment == Environments.Live)
             {
@@ -263,15 +233,6 @@ public class TemplatesController(ILogger<TemplatesController> logger, ITemplates
                 Content = $"<pre>{exception}</pre>",
                 ContentType = "text/html"
             };
-        }
-        finally
-        {
-            if (logRenderingOfTemplate)
-            {
-                stopWatch.Stop();
-                var endTime = DateTime.Now;
-                await templatesService.AddTemplateOrComponentRenderingLogAsync(0, templateId, templateVersion, startTime, endTime, stopWatch.ElapsedMilliseconds, error);
-            }
         }
     }
 
