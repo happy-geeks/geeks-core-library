@@ -34,7 +34,7 @@ public static class FileSystemHelpers
 
     /// <summary>
     /// Get the full path to the public files directory.
-    /// As the name indicated, this is for storing files that are public and can be accessed by anyone.
+    /// As the name indicates, this is for storing files that are public and can be accessed by anyone.
     /// So make sure you don't store any sensitive information in this directory.
     /// </summary>
     /// <param name="webHostEnvironment">The <see cref="IWebHostEnvironment"/> that provides information about the web hosting environment an application is running in.</param>
@@ -70,7 +70,7 @@ public static class FileSystemHelpers
 
     /// <summary>
     /// Save a file to the public files directory.
-    /// As the name indicated, this is for storing files that are public and can be accessed by anyone.
+    /// As the name indicates, this is for storing files that are public and can be accessed by anyone.
     /// So make sure you don't store any sensitive information in this directory.
     /// </summary>
     /// <param name="webHostEnvironment">The <see cref="IWebHostEnvironment"/> that provides information about the web hosting environment an application is running in.</param>
@@ -97,7 +97,7 @@ public static class FileSystemHelpers
 
     /// <summary>
     /// Save a file to the public files directory.
-    /// As the name indicated, this is for storing files that are public and can be accessed by anyone.
+    /// As the name indicates, this is for storing files that are public and can be accessed by anyone.
     /// So make sure you don't store any sensitive information in this directory.
     /// </summary>
     /// <param name="webHostEnvironment">The <see cref="IWebHostEnvironment"/> that provides information about the web hosting environment an application is running in.</param>
