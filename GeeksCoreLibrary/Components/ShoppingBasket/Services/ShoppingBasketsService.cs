@@ -1071,6 +1071,13 @@ public class ShoppingBasketsService(
                     }
 
                     var replaceData = line.GetSortedList(true);
+                    
+                    // Remove the variables that are handled by this method so they aren't handled by stringReplacementsService.DoReplacements
+                    replaceData.Remove("price");
+                    replaceData.Remove("singleprice");
+                    replaceData.Remove("pricewithoutfactor");
+                    replaceData.Remove("singlepricewithoutfactor");
+                    
                     replaceData["rowindex"] = index.ToString(CultureInfo.InvariantCulture);
 
                     var lineTemplate = subTemplate;
