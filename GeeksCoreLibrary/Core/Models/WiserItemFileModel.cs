@@ -12,7 +12,7 @@ public class WiserItemFileModel
     /// <summary>
     /// The unique identifier of the file.
     /// </summary>
-    public ulong Id { get; init; }
+    public ulong Id { get; set; }
 
     /// <summary>
     /// The unique identifier of the item that the file is linked to.
