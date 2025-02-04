@@ -178,4 +178,9 @@ public class EntitySettingsModel
     /// Gets or Sets the where item details of this entity type get stored.
     /// </summary>
     public StoreType StoreType { get; set; } = StoreType.Table;
+
+    /// <summary>
+    /// Gets or Sets if an entity is allowed to be created on the main branch while on a sub branch.
+    /// </summary>
+    public bool AllowCreationOnMainFromBranch { get; set; } = true;
 }
