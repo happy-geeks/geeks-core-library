@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Models;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.StaticFiles;
 
 namespace GeeksCoreLibrary.Core.Helpers;
 
@@ -168,6 +169,29 @@ public static class FileSystemHelpers
     }
 
     /// <summary>
+    /// Get the content type of an image.
+    /// It will first get the content type based on the magic number from the byte array.
+    /// If that fails, it will try to determine the content type via the file extension.
+    /// If that also fails, it will return the <see cref="defaultValue"/>.
+    /// </summary>
+    /// <param name="fileName">The name of the file. It doesn't matter if this contains a path or not, as long as it ends with the file name (including extension).</param>
+    /// <param name="fileBytes">The contents of the file.</param>
+    /// <param name="defaultValue">Optional: The content type to use if we could not determine it via the name or content.</param>
+    /// <returns>The content type of the file.</returns>
+    public static string GetContentTypeOfImage(string fileName, byte[] fileBytes, string defaultValue = "")
+    {
+        // First try to determine the content type by the magic number.
+        var contentType = GetMediaTypeByMagicNumber(fileBytes);
+        if (!String.IsNullOrWhiteSpace(contentType))
+        {
+            return contentType;
+        }
+
+        var provider = new FileExtensionContentTypeProvider();
+        return provider.TryGetContentType(fileName, out contentType) ? contentType : defaultValue;
+    }
+
+    /// <summary>
     /// Get the content type of an image, based on its magic number.
     /// </summary>
     /// <param name="fileBytes">The file contents.</param>
@@ -259,37 +283,14 @@ public static class FileSystemHelpers
         }
         else
         {
-            // UNKNOWN
-            // NOTE: There's not guarantee that this works.
-            mimeType = "image/*";
+            mimeType = "";
         }
 
         return mimeType;
     }
 
     /// <summary>
-    /// <para>
-    /// Turns an image extension into a IANA media type (a.k.a. MIME type). Most extensions will just turn into "image/{extension}" but there are a few exceptions.
-    /// See below for the exceptions.
-    /// </para>
-    /// <list>
-    ///     <item>
-    ///         <term>jpg, jpe, jif, jfif, jfi</term>
-    ///         <description>image/jpeg</description>
-    ///     </item>
-    ///     <item>
-    ///         <term>svg</term>
-    ///         <description>image/svg+xml</description>
-    ///     </item>
-    ///     <item>
-    ///         <term>tif</term>
-    ///         <description>image/tiff</description>
-    ///     </item>
-    ///     <item>
-    ///         <term>ico</term>
-    ///         <description>image/x-icon</description>
-    ///     </item>
-    /// </list>
+    /// Return the content type of a file based on its extension.
     /// </summary>
     /// <param name="extension">The extension of an image. The dot in front will be trimmed if present.</param>
     /// <returns>The correct media type.</returns>
@@ -301,18 +302,24 @@ public static class FileSystemHelpers
         }
 
         extension = extension.ToLowerInvariant().TrimStart('.');
-        return extension switch
+        var provider = new FileExtensionContentTypeProvider();
+        if (!provider.TryGetContentType($"file.{extension}", out var contentType))
         {
-            "jpg" => "image/jpeg",
-            "jpe" => "image/jpeg",
-            "jif" => "image/jpeg",
-            "jfif" => "image/jpeg",
-            "jfi" => "image/jpeg",
-            "svg" => "image/svg+xml",
-            "tif" => "image/tiff",
-            "avifs" => "image/avif",
+            contentType = extension switch
+            {
+                "jpg" => "image/jpeg",
+                "jpe" => "image/jpeg",
+                "jif" => "image/jpeg",
+                "jfif" => "image/jpeg",
+                "jfi" => "image/jpeg",
+                "svg" => "image/svg+xml",
+                "tif" => "image/tiff",
+                "avifs" => "image/avif",
             "ico" => "image/x-icon",
-            _ => $"image/{extension}"
-        };
+                _ => $"image/{extension}"
+            };
+        }
+
+        return contentType;
     }
 }

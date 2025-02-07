@@ -56,7 +56,7 @@ public class CachedBarcodesService : IBarcodesService
 
         // Generate new barcode if it doesn't exist yet or if it's older than one hour.
         fileBytes = await barcodesService.GenerateBarcodeAsync(input, format, width, height);
-        await FileSystemHelpers.SaveFileToCacheAsync(webHostEnvironment, filename, fileBytes);
+        await FileSystemHelpers.SaveToFileCacheDirectoryAsync(webHostEnvironment, filename, fileBytes);
         return fileBytes;
     }
 

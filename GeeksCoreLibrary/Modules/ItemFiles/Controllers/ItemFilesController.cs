@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net.Http.Headers;
 using System.Net.Mime;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Helpers;
@@ -6,6 +7,7 @@ using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.ItemFiles.Enums;
 using GeeksCoreLibrary.Modules.ItemFiles.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -37,36 +39,44 @@ public class ItemFilesController(ILogger<ItemFilesController> logger, IOptions<G
             return NotFound();
         }
 
+        // Get cache control from client.
+        if (!CacheControlHeaderValue.TryParse(Request.Headers.CacheControl, out var cacheControl))
+        {
+            cacheControl = new CacheControlHeaderValue();
+        }
+
         logger.LogDebug($"Get image from Wiser, itemId: '{itemId}', propertyName: '{propertyName}', preferredWidth: '{preferredWidth}', preferredHeight: '{preferredHeight}', filename: '{fileName}', resizeMode: '{resizeMode:G}', anchorPosition: '{anchorPosition}', fileNumber: '{fileNumber}'");
 
-        byte[] fileBytes;
-        DateTime lastModified;
-
+        FileResultModel fileResult;
         switch (fileType?.ToUpperInvariant())
         {
             case "ITEMLINK":
                 _ = Int32.TryParse(type, out var linkType);
-                (fileBytes, lastModified) = await itemFilesService.GetWiserItemLinkImageAsync(itemId, propertyName, preferredWidth, preferredHeight, fileName, fileNumber, resizeMode, anchorPosition, encryptedId, linkType);
+                fileResult = await itemFilesService.GetWiserItemLinkImageAsync(itemId, propertyName, preferredWidth, preferredHeight, fileName, fileNumber, resizeMode, anchorPosition, encryptedId, linkType);
                 break;
             case "DIRECT":
-                (fileBytes, lastModified) = await itemFilesService.GetWiserDirectImageAsync(itemId, preferredWidth, preferredHeight, fileName, resizeMode, anchorPosition, encryptedId, entityType: type);
+                fileResult = await itemFilesService.GetWiserDirectImageAsync(itemId, preferredWidth, preferredHeight, fileName, resizeMode, anchorPosition, encryptedId, entityType: type);
                 break;
             case "NAME":
-                (fileBytes, lastModified) = await itemFilesService.GetWiserImageByFileNameAsync(itemId, propertyName, preferredWidth, preferredHeight, fileName, resizeMode, anchorPosition, encryptedId, entityType: type);
+                fileResult = await itemFilesService.GetWiserImageByFileNameAsync(itemId, propertyName, preferredWidth, preferredHeight, fileName, resizeMode, anchorPosition, encryptedId, entityType: type);
                 break;
             default:
-                (fileBytes, lastModified) = await itemFilesService.GetWiserItemImageAsync(itemId, propertyName, preferredWidth, preferredHeight, fileName, fileNumber, resizeMode, anchorPosition, encryptedId, entityType: type);
+                fileResult = await itemFilesService.GetWiserItemImageAsync(itemId, propertyName, preferredWidth, preferredHeight, fileName, fileNumber, resizeMode, anchorPosition, encryptedId, entityType: type);
                 break;
         }
 
-        if (fileBytes == null)
+        if (fileResult?.FileBytes == null || fileResult.FileBytes.Length == 0)
         {
             return NotFound();
         }
 
-        Response.Headers.LastModified = lastModified.ToString("R");
-        Response.Headers.Expires = lastModified.Add(gclSettings.DefaultItemFileCacheDuration).ToString("R");
-        return File(fileBytes, FileSystemHelpers.GetMediaTypeByMagicNumber(fileBytes));
+        // Set cache headers to tell browsers and CDNs how to cache the image. Do not cache protected files, because they can contain sensitive data.
+        Response.Headers.CacheControl = fileResult.WiserItemFile.Protected || cacheControl.NoStore ? "no-store" : $"public, max-age={gclSettings.DefaultItemFileCacheDuration.TotalSeconds}";
+        Response.Headers.LastModified = fileResult.LastModified.ToString("R");
+        Response.Headers.Expires = fileResult.LastModified.Add(gclSettings.DefaultItemFileCacheDuration).ToString("R");
+
+        var contentType = FileSystemHelpers.GetContentTypeOfImage(fileResult.WiserItemFile.FileName, fileResult.FileBytes, fileResult.WiserItemFile.ContentType);
+        return File(fileResult.FileBytes, contentType);
     }
 
     [Route("wiser-file.gcl")]
@@ -80,31 +90,38 @@ public class ItemFilesController(ILogger<ItemFilesController> logger, IOptions<G
             return NotFound();
         }
 
-        logger.LogDebug($"Get file from Wiser, itemId: '{itemId}', propertyName: '{propertyName}', filename: '{filename}', fileNumber: '{fileNumber}'");
-        byte[] fileBytes;
-        DateTime lastModified;
+        // Get cache control from client.
+        if (!CacheControlHeaderValue.TryParse(Request.Headers.CacheControl, out var cacheControl))
+        {
+            cacheControl = new CacheControlHeaderValue();
+        }
 
+        logger.LogDebug($"Get file from Wiser, itemId: '{itemId}', propertyName: '{propertyName}', filename: '{filename}', fileNumber: '{fileNumber}'");
+
+        FileResultModel fileResult;
         switch (fileType?.ToUpperInvariant())
         {
             case "ITEMLINK":
-                Int32.TryParse(type, out var linkType);
-                (fileBytes, lastModified) = await itemFilesService.GetWiserItemLinkFileAsync(itemId, propertyName, filename, fileNumber, encryptedId, linkType);
+                _ = Int32.TryParse(type, out var linkType);
+                fileResult = await itemFilesService.GetWiserItemLinkFileAsync(itemId, propertyName, filename, fileNumber, encryptedId, linkType);
                 break;
             case "DIRECT":
-                (fileBytes, lastModified) = await itemFilesService.GetWiserDirectFileAsync(itemId, filename, encryptedId, entityType: type);
+                fileResult = await itemFilesService.GetWiserDirectFileAsync(itemId, filename, encryptedId, entityType: type);
                 break;
             default:
-                (fileBytes, lastModified) = await itemFilesService.GetWiserItemFileAsync(itemId, propertyName, filename, fileNumber, encryptedId, entityType: type);
+                fileResult = await itemFilesService.GetWiserItemFileAsync(itemId, propertyName, filename, fileNumber, encryptedId, entityType: type);
                 break;
         }
 
-        if (fileBytes == null)
+        if (fileResult?.FileBytes == null || fileResult.FileBytes.Length == 0)
         {
             return NotFound();
         }
 
-        Response.Headers.LastModified = lastModified.ToString("R");
-        Response.Headers.Expires = lastModified.Add(gclSettings.DefaultItemFileCacheDuration).ToString("R");
-        return File(fileBytes, MediaTypeNames.Application.Octet);
+        // Set cache headers to tell browsers and CDNs how to cache the image. Do not cache protected files, because they can contain sensitive data.
+        Response.Headers.CacheControl = fileResult.WiserItemFile.Protected || cacheControl.NoStore ? "no-store" : $"public, max-age={gclSettings.DefaultItemFileCacheDuration.TotalSeconds}";
+        Response.Headers.LastModified = fileResult.LastModified.ToString("R");
+        Response.Headers.Expires = fileResult.LastModified.Add(gclSettings.DefaultItemFileCacheDuration).ToString("R");
+        return File(fileResult.FileBytes, MediaTypeNames.Application.Octet);
     }
 }

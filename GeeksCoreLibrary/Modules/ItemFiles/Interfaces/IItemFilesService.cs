@@ -47,7 +47,7 @@ public interface IItemFilesService
     /// <param name="resizeMode">Optional: The resize mode to use. Refer to documentation to learn what the different resize modes do. The default is <see cref="ResizeModes.Normal"/>.</param>
     /// <param name="anchorPosition">Optional: The anchor position to use when the resizing of the images causes it to be cropped. The default is <see cref="AnchorPositions.Center"/>.</param>
     /// <returns>A value tuple containing the bytes of the image file and the last modified date.</returns>
-    Task<(byte[] FileBytes, DateTime LastModified)> GetResizedImageAsync(FileLookupTypes lookupType, object id, string fileName, string propertyName = null, string entityType = null, int linkType = 0, int fileNumber = 1, uint preferredWidth = 0, uint preferredHeight = 0, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center);
+    Task<FileResultModel> GetResizedImageAsync(FileLookupTypes lookupType, object id, string fileName, string propertyName = null, string entityType = null, int linkType = 0, int fileNumber = 1, uint preferredWidth = 0, uint preferredHeight = 0, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center);
 
     /// <summary>
     /// Attempts to retrieve an image that is linked to a specific item.
@@ -65,7 +65,7 @@ public interface IItemFilesService
     /// <param name="encryptedItemId">Optional: When the image is protected, the encrypted item ID needs to be provided to retrieve it. Leave it on <c>null</c> if the image is not protected.</param>
     /// <param name="entityType">Optional: If there is a separate wiser_itemfile table for the specified item, then enter the entity type here so that we can find it.</param>
     /// <returns>A value tuple containing the bytes of the image file and the last modified date.</returns>
-    Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemImageAsync(ulong itemId, string propertyName, uint preferredWidth, uint preferredHeight, string fileName, int fileNumber, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null);
+    Task<FileResultModel> GetWiserItemImageAsync(ulong itemId, string propertyName, uint preferredWidth, uint preferredHeight, string fileName, int fileNumber, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null);
 
     /// <summary>
     /// Attempts to retrieve an image that is stored on a link between two Wiser items.
@@ -83,7 +83,7 @@ public interface IItemFilesService
     /// <param name="encryptedItemLinkId">Optional: When the image is protected, the encrypted item link ID needs to be provided to retrieve it. Leave it on <c>null</c> if the image is not protected.</param>
     /// <param name="linkType">Optional: If there is a separate wiser_itemfile table for the specified item link, then enter the link type number here so that we can find it.</param>
     /// <returns>A value tuple containing the bytes of the image file and the last modified date.</returns>
-    Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemLinkImageAsync(ulong itemLinkId, string propertyName, uint preferredWidth, uint preferredHeight, string fileName, int fileNumber, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemLinkId = null, int linkType = 0);
+    Task<FileResultModel> GetWiserItemLinkImageAsync(ulong itemLinkId, string propertyName, uint preferredWidth, uint preferredHeight, string fileName, int fileNumber, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemLinkId = null, int linkType = 0);
 
     /// <summary>
     /// Attempts to retrieve an image via ID. This should be the ID from the wiser_itemfile table that contains this image.
@@ -99,7 +99,7 @@ public interface IItemFilesService
     /// <param name="encryptedItemId">Optional: When the image is protected, the encrypted item ID needs to be provided to retrieve it. Leave it on <c>null</c> if the image is not protected.</param>
     /// <param name="entityType">Optional: If there is a separate wiser_itemfile table for the specified item, then enter the entity type here so that we can find it.</param>
     /// <returns>A value tuple containing the bytes of the image file and the last modified date.</returns>
-    Task<(byte[] FileBytes, DateTime LastModified)> GetWiserDirectImageAsync(ulong itemId, uint preferredWidth, uint preferredHeight, string fileName, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null);
+    Task<FileResultModel> GetWiserDirectImageAsync(ulong itemId, uint preferredWidth, uint preferredHeight, string fileName, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null);
 
     /// <summary>
     /// Attempts to retrieve an image based on file name.
@@ -116,7 +116,7 @@ public interface IItemFilesService
     /// <param name="encryptedItemId">Optional: When the image is protected, the encrypted item ID needs to be provided to retrieve it. Leave it on <c>null</c> if the image is not protected.</param>
     /// <param name="entityType">Optional: If there is a separate wiser_itemfile table for the specified item, then enter the entity type here so that we can find it.</param>
     /// <returns>A value tuple containing the bytes of the image file and the last modified date.</returns>
-    Task<(byte[] fileBytes, DateTime lastModified)> GetWiserImageByFileNameAsync(ulong itemId, string propertyName, uint preferredWidth, uint preferredHeight, string fileName, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null);
+    Task<FileResultModel> GetWiserImageByFileNameAsync(ulong itemId, string propertyName, uint preferredWidth, uint preferredHeight, string fileName, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null);
 
     /// <summary>
     /// Gets a file from the Wiser database and then download the contents if the file is a link to an external file.
@@ -131,7 +131,7 @@ public interface IItemFilesService
     /// <param name="linkType">Optional: The link type of the item link that the file is linked to. Is needed when that link type uses prefix tables.</param>
     /// <param name="fileNumber">Optional: The file number to get, This is based on the ordering of the files in the database. Default value is <c>1</c>.</param>
     /// <returns>A value tuple containing the bytes of the image file and the last modified date.</returns>
-    Task<(byte[] FileBytes, DateTime LastModified)> GetParsedFileAsync(FileLookupTypes lookupType, object id, string fileName, string propertyName = null, string entityType = null, int linkType = 0, int fileNumber = 1);
+    Task<FileResultModel> GetParsedFileAsync(FileLookupTypes lookupType, object id, string fileName, string propertyName = null, string entityType = null, int linkType = 0, int fileNumber = 1);
 
     /// <summary>
     /// Attempts to retrieve a file that is stored on a link between two Wiser items.
@@ -144,7 +144,7 @@ public interface IItemFilesService
     /// <param name="encryptedItemId">Optional: When the file is protected, the encrypted item ID needs to be provided to retrieve it. Leave it on <c>null</c> if the image is not protected.</param>
     /// <param name="entityType">Optional: If there is a separate wiser_itemfile table for the specified item, then enter the entity type here so that we can find it.</param>
     /// <returns>A value tuple containing the bytes of the image file and the last modified date.</returns>
-    Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemFileAsync(ulong itemId, string propertyName, string fileName, int fileNumber, string encryptedItemId = null, string entityType = null);
+    Task<FileResultModel> GetWiserItemFileAsync(ulong itemId, string propertyName, string fileName, int fileNumber, string encryptedItemId = null, string entityType = null);
 
     /// <summary>
     /// Attempts to retrieve a file that is stored on a link between two Wiser items.
@@ -157,7 +157,7 @@ public interface IItemFilesService
     /// <param name="encryptedItemLinkId">Optional: When the image is protected, the encrypted item ID needs to be provided to retrieve it. Leave it on <c>null</c> if the image is not protected.</param>
     /// <param name="linkType">Optional: If there is a separate wiser_itemfile table for the specified item link, then enter the link type number here so that we can find it.</param>
     /// <returns>A value tuple containing the bytes of the image file and the last modified date.</returns>
-    Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemLinkFileAsync(ulong itemLinkId, string propertyName, string fileName, int fileNumber, string encryptedItemLinkId = null, int linkType = 0);
+    Task<FileResultModel> GetWiserItemLinkFileAsync(ulong itemLinkId, string propertyName, string fileName, int fileNumber, string encryptedItemLinkId = null, int linkType = 0);
 
     /// <summary>
     /// Attempts to retrieve a file directly, via file ID. A 404 status will be returned if no file was found.
@@ -167,7 +167,7 @@ public interface IItemFilesService
     /// <param name="encryptedItemId"></param>
     /// <param name="entityType">Optional: If there is a separate wiser_itemfile table for the specified item, then enter the entity type here so that we can find it.</param>
     /// <returns>A value tuple containing the bytes of the image file and the last modified date.</returns>
-    Task<(byte[] FileBytes, DateTime LastModified)> GetWiserDirectFileAsync(ulong itemId, string fileName, string encryptedItemId = null, string entityType = null);
+    Task<FileResultModel> GetWiserDirectFileAsync(ulong itemId, string fileName, string encryptedItemId = null, string entityType = null);
 
     /// <summary>
     /// Converts the data into an image of the given size, format, and quality, and will return the bytes of that image.
@@ -178,12 +178,12 @@ public interface IItemFilesService
     /// <param name="resizeMode">Optional: The resize mode to use. Refer to documentation to learn what the different resize modes do. The default is <see cref="ResizeModes.Normal"/>.</param>
     /// <param name="anchorPosition">Optional: The anchor position to use when the resizing of the images causes it to be cropped. The default is <see cref="AnchorPositions.Center"/>.</param>
     /// <returns>The byte array for the resized image, or <c>null</c> if something went wrong, and the datetime when the file was last updated.</returns>
-    Task<(byte[] FileBytes, DateTime LastModified)> HandleImageAsync(WiserItemFileModel file, uint preferredWidth, uint preferredHeight, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center);
+    Task<FileResultModel> HandleImageAsync(WiserItemFileModel file, uint preferredWidth, uint preferredHeight, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center);
 
     /// <summary>
     /// Handles the file data from the database. If the file is a link to an external file, this will attempt to download the file and return the bytes.
     /// </summary>
     /// <param name="file">The file data from the database.</param>
     /// <returns>The byte array for image, or <c>null</c> if something went wrong. Also returns the datetime when the file was last updated.</returns>
-    Task<(byte[] FileBytes, DateTime LastModified)> HandleFileAsync(WiserItemFileModel file);
+    Task<FileResultModel> HandleFileAsync(WiserItemFileModel file);
 }
