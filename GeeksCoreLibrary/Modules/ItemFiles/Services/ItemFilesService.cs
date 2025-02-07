@@ -90,27 +90,29 @@ public class ItemFilesService(
         }
 
         // Generate the query to get the file.
-        string lookupColumnName;
+        var whereClause = new List<string>();
         string tablePrefix;
         switch (lookupType)
         {
             case FileLookupTypes.ItemId:
             case FileLookupTypes.ItemFileName:
                 tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
-                lookupColumnName = "item_id";
+                whereClause.Add("item_id = ?id");
+                whereClause.Add("property_name = ?propertyName");
                 break;
             case FileLookupTypes.ItemFileId:
                 tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
-                lookupColumnName = "id";
+                whereClause.Add("id = ?id");
                 break;
             case FileLookupTypes.ItemLinkId:
             case FileLookupTypes.ItemLinkFileName:
                 tablePrefix = await wiserItemsService.GetTablePrefixForLinkAsync(linkType, entityType);
-                lookupColumnName = "itemlink_id";
+                whereClause.Add("itemlink_id = ?id");
+                whereClause.Add("property_name = ?propertyName");
                 break;
             case FileLookupTypes.ItemLinkFileId:
                 tablePrefix = await wiserItemsService.GetTablePrefixForLinkAsync(linkType, entityType);
-                lookupColumnName = "id";
+                whereClause.Add("id = ?id");
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(lookupType), lookupType, null);
@@ -129,8 +131,7 @@ public class ItemFilesService(
         var query = $"""
                      SELECT {String.Join(", ", columnsToGet)}
                      FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
-                     WHERE `{lookupColumnName}` = ?id
-                     AND property_name = ?propertyName
+                     WHERE {String.Join(" AND ", whereClause)}
                      ORDER BY ordering ASC, id ASC
                      """;
 
@@ -181,7 +182,7 @@ public class ItemFilesService(
     }
 
     /// <inheritdoc />
-    public async Task<(byte[] FileBytes, DateTime LastModified)> GetResizedImageAsync(FileLookupTypes lookupType, object id, string fileName, string propertyName = null, string entityType = null, int linkType = 0, int fileNumber = 1, uint preferredWidth = 0, uint preferredHeight = 0, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center)
+    public async Task<FileResultModel> GetResizedImageAsync(FileLookupTypes lookupType, object id, string fileName, string propertyName = null, string entityType = null, int linkType = 0, int fileNumber = 1, uint preferredWidth = 0, uint preferredHeight = 0, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center)
     {
         var file = await GetFileAsync(lookupType, id, propertyName: propertyName, fileName: fileName, entityType, linkType, fileNumber) ?? new WiserItemFileModel {Id = 0, PropertyName = propertyName ?? "Unknown", FileName = "Unknown.png"};
 
@@ -196,31 +197,31 @@ public class ItemFilesService(
     }
 
     /// <inheritdoc />
-    public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemImageAsync(ulong itemId, string propertyName, uint preferredWidth, uint preferredHeight, string fileName, int fileNumber, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
+    public async Task<FileResultModel> GetWiserItemImageAsync(ulong itemId, string propertyName, uint preferredWidth, uint preferredHeight, string fileName, int fileNumber, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
     {
         return await GetResizedImageAsync(FileLookupTypes.ItemId, String.IsNullOrWhiteSpace(encryptedItemId) ? itemId : encryptedItemId, fileName: fileName, propertyName: propertyName, entityType: entityType, fileNumber: fileNumber, preferredWidth: preferredWidth, preferredHeight: preferredHeight, resizeMode: resizeMode, anchorPosition: anchorPosition);
     }
 
     /// <inheritdoc />
-    public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemLinkImageAsync(ulong itemLinkId, string propertyName, uint preferredWidth, uint preferredHeight, string fileName, int fileNumber, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemLinkId = null, int linkType = 0)
+    public async Task<FileResultModel> GetWiserItemLinkImageAsync(ulong itemLinkId, string propertyName, uint preferredWidth, uint preferredHeight, string fileName, int fileNumber, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemLinkId = null, int linkType = 0)
     {
         return await GetResizedImageAsync(FileLookupTypes.ItemLinkId, String.IsNullOrWhiteSpace(encryptedItemLinkId) ? itemLinkId : encryptedItemLinkId, fileName: fileName, propertyName: propertyName, linkType: linkType, fileNumber: fileNumber, preferredWidth: preferredWidth, preferredHeight: preferredHeight, resizeMode: resizeMode, anchorPosition: anchorPosition);
     }
 
     /// <inheritdoc />
-    public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserDirectImageAsync(ulong itemId, uint preferredWidth, uint preferredHeight, string fileName, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
+    public async Task<FileResultModel> GetWiserDirectImageAsync(ulong itemId, uint preferredWidth, uint preferredHeight, string fileName, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
     {
         return await GetResizedImageAsync(FileLookupTypes.ItemFileId, String.IsNullOrWhiteSpace(encryptedItemId) ? itemId : encryptedItemId, fileName: fileName, entityType: entityType, preferredWidth: preferredWidth, preferredHeight: preferredHeight, resizeMode: resizeMode, anchorPosition: anchorPosition);
     }
 
     /// <inheritdoc />
-    public async Task<(byte[] fileBytes, DateTime lastModified)> GetWiserImageByFileNameAsync(ulong itemId, string propertyName, uint preferredWidth, uint preferredHeight, string fileName, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
+    public async Task<FileResultModel> GetWiserImageByFileNameAsync(ulong itemId, string propertyName, uint preferredWidth, uint preferredHeight, string fileName, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
     {
         return await GetResizedImageAsync(FileLookupTypes.ItemFileName, String.IsNullOrWhiteSpace(encryptedItemId) ? itemId : encryptedItemId, fileName: fileName, entityType: entityType, preferredWidth: preferredWidth, preferredHeight: preferredHeight, resizeMode: resizeMode, anchorPosition: anchorPosition);
     }
 
     /// <inheritdoc />
-    public async Task<(byte[] FileBytes, DateTime LastModified)> GetParsedFileAsync(FileLookupTypes lookupType, object id, string fileName, string propertyName = null, string entityType = null, int linkType = 0, int fileNumber = 1)
+    public async Task<FileResultModel> GetParsedFileAsync(FileLookupTypes lookupType, object id, string fileName, string propertyName = null, string entityType = null, int linkType = 0, int fileNumber = 1)
     {
         var file = await GetFileAsync(lookupType, id, propertyName: propertyName, fileName: fileName, entityType, linkType, fileNumber) ?? new WiserItemFileModel {Id = 0, PropertyName = propertyName ?? "Unknown", FileName = "Unknown.pdf"};
 
@@ -234,32 +235,32 @@ public class ItemFilesService(
     }
 
     /// <inheritdoc />
-    public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemFileAsync(ulong itemId, string propertyName, string fileName, int fileNumber, string encryptedItemId = null, string entityType = null)
+    public async Task<FileResultModel> GetWiserItemFileAsync(ulong itemId, string propertyName, string fileName, int fileNumber, string encryptedItemId = null, string entityType = null)
     {
         return await GetParsedFileAsync(FileLookupTypes.ItemId, String.IsNullOrWhiteSpace(encryptedItemId) ? itemId : encryptedItemId, fileName: fileName, entityType: entityType);
     }
 
     /// <inheritdoc />
-    public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemLinkFileAsync(ulong itemLinkId, string propertyName, string fileName, int fileNumber, string encryptedItemLinkId = null, int linkType = 0)
+    public async Task<FileResultModel> GetWiserItemLinkFileAsync(ulong itemLinkId, string propertyName, string fileName, int fileNumber, string encryptedItemLinkId = null, int linkType = 0)
     {
         return await GetParsedFileAsync(FileLookupTypes.ItemLinkId, String.IsNullOrWhiteSpace(encryptedItemLinkId) ? itemLinkId : encryptedItemLinkId, fileName: fileName, linkType: linkType);
     }
 
     /// <inheritdoc />
-    public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserDirectFileAsync(ulong itemId, string fileName, string encryptedItemId = null, string entityType = null)
+    public async Task<FileResultModel> GetWiserDirectFileAsync(ulong itemId, string fileName, string encryptedItemId = null, string entityType = null)
     {
         return await GetParsedFileAsync(FileLookupTypes.ItemFileId, String.IsNullOrWhiteSpace(encryptedItemId) ? itemId : encryptedItemId, fileName: fileName, entityType: entityType);
     }
 
     /// <inheritdoc />
-    public async Task<(byte[] FileBytes, DateTime LastModified)> HandleImageAsync(WiserItemFileModel file, uint preferredWidth, uint preferredHeight, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center)
+    public async Task<FileResultModel> HandleImageAsync(WiserItemFileModel file, uint preferredWidth, uint preferredHeight, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center)
     {
+        var result = new FileResultModel {FileBytes = null, LastModified = DateTime.MinValue, WiserItemFile = file};
         if (String.IsNullOrEmpty(webHostEnvironment?.WebRootPath))
         {
-            return (null, DateTime.MinValue);
+            return result;
         }
 
-        byte[] fileBytes;
         var extension = Path.GetExtension(file.FileName);
 
         if (file.Id == 0)
@@ -272,19 +273,19 @@ public class ItemFilesService(
                 if (!File.Exists(noImageFilePath))
                 {
                     // A no-image file could not be found; abort.
-                    return (null, DateTime.MinValue);
+                    return result;
                 }
             }
 
             // No-image file is available, use that the image.
-            fileBytes = await fileCacheService.GetBytesAsync(noImageFilePath);
+            result.FileBytes = await fileCacheService.GetBytesAsync(noImageFilePath);
         }
         else
         {
             // Retrieve the image bytes from the data row.
-            fileBytes = file.Content;
+            result.FileBytes = file.Content;
 
-            if (fileBytes == null || fileBytes.Length == 0)
+            if (result.FileBytes == null || result.FileBytes.Length == 0)
             {
                 // Data row didn't contain a file directly, but might contain a content URL.
                 var contentUrl = file.ContentUrl;
@@ -302,7 +303,7 @@ public class ItemFilesService(
                             var localPath = FileSystemHelpers.GetFileCacheDirectory(webHostEnvironment);
                             if (await amazonS3Service.DownloadObjectFromBucketAsync(s3Bucket, s3Object, localPath))
                             {
-                                fileBytes = await fileCacheService.GetBytesAsync(Path.Combine(localPath, s3Object));
+                                result.FileBytes = await fileCacheService.GetBytesAsync(Path.Combine(localPath, s3Object));
                             }
                         }
                         else
@@ -317,14 +318,14 @@ public class ItemFilesService(
                     }
 
                     // No image bytes were found, try to retrieve the image from the content URL.
-                    if (fileBytes == null || fileBytes.Length == 0)
+                    if (result.FileBytes == null || result.FileBytes.Length == 0)
                     {
                         if (Uri.IsWellFormedUriString(contentUrl, UriKind.Absolute))
                         {
                             var fileResult = await httpClientService.Client.GetAsync(contentUrl);
                             if (fileResult.StatusCode == HttpStatusCode.OK)
                             {
-                                fileBytes = await fileResult.Content.ReadAsByteArrayAsync();
+                                result.FileBytes = await fileResult.Content.ReadAsByteArrayAsync();
                             }
                         }
                         else
@@ -332,7 +333,7 @@ public class ItemFilesService(
                             var localFilePath = Path.Combine(webHostEnvironment.WebRootPath, contentUrl.TrimStart('/'));
                             if (File.Exists(localFilePath))
                             {
-                                fileBytes = await fileCacheService.GetBytesAsync(localFilePath);
+                                result.FileBytes = await fileCacheService.GetBytesAsync(localFilePath);
                             }
                         }
                     }
@@ -340,7 +341,7 @@ public class ItemFilesService(
             }
 
             // Final check to see if the image bytes were retrieved.
-            if (fileBytes == null || fileBytes.Length == 0)
+            if (result.FileBytes == null || result.FileBytes.Length == 0)
             {
                 // Try to get a no-image file instead.
                 var noImageFilePath = Path.Combine(webHostEnvironment.WebRootPath, "img", $"noimg_{file.PropertyName}{extension}");
@@ -350,37 +351,38 @@ public class ItemFilesService(
                     if (!File.Exists(noImageFilePath))
                     {
                         // A no-image file could not be found; abort.
-                        return (null, DateTime.MinValue);
+                        return result;
                     }
                 }
 
-                fileBytes = await fileCacheService.GetBytesAsync(noImageFilePath);
+                result.FileBytes = await fileCacheService.GetBytesAsync(noImageFilePath);
             }
+
+            result.LastModified = DateTime.UtcNow;
 
             // SVG files are vector images, so there is no point in trying to resize them. Return it as is.
             var contentType = file.ContentType ?? "";
             if (contentType.Equals("image/svg+xml", StringComparison.OrdinalIgnoreCase))
             {
-                return (fileBytes, DateTime.UtcNow);
+                return result;
             }
         }
 
-        file.Content = fileBytes;
-        var outFileBytes = await ResizeImageWithImageMagickAsync(file, preferredWidth, preferredHeight, resizeMode, anchorPosition);
+        await ResizeImageWithImageMagickAsync(result, preferredWidth, preferredHeight, resizeMode, anchorPosition);
 
-        return (outFileBytes, DateTime.UtcNow);
+        return result;
     }
 
     /// <inheritdoc />
-    public async Task<(byte[] FileBytes, DateTime LastModified)> HandleFileAsync(WiserItemFileModel file)
+    public async Task<FileResultModel> HandleFileAsync(WiserItemFileModel file)
     {
+        var result = new FileResultModel {FileBytes = null, LastModified = DateTime.MinValue, WiserItemFile = file};
         if (file == null || file.Id == 0)
         {
-            return (null, DateTime.MinValue);
+            return result;
         }
 
-        var fileBytes = file.Content;
-        if (fileBytes == null || fileBytes.Length == 0)
+        if (result.FileBytes == null || result.FileBytes.Length == 0)
         {
             // Data row didn't contain a file directly, but might contain a content URL.
             var contentUrl = file.ContentUrl;
@@ -399,7 +401,7 @@ public class ItemFilesService(
                     var fileResult = await httpClientService.Client.GetAsync(contentUrl);
                     if (fileResult.StatusCode == HttpStatusCode.OK)
                     {
-                        fileBytes = await fileResult.Content.ReadAsByteArrayAsync();
+                        result.FileBytes = await fileResult.Content.ReadAsByteArrayAsync();
                     }
                 }
                 else
@@ -407,19 +409,19 @@ public class ItemFilesService(
                     var localFilePath = Path.Combine(webHostEnvironment.WebRootPath, contentUrl.TrimStart('/'));
                     if (File.Exists(localFilePath))
                     {
-                        fileBytes = await File.ReadAllBytesAsync(localFilePath);
+                        result.FileBytes = await File.ReadAllBytesAsync(localFilePath);
                     }
                 }
             }
         }
 
         // Final check to see if the file bytes were retrieved.
-        if (fileBytes == null || fileBytes.Length == 0)
+        if (result.FileBytes is {Length: > 0})
         {
-            return (null, DateTime.MinValue);
+            result.LastModified = DateTime.UtcNow;
         }
 
-        return (fileBytes, DateTime.UtcNow);
+        return result;
     }
 
     /// <summary>
@@ -431,9 +433,9 @@ public class ItemFilesService(
     /// <param name="resizeMode">The method of resizing.</param>
     /// <param name="anchorPosition">The anchor position that the <see cref="ResizeModes.Crop"/> and <see cref="ResizeModes.Fill"/> resize modes use.</param>
     /// <returns>The byte array of the resized image.</returns>
-    private async Task<byte[]> ResizeImageWithImageMagickAsync(WiserItemFileModel file, uint preferredWidth, uint preferredHeight, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center)
+    private async Task ResizeImageWithImageMagickAsync(FileResultModel file, uint preferredWidth, uint preferredHeight, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center)
     {
-        var extension = Path.GetExtension(file.FileName);
+        var extension = Path.GetExtension(file.WiserItemFile.FileName);
 
         // Determine image format.
         MagickFormat imageFormat;
@@ -482,13 +484,12 @@ public class ItemFilesService(
             fillColor = MagickColors.White;
         }
 
-        byte[] outFileBytes;
         if (preferredWidth > 0 && preferredHeight > 0)
         {
             // GIF images are a bit different because they have multiple frames.
             if (imageFormat == MagickFormat.Gif)
             {
-                using var collection = new MagickImageCollection(file.Content);
+                using var collection = new MagickImageCollection(file.FileBytes);
 
                 // This will remove the optimization and change the image to how it looks at that point
                 // during the animation. More info here: http://www.imagemagick.org/Usage/anim_basics/#coalesce
@@ -524,11 +525,11 @@ public class ItemFilesService(
                 collection.OptimizePlus();
                 collection.OptimizeTransparency();
 
-                outFileBytes = collection.ToByteArray();
+                file.FileBytes = collection.ToByteArray();
             }
             else
             {
-                using var image = new MagickImage(file.Content);
+                using var image = new MagickImage(file.FileBytes);
 
                 if (fillColor != MagickColors.Transparent)
                 {
@@ -566,14 +567,14 @@ public class ItemFilesService(
                         throw new ArgumentOutOfRangeException(nameof(resizeMode), resizeMode, null);
                 }
 
-                outFileBytes = image.ToByteArray(imageFormat);
+                file.FileBytes = image.ToByteArray(imageFormat);
             }
         }
         else
         {
             if (imageFormat == MagickFormat.Gif)
             {
-                using var collection = new MagickImageCollection(file.Content);
+                using var collection = new MagickImageCollection(file.FileBytes);
 
                 // This will remove the optimization and change the image to how it looks at that point
                 // during the animation. More info here: http://www.imagemagick.org/Usage/anim_basics/#coalesce
@@ -593,11 +594,11 @@ public class ItemFilesService(
                 collection.OptimizePlus();
                 collection.OptimizeTransparency();
 
-                outFileBytes = collection.ToByteArray();
+                file.FileBytes = collection.ToByteArray();
             }
             else
             {
-                using var image = new MagickImage(file.Content);
+                using var image = new MagickImage(file.FileBytes);
 
                 if (fillColor != MagickColors.Transparent)
                 {
@@ -617,10 +618,8 @@ public class ItemFilesService(
                     }
                 }
 
-                outFileBytes = image.ToByteArray(imageFormat);
+                file.FileBytes = image.ToByteArray(imageFormat);
             }
         }
-
-        return outFileBytes;
     }
 }
