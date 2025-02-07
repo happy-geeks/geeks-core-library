@@ -42,7 +42,7 @@ public class CachedItemFilesService(
     }
 
     /// <inheritdoc />
-    public async Task<(byte[] FileBytes, DateTime LastModified)> GetResizedImageAsync(FileLookupTypes lookupType, object id, string fileName, string propertyName = null, string entityType = null, int linkType = 0, int fileNumber = 1, uint preferredWidth = 0, uint preferredHeight = 0, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center)
+    public async Task<FileResultModel> GetResizedImageAsync(FileLookupTypes lookupType, object id, string fileName, string propertyName = null, string entityType = null, int linkType = 0, int fileNumber = 1, uint preferredWidth = 0, uint preferredHeight = 0, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center)
     {
         // Get the file metadata, so we can check if and how we need to cache this file.
         var file = await GetFileAsync(lookupType, id, propertyName: propertyName, fileName: fileName, entityType, linkType, fileNumber, false) ?? new WiserItemFileModel {Id = 0, PropertyName = propertyName ?? "Unknown", FileName = "Unknown.png"};
@@ -79,7 +79,8 @@ public class CachedItemFilesService(
         fileNameParts.Add(Path.GetFileName(String.IsNullOrWhiteSpace(fileName) ? file.FileName : fileName));
 
         var fileLocation = Path.Combine(cacheDirectory, String.Join("_", fileNameParts));
-        var result = await GetFileFromCacheAsync(fileLocation);
+        var result = new FileResultModel {FileBytes = null, LastModified = DateTime.MinValue, WiserItemFile = file};
+        await GetFileFromCacheAsync(fileLocation, result);
 
         // If the file has been cached and the cache time has not expired yet, return the cached file.
         if (result.FileBytes != null)
@@ -89,9 +90,9 @@ public class CachedItemFilesService(
 
         // If the file has not been cached yet, cache it now and then return it.
         result = await innerItemFilesService.GetResizedImageAsync(lookupType, id, fileName, propertyName, entityType, linkType, fileNumber, preferredWidth, preferredHeight, resizeMode, anchorPosition);
-        if (result.FileBytes == null)
+        if (result.FileBytes == null || result.FileBytes.Length == 0)
         {
-            return (null, DateTime.MinValue);
+            return result;
         }
 
         await File.WriteAllBytesAsync(fileLocation, result.FileBytes);
@@ -99,31 +100,31 @@ public class CachedItemFilesService(
     }
 
     /// <inheritdoc />
-    public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemImageAsync(ulong itemId, string propertyName, uint preferredWidth, uint preferredHeight, string fileName, int fileNumber, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
+    public async Task<FileResultModel> GetWiserItemImageAsync(ulong itemId, string propertyName, uint preferredWidth, uint preferredHeight, string fileName, int fileNumber, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
     {
         return await GetResizedImageAsync(FileLookupTypes.ItemId, String.IsNullOrWhiteSpace(encryptedItemId) ? itemId : encryptedItemId, fileName: fileName, propertyName: propertyName, entityType: entityType, fileNumber: fileNumber, preferredWidth: preferredWidth, preferredHeight: preferredHeight, resizeMode: resizeMode, anchorPosition: anchorPosition);
     }
 
     /// <inheritdoc />
-    public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemLinkImageAsync(ulong itemLinkId, string propertyName, uint preferredWidth, uint preferredHeight, string fileName, int fileNumber, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemLinkId = null, int linkType = 0)
+    public async Task<FileResultModel> GetWiserItemLinkImageAsync(ulong itemLinkId, string propertyName, uint preferredWidth, uint preferredHeight, string fileName, int fileNumber, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemLinkId = null, int linkType = 0)
     {
         return await GetResizedImageAsync(FileLookupTypes.ItemLinkId, String.IsNullOrWhiteSpace(encryptedItemLinkId) ? itemLinkId : encryptedItemLinkId, fileName: fileName, propertyName: propertyName, linkType: linkType, fileNumber: fileNumber, preferredWidth: preferredWidth, preferredHeight: preferredHeight, resizeMode: resizeMode, anchorPosition: anchorPosition);
     }
 
     /// <inheritdoc />
-    public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserDirectImageAsync(ulong itemId, uint preferredWidth, uint preferredHeight, string fileName, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
+    public async Task<FileResultModel> GetWiserDirectImageAsync(ulong itemId, uint preferredWidth, uint preferredHeight, string fileName, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
     {
         return await GetResizedImageAsync(FileLookupTypes.ItemFileId, String.IsNullOrWhiteSpace(encryptedItemId) ? itemId : encryptedItemId, fileName: fileName, entityType: entityType, preferredWidth: preferredWidth, preferredHeight: preferredHeight, resizeMode: resizeMode, anchorPosition: anchorPosition);
     }
 
     /// <inheritdoc />
-    public async Task<(byte[] fileBytes, DateTime lastModified)> GetWiserImageByFileNameAsync(ulong itemId, string propertyName, uint preferredWidth, uint preferredHeight, string fileName, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
+    public async Task<FileResultModel> GetWiserImageByFileNameAsync(ulong itemId, string propertyName, uint preferredWidth, uint preferredHeight, string fileName, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
     {
         return await GetResizedImageAsync(FileLookupTypes.ItemFileName, String.IsNullOrWhiteSpace(encryptedItemId) ? itemId : encryptedItemId, fileName: fileName, entityType: entityType, preferredWidth: preferredWidth, preferredHeight: preferredHeight, resizeMode: resizeMode, anchorPosition: anchorPosition);
     }
 
     /// <inheritdoc />
-    public async Task<(byte[] FileBytes, DateTime LastModified)> GetParsedFileAsync(FileLookupTypes lookupType, object id, string fileName, string propertyName = null, string entityType = null, int linkType = 0, int fileNumber = 1)
+    public async Task<FileResultModel> GetParsedFileAsync(FileLookupTypes lookupType, object id, string fileName, string propertyName = null, string entityType = null, int linkType = 0, int fileNumber = 1)
     {
         // Get the file metadata, so we can check if and how we need to cache this file.
         var file = await GetFileAsync(lookupType, id, propertyName: propertyName, fileName: fileName, entityType, linkType, fileNumber, false) ?? new WiserItemFileModel {Id = 0, PropertyName = propertyName ?? "Unknown", FileName = "Unknown.pdf"};
@@ -157,7 +158,8 @@ public class CachedItemFilesService(
         fileNameParts.Add(Path.GetFileName(String.IsNullOrWhiteSpace(fileName) ? file.FileName : fileName));
 
         var fileLocation = Path.Combine(cacheDirectory, String.Join("_", fileNameParts));
-        var result = await GetFileFromCacheAsync(fileLocation);
+        var result = new FileResultModel {FileBytes = null, LastModified = DateTime.MinValue, WiserItemFile = file};
+        await GetFileFromCacheAsync(fileLocation, result);
 
         // If the file has been cached and the cache time has not expired yet, return the cached file.
         if (result.FileBytes != null)
@@ -172,31 +174,31 @@ public class CachedItemFilesService(
     }
 
     /// <inheritdoc />
-    public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemFileAsync(ulong itemId, string propertyName, string fileName, int fileNumber, string encryptedItemId = null, string entityType = null)
+    public async Task<FileResultModel> GetWiserItemFileAsync(ulong itemId, string propertyName, string fileName, int fileNumber, string encryptedItemId = null, string entityType = null)
     {
         return await GetParsedFileAsync(FileLookupTypes.ItemId, String.IsNullOrWhiteSpace(encryptedItemId) ? itemId : encryptedItemId, fileName: fileName, entityType: entityType);
     }
 
     /// <inheritdoc />
-    public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemLinkFileAsync(ulong itemLinkId, string propertyName, string fileName, int fileNumber, string encryptedItemLinkId = null, int linkType = 0)
+    public async Task<FileResultModel> GetWiserItemLinkFileAsync(ulong itemLinkId, string propertyName, string fileName, int fileNumber, string encryptedItemLinkId = null, int linkType = 0)
     {
         return await GetParsedFileAsync(FileLookupTypes.ItemLinkId, String.IsNullOrWhiteSpace(encryptedItemLinkId) ? itemLinkId : encryptedItemLinkId, fileName: fileName, linkType: linkType);
     }
 
     /// <inheritdoc />
-    public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserDirectFileAsync(ulong itemId, string fileName, string encryptedItemId = null, string entityType = null)
+    public async Task<FileResultModel> GetWiserDirectFileAsync(ulong itemId, string fileName, string encryptedItemId = null, string entityType = null)
     {
         return await GetParsedFileAsync(FileLookupTypes.ItemFileId, String.IsNullOrWhiteSpace(encryptedItemId) ? itemId : encryptedItemId, fileName: fileName, entityType: entityType);
     }
 
     /// <inheritdoc />
-    public async Task<(byte[] FileBytes, DateTime LastModified)> HandleImageAsync(WiserItemFileModel file, uint preferredWidth, uint preferredHeight, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center)
+    public async Task<FileResultModel> HandleImageAsync(WiserItemFileModel file, uint preferredWidth, uint preferredHeight, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center)
     {
         return await innerItemFilesService.HandleImageAsync(file, preferredWidth, preferredHeight, resizeMode, anchorPosition);
     }
 
     /// <inheritdoc />
-    public async Task<(byte[] FileBytes, DateTime LastModified)> HandleFileAsync(WiserItemFileModel file)
+    public async Task<FileResultModel> HandleFileAsync(WiserItemFileModel file)
     {
         return await innerItemFilesService.HandleFileAsync(file);
     }
@@ -205,20 +207,23 @@ public class CachedItemFilesService(
     /// Validates an image. This will check if the image exists, and if the cache time has not expired yet.
     /// </summary>
     /// <param name="fileLocation">The absolute path to the file.</param>
-    /// <returns><c>True</c> if the file can be retrieved from cache, <c>false</c> if it can't.</returns>
-    private async Task<(byte[] FileBytes, DateTime LastModified)> GetFileFromCacheAsync(string fileLocation)
+    /// <param name="result">The <see cref="FileResultModel"/> where we can store the file data in to return to the client.</param>
+    private async Task GetFileFromCacheAsync(string fileLocation, FileResultModel result)
     {
         if (gclSettings.DefaultItemFileCacheDuration.TotalSeconds <= 0)
         {
-            return (null, DateTime.MinValue);
+            result.LastModified = DateTime.UtcNow;
+            return;
         }
 
         var fileInfo = new FileInfo(fileLocation);
-        if (!fileInfo.Exists || DateTime.UtcNow.Subtract(fileInfo.LastWriteTimeUtc) <= gclSettings.DefaultItemFileCacheDuration)
+        if (!fileInfo.Exists || DateTime.UtcNow.Subtract(fileInfo.LastWriteTimeUtc) > gclSettings.DefaultItemFileCacheDuration)
         {
-            return (null, DateTime.MinValue);
+            result.LastModified = DateTime.UtcNow;
+            return;
         }
 
-        return (await fileCacheService.GetBytesAsync(fileLocation, gclSettings.DefaultItemFileCacheDuration), fileInfo.LastWriteTimeUtc);
+        result.FileBytes = await fileCacheService.GetBytesAsync(fileLocation, gclSettings.DefaultItemFileCacheDuration);
+        result.LastModified = fileInfo.LastWriteTimeUtc;
     }
 }

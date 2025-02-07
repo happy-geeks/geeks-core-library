@@ -382,7 +382,7 @@ public class HtmlToPdfConverterService : IHtmlToPdfConverterService, IScopedServ
             return null;
         }
 
-        var filePath = await FileSystemHelpers.SaveFileToCacheAsync(webHostEnvironment, filename, content);
+        var filePath = await FileSystemHelpers.SaveToFileCacheDirectoryAsync(webHostEnvironment, filename, content);
         return filePath?.Replace(webHostEnvironment.WebRootPath, "")?.Replace(@"\", "/");
     }
 }
