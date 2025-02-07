@@ -132,23 +132,26 @@ public static class FileSystemHelpers
         // These are the byte arrays that determine the magic numbers.
         // Source: https://en.wikipedia.org/wiki/List_of_file_signatures.
         byte[] bmpMagicNumber = [0x42, 0x4D];
-        byte[] jpegMagcicNumberStart = [0xFF, 0xD8];
+        byte[] jpegMagicNumberStart = [0xFF, 0xD8];
         byte[] jpegMagicNumberEnd = [0xFF, 0xD9];
+        byte[] jpegXlMagicNumberA = [0xFF, 0xA];
+        byte[] jpegXlMagicNumberB = [0x0, 0x0, 0x0, 0xC, 0x4A, 0x58, 0x4C, 0x20, 0xD, 0xA, 0x87, 0xA];
         byte[] pngMagicNumber = [0x89, 0x50, 0x4E, 0x47, 0xD, 0xA, 0x1A, 0xA];
         byte[] gifMagicNumberA = [0x47, 0x49, 0x46, 0x38, 0x39, 0x61];
         byte[] gifMagicNumberB = [0x47, 0x49, 0x46, 0x38, 0x37, 0x61];
         byte[] tiffMagicNumberA = [0x49, 0x49, 0x2A, 0x0];
         byte[] tiffMagicNumberB = [0x4D, 0x4D, 0x0, 0x2A];
+        byte[] avifMagicNumber = [0x66, 0x74, 0x79, 0x70, 0x61, 0x76, 0x69, 0x66];
         byte[] flifMagicNumber = [0x46, 0x4, 0x49, 0x46];
         byte[] icoMagicNumber = [0x0, 0x0, 0x1, 0x0];
 
         // WebP's header is a bit more complex. The first 4 bytes are the ASCII characters "RIFF", followed by 4 bytes that represent the file size
         // which are followed by 4 characters that are the ASCII characters "WEBP". Bytes 5 through 8 are ignored as they could be anything.
-        byte[] webpMagicNumberA = [0x52, 0x49, 0x46, 0x46];
-        byte[] webpMagicNumberB = [0x57, 0x45, 0x42, 0x50];
+        byte[] webpMagicNumberStart = [0x52, 0x49, 0x46, 0x46];
+        byte[] webpMagicNumberEnd = [0x57, 0x45, 0x42, 0x50];
 
         string mimeType;
-        if (fileBytes.Take(4).SequenceEqual(webpMagicNumberA) && fileBytes.Skip(8).Take(4).SequenceEqual(webpMagicNumberB))
+        if (fileBytes.Take(4).SequenceEqual(webpMagicNumberStart) && fileBytes.Skip(8).Take(4).SequenceEqual(webpMagicNumberEnd))
         {
             // WEBP header is "RIFF....WEBP" with the 4 dots representing the bytes that make up the file size.
             mimeType = "image/webp";
@@ -158,10 +161,15 @@ public static class FileSystemHelpers
             // BMP
             mimeType = "image/bmp";
         }
-        else if (fileBytes.Take(2).SequenceEqual(jpegMagcicNumberStart) && fileBytes.SkipWhile((_, index) => index < fileBytes.Length - 2).Take(2).SequenceEqual(jpegMagicNumberEnd))
+        else if (fileBytes.Take(2).SequenceEqual(jpegMagicNumberStart) && fileBytes.SkipWhile((_, index) => index < fileBytes.Length - 2).Take(2).SequenceEqual(jpegMagicNumberEnd))
         {
             // JPEG
             mimeType = "image/jpeg";
+        }
+        else if (fileBytes.Take(2).SequenceEqual(jpegXlMagicNumberA) || fileBytes.Take(12).SequenceEqual(jpegXlMagicNumberB))
+        {
+            // JPEG XL
+            mimeType = "image/jxl";
         }
         else if (fileBytes.Take(8).SequenceEqual(pngMagicNumber))
         {
@@ -177,6 +185,11 @@ public static class FileSystemHelpers
         {
             // TIFF
             mimeType = "image/tiff";
+        }
+        else if (fileBytes.Skip(4).Take(8).SequenceEqual(avifMagicNumber))
+        {
+            // AVIF
+            mimeType = "image/avif";
         }
         else if (fileBytes.Take(4).SequenceEqual(flifMagicNumber))
         {
@@ -247,6 +260,7 @@ public static class FileSystemHelpers
             "jfi" => "image/jpeg",
             "svg" => "image/svg+xml",
             "tif" => "image/tiff",
+            "avifs" => "image/avif",
             "ico" => "image/x-icon",
             _ => $"image/{extension}"
         };
