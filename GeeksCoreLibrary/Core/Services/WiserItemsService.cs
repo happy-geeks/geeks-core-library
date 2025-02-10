@@ -3416,13 +3416,13 @@ public class WiserItemsService(
     }
 
     /// <inheritdoc />
-    public async Task<ulong> AddItemFileAsync(WiserItemFileModel wiserItemFile, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, string entityType = null, int linkType = 0)
+    public async Task<ulong> AddItemFileAsync(WiserItemFileModel wiserItemFile, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, string entityType = null, int linkType = 0, bool overWriteByFileName = false)
     {
-        return await AddItemFileAsync(this, wiserItemFile, username, userId, saveHistory, skipPermissionsCheck, entityType, linkType);
+        return await AddItemFileAsync(this, wiserItemFile, username, userId, saveHistory, skipPermissionsCheck, entityType, linkType, overWriteByFileName);
     }
 
     /// <inheritdoc />
-    public async Task<ulong> AddItemFileAsync(IWiserItemsService wiserItemsService, WiserItemFileModel wiserItemFile, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, string entityType = null, int linkType = 0)
+    public async Task<ulong> AddItemFileAsync(IWiserItemsService wiserItemsService, WiserItemFileModel wiserItemFile, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, string entityType = null, int linkType = 0, bool overWriteByFileName = false)
     {
         var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
         var linkTablePrefix = await wiserItemsService.GetTablePrefixForLinkAsync(linkType, entityType);
@@ -3489,7 +3489,21 @@ public class WiserItemsService(
         databaseConnection.AddParameter("userId", userId);
         databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
         databaseConnection.AddParameter("performParentUpdate", false); // This is used in triggers. (always set this to false since the wiseritem service takes care of the parent updates in this case)
-
+               
+        if (overWriteByFileName)
+        {
+            var queryResult = await databaseConnection.GetAsync($"""
+                                                                 SELECT id
+                                                                 FROM {(linkType > 0 ? linkTablePrefix : tablePrefix)}{WiserTableNames.WiserItemFile}
+                                                                 WHERE item_id = ?itemId AND file_name = ?fileName AND itemlink_id = ?itemLinkId
+                                                                 """, true);
+            foreach (DataRow row in queryResult.Rows)
+            {
+                var id = Convert.ToUInt64(row["id"]);
+                await RemoveItemFileAsync(id, username, userId, saveHistory, true, entityType, linkType);    
+            }
+        }
+        
         var addItemFileResult = await databaseConnection.GetAsync($"""
                                                                    
                                                                                    SET @_username = ?username;
@@ -3501,6 +3515,89 @@ public class WiserItemsService(
                                                                    """, true);
 
         return Convert.ToUInt64(addItemFileResult.Rows[0][0]);
+    }
+    
+    /// <inheritdoc />
+    public async Task<bool> RemoveItemFileAsync(ulong itemFileId, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, string entityType = null, int linkType = 0)
+    {
+        return await RemoveItemFileAsync(this, itemFileId, username, userId, saveHistory, skipPermissionsCheck, entityType, linkType);
+    }
+    
+    /// <inheritdoc />
+    public async Task<bool> RemoveItemFileAsync(IWiserItemsService wiserItemsService, ulong itemFileId, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, string entityType = null, int linkType = 0)
+    {
+        var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
+        var linkTablePrefix = await wiserItemsService.GetTablePrefixForLinkAsync(linkType, entityType);
+
+        if (!skipPermissionsCheck)
+        {
+            databaseConnection.AddParameter("itemFileId", itemFileId);
+            var queryResult = await databaseConnection.GetAsync($"SELECT item_id, itemlink_id FROM {(linkType > 0 ? linkTablePrefix : tablePrefix)}{WiserTableNames.WiserItemFile} WHERE id = ?itemFileId", true);
+            
+            if (queryResult.Rows.Count == 0)
+            {
+                throw new Exception($"Item file with id '{itemFileId}' not found in table {(linkType > 0 ? linkTablePrefix : tablePrefix)}{WiserTableNames.WiserItemFile}.");
+            }
+            
+            var itemId = Convert.ToUInt64(queryResult.Rows[0]["item_id"]);
+            var itemLinkId = Convert.ToUInt64(queryResult.Rows[0]["itemlink_id"]);
+            var destinationItemId = 0UL;
+
+            // If we have an item link id instead of an item ID, check which items are part of that link and check the rights for those items.
+            if (itemId == 0)
+            {
+                databaseConnection.AddParameter("itemLinkId", itemLinkId);
+                queryResult = await databaseConnection.GetAsync($"SELECT item_id, destination_item_id FROM {linkTablePrefix}{WiserTableNames.WiserItemLink} WHERE id = ?itemLinkId", true);
+                if (queryResult.Rows.Count == 0)
+                {
+                    throw new Exception($"Item link with id '{itemLinkId}' not found.");
+                }
+
+                itemId = Convert.ToUInt64(queryResult.Rows[0]["item_id"]);
+                destinationItemId = Convert.ToUInt64(queryResult.Rows[0]["destination_item_id"]);
+            }
+
+            var isPossible = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(itemId, EntityActions.Update, userId, entityType: entityType);
+            if (!isPossible.ok)
+            {
+                throw new InvalidAccessPermissionsException($"User '{userId}' is not allowed to update item '{itemId}'.")
+                {
+                    Action = EntityActions.Update,
+                    ItemId = itemId,
+                    UserId = userId
+                };
+            }
+
+            if (destinationItemId > 0)
+            {
+                isPossible = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(destinationItemId, EntityActions.Update, userId);
+                if (!isPossible.ok)
+                {
+                    throw new InvalidAccessPermissionsException($"User '{userId}' is not allowed to update item '{destinationItemId}'.")
+                    {
+                        Action = EntityActions.Update,
+                        ItemId = destinationItemId,
+                        UserId = userId
+                    };
+                }
+            }
+        }
+
+        databaseConnection.AddParameter("id", itemFileId);
+        databaseConnection.AddParameter("username", username);
+        databaseConnection.AddParameter("userId", userId);
+        databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
+        databaseConnection.AddParameter("performParentUpdate", false); // This is used in triggers. (always set this to false since the wiseritem service takes care of the parent updates in this case)
+               
+        var addItemFileResult = await databaseConnection.GetAsync($"""
+                                                                                   SET @_username = ?username;
+                                                                                   SET @_userId = ?userId;
+                                                                                   SET @saveHistory = ?saveHistoryGcl;
+                                                                                   DELETE FROM {(linkType > 0 ? linkTablePrefix : tablePrefix)}{WiserTableNames.WiserItemFile}
+                                                                                   WHERE id=?id;
+                                                                   """, true);
+
+        return true;
     }
 
     /// <inheritdoc />

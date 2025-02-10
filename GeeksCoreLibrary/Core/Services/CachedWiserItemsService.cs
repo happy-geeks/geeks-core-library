@@ -356,15 +356,27 @@ public class CachedWiserItemsService(IOptions<GclSettings> gclSettings, IAppCach
     }
 
     /// <inheritdoc />
-    public async Task<ulong> AddItemFileAsync(WiserItemFileModel wiserItemFile, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, string entityType = null, int linkType = 0)
+    public async Task<ulong> AddItemFileAsync(WiserItemFileModel wiserItemFile, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, string entityType = null, int linkType = 0, bool overWriteByFileName = false)
     {
-        return await AddItemFileAsync(this, wiserItemFile, username, userId, saveHistory, skipPermissionsCheck, entityType, linkType);
+        return await AddItemFileAsync(this, wiserItemFile, username, userId, saveHistory, skipPermissionsCheck, entityType, linkType, overWriteByFileName);
     }
 
     /// <inheritdoc />
-    public async Task<ulong> AddItemFileAsync(IWiserItemsService service, WiserItemFileModel wiserItemFile, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, string entityType = null, int linkType = 0)
+    public async Task<ulong> AddItemFileAsync(IWiserItemsService service, WiserItemFileModel wiserItemFile, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, string entityType = null, int linkType = 0, bool overWriteByFileName = false)
     {
-        return await wiserItemsService.AddItemFileAsync(service, wiserItemFile, username, userId, saveHistory, skipPermissionsCheck, entityType, linkType);
+        return await wiserItemsService.AddItemFileAsync(service, wiserItemFile, username, userId, saveHistory, skipPermissionsCheck, entityType, linkType, overWriteByFileName);
+    }
+    
+    /// <inheritdoc />
+    public async Task<bool> RemoveItemFileAsync(ulong itemFileId, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, string entityType = null, int linkType = 0)
+    {
+        return await RemoveItemFileAsync(this, itemFileId, username, userId, saveHistory, skipPermissionsCheck, entityType, linkType);
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> RemoveItemFileAsync(IWiserItemsService service, ulong itemFileId, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, string entityType = null, int linkType = 0)
+    {
+        return await wiserItemsService.RemoveItemFileAsync(service, itemFileId, username, userId, saveHistory, skipPermissionsCheck, entityType, linkType);
     }
 
     /// <inheritdoc />
