@@ -5,11 +5,11 @@
         <OutputType>Library</OutputType>
         <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <Version>5.0.2502.1</Version>
+        <Version>5.0.2502.2</Version>
         <Company>Happy Horizon B.V.</Company>
         <Description>Our base/core library that we use for most of our other projects.</Description>
-        <AssemblyVersion>5.0.2502.1</AssemblyVersion>
-        <FileVersion>5.0.2502.1</FileVersion>
+        <AssemblyVersion>5.0.2502.2</AssemblyVersion>
+        <FileVersion>5.0.2502.2</FileVersion>
         <PackageDescription>Geeks Core Library</PackageDescription>
         <RepositoryUrl>https://github.com/happy-geeks/geeks-core-library.git</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
@@ -45,8 +45,8 @@
     <ItemGroup>
         <PackageReference Include="AspNetCore.HealthChecks.MySql" Version="9.0.0"/>
         <PackageReference Include="AspNetCore.HealthChecks.UI.Client" Version="9.0.0"/>
-        <PackageReference Include="AWSSDK.S3" Version="3.7.412.4" />
-        <PackageReference Include="AWSSDK.SecretsManager" Version="3.7.400.84" />
+        <PackageReference Include="AWSSDK.S3" Version="3.7.414.1" />
+        <PackageReference Include="AWSSDK.SecretsManager" Version="3.7.400.91" />
         <PackageReference Include="CM.Text" Version="2.11.0"/>
         <PackageReference Include="CsvHelper" Version="33.0.1"/>
         <PackageReference Include="DocumentFormat.OpenXml" Version="3.2.0"/>
