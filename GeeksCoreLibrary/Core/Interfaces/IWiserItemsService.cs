@@ -689,7 +689,8 @@ public interface IWiserItemsService
     /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
     /// <param name="entityType">Optional: If you're adding a file to an item and that entity type has a dedicated table prefix, enter the entity type here so that we can use the same prefix for wiser_itemfile.</param>
     /// <param name="linkType">Optional: If you're adding a file to a link and that link has a dedicated table prefix, enter the link type here so that we can use the same prefix for wiser_itemfile.</param>
-    Task<ulong> AddItemFileAsync(WiserItemFileModel wiserItemFile, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, string entityType = null, int linkType = 0);
+    /// <param name="overWriteByFileName">Optional: If you want to overwrite if a file exists with the same file name, then set this boolean to true.</param>
+    Task<ulong> AddItemFileAsync(WiserItemFileModel wiserItemFile, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, string entityType = null, int linkType = 0, bool overWriteByFileName = false);
 
     /// <summary>
     /// Adds a file to an item.
@@ -702,7 +703,33 @@ public interface IWiserItemsService
     /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
     /// <param name="entityType">Optional: If you're adding a file to an item and that entity type has a dedicated table prefix, enter the entity type here so that we can use the same prefix for wiser_itemfile.</param>
     /// <param name="linkType">Optional: If you're adding a file to a link and that link has a dedicated table prefix, enter the link type here so that we can use the same prefix for wiser_itemfile.</param>
-    Task<ulong> AddItemFileAsync(IWiserItemsService wiserItemsService, WiserItemFileModel wiserItemFile, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, string entityType = null, int linkType = 0);
+    /// <param name="overWriteByFileName">Optional: If you want to overwrite if a file exists with the same file name, then set this boolean to true.</param>
+    Task<ulong> AddItemFileAsync(IWiserItemsService wiserItemsService, WiserItemFileModel wiserItemFile, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, string entityType = null, int linkType = 0, bool overWriteByFileName = false);
+
+    /// <summary>
+    /// Removes a file.
+    /// </summary>
+    /// <param name="itemFileId">The ID of the file to remove.</param>
+    /// <param name="username">Optional: The name of the user that is executing the action. Default value is "GCL".</param>
+    /// <param name="userId">Optional: The ID of the user that is trying to execute this action. Make sure a value is entered here if you need to check for access rights. This can be a Wiser user or a website user.</param>
+    /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is true.</param>
+    /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
+    /// <param name="entityType">Optional: If you're removing a file from an item and that entity type has a dedicated table prefix, enter the entity type here so that we can use the same prefix for wiser_itemfile.</param>
+    /// <param name="linkType">Optional: If you're removing a file from a link and that link has a dedicated table prefix, enter the link type here so that we can use the same prefix for wiser_itemfile.</param>
+    Task<bool> RemoveItemFileAsync(ulong itemFileId, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, string entityType = null, int linkType = 0);
+
+    /// <summary>
+    /// Removes a file.
+    /// </summary>
+    /// <param name="wiserItemsService">The <see cref="IWiserItemsService"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to other methods in this method.</param>
+    /// <param name="itemFileId">The ID of the file to remove.</param>
+    /// <param name="username">Optional: The name of the user that is executing the action. Default value is "GCL".</param>
+    /// <param name="userId">Optional: The ID of the user that is trying to execute this action. Make sure a value is entered here if you need to check for access rights. This can be a Wiser user or a website user.</param>
+    /// <param name="saveHistory">Optional: Set to false if you don't want the current changes to be saved in wiser_history. Default value is true.</param>
+    /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
+    /// <param name="entityType">Optional: If you're removing a file from an item and that entity type has a dedicated table prefix, enter the entity type here so that we can use the same prefix for wiser_itemfile.</param>
+    /// <param name="linkType">Optional: If you're removing a file from a link and that link has a dedicated table prefix, enter the link type here so that we can use the same prefix for wiser_itemfile.</param>
+    Task<bool> RemoveItemFileAsync(IWiserItemsService wiserItemsService, ulong itemFileId, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, string entityType = null, int linkType = 0);
 
     /// <summary>
     /// Gets a file from the database.
