@@ -4,6 +4,7 @@ using System.Data;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Mime;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Extensions;
@@ -362,7 +363,7 @@ public class ItemFilesService(
 
             // SVG files are vector images, so there is no point in trying to resize them. Return it as is.
             var contentType = file.ContentType ?? "";
-            if (contentType.Equals("image/svg+xml", StringComparison.OrdinalIgnoreCase))
+            if (contentType.Equals(MediaTypeNames.Image.Svg, StringComparison.OrdinalIgnoreCase))
             {
                 return result;
             }

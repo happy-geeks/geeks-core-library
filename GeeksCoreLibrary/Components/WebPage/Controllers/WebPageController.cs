@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net.Mime;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Threading.Tasks;
@@ -165,7 +166,7 @@ public class WebPageController(
 
         if (!ombouw)
         {
-            return Content(newBodyHtml, "text/html");
+            return Content(newBodyHtml, MediaTypeNames.Text.Html);
         }
 
         var viewModel = await pagesService.CreatePageViewModelAsync(externalCss, cssTemplates, externalJavascript, javascriptTemplates, newBodyHtml);
