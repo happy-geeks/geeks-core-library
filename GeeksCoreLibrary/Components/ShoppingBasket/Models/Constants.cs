@@ -1,4 +1,6 @@
-﻿namespace GeeksCoreLibrary.Components.ShoppingBasket.Models;
+﻿using System.Net.Mime;
+
+namespace GeeksCoreLibrary.Components.ShoppingBasket.Models;
 
 public static class Constants
 {
@@ -70,13 +72,13 @@ public static class Constants
                                                  </div>
                                                  """;
 
-    internal const string DefaultTemplateJavaScript = """
+    internal const string DefaultTemplateJavaScript = $$"""
                                                       function setupHttpRequest{contentId}_{basketId}(container, method, contentType, extraQueryStringParameters) {
                                                           const url = '/GclComponent.gcl?contentId={contentId}&callMethod=' + method + '&ombouw=false&type=ShoppingBasket' + (extraQueryStringParameters || '');
                                                       
                                                           const xhr = new XMLHttpRequest();
                                                           xhr.open('POST', url);
-                                                          xhr.setRequestHeader('Content-Type', contentType || 'application/x-www-form-urlencoded');
+                                                          xhr.setRequestHeader('Content-Type', contentType || '{{MediaTypeNames.Application.FormUrlEncoded}}');
                                                           xhr.setRequestHeader('X-CSRF-TOKEN', document.getElementById('RequestVerificationToken').value);
                                                           xhr.addEventListener('load', function() {
                                                               if (xhr.status !== 200) {
@@ -112,7 +114,7 @@ public static class Constants
                                                       
                                                                   const payload = [this.dataset.basketLineUniqueId];
                                                       
-                                                                  const xhr = setupHttpRequest{contentId}_{basketId}(container, 'HandleRemoveItemsMode', 'application/json', '&componentMode=4');
+                                                                  const xhr = setupHttpRequest{contentId}_{basketId}(container, 'HandleRemoveItemsMode', '{{MediaTypeNames.Application.Json}}', '&componentMode=4');
                                                                   xhr.send(JSON.stringify(payload));
                                                               });
                                                           });
@@ -132,7 +134,7 @@ public static class Constants
                                                       
                                                                   // Make a new timeout set to go off in 1000ms (1 second)
                                                                   timeout = setTimeout(function () {
-                                                                      const xhr = setupHttpRequest{contentId}_{basketId}(container, 'HandleChangeQuantityMode', 'application/json', '&componentMode=3');
+                                                                      const xhr = setupHttpRequest{contentId}_{basketId}(container, 'HandleChangeQuantityMode', '{{MediaTypeNames.Application.Json}}', '&componentMode=3');
                                                                       xhr.send(payload);
                                                                   }, 1000);
                                                               });
@@ -150,7 +152,7 @@ public static class Constants
                                                       
                                                                   const payload = `couponcode=${couponCode}`;
                                                       
-                                                                  const xhr = setupHttpRequest{contentId}_{basketId}(container, 'HandleAddCouponMode', 'application/x-www-form-urlencoded', '&componentMode=12');
+                                                                  const xhr = setupHttpRequest{contentId}_{basketId}(container, 'HandleAddCouponMode', '{{MediaTypeNames.Application.FormUrlEncoded}}', '&componentMode=12');
                                                                   xhr.send(payload);
                                                               });
                                                           });

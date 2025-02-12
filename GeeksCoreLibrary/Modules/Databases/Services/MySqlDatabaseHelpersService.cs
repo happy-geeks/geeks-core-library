@@ -389,13 +389,13 @@ public class MySqlDatabaseHelpersService : IDatabaseHelpersService, IScopedServi
     }
 
     /// <inheritdoc />
-    public async Task<Dictionary<string, DateTime>> GetLastTableUpdatesAsync(string databaseName = null)
+    public async Task<Dictionary<string, DateTime>> GetMigrationsStatusAsync(string databaseName = null)
     {
-        return await GetLastTableUpdatesAsync(this, databaseName);
+        return await GetMigrationsStatusAsync(this, databaseName);
     }
 
     /// <inheritdoc />
-    public async Task<Dictionary<string, DateTime>> GetLastTableUpdatesAsync(IDatabaseHelpersService databaseHelpersService, string databaseName = null)
+    public async Task<Dictionary<string, DateTime>> GetMigrationsStatusAsync(IDatabaseHelpersService databaseHelpersService, string databaseName = null)
     {
         var result = new Dictionary<string, DateTime>();
 
@@ -460,7 +460,7 @@ public class MySqlDatabaseHelpersService : IDatabaseHelpersService, IScopedServi
     public async Task<bool> CheckAndUpdateTablesAsync(IDatabaseHelpersService databaseHelpersService, List<string> tablesToUpdate, string databaseName = null)
     {
         var changesMade = false;
-        var tableChanges = await databaseHelpersService.GetLastTableUpdatesAsync(databaseName);
+        var tableChanges = await databaseHelpersService.GetMigrationsStatusAsync(databaseName);
 
         if (String.IsNullOrWhiteSpace(databaseName))
         {
