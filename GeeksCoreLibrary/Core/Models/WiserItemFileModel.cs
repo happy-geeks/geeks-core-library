@@ -75,8 +75,9 @@ public class WiserItemFileModel
 
     /// <summary>
     /// Whether the file is a protected file. Protected files are only accessible via encrypted IDs to prevent unauthorized access.
+    /// The default value is <c>true</c>. Make sure to set it to <c>false</c> if the file should be publicly accessible.
     /// </summary>
-    public bool Protected { get; set; }
+    public bool Protected { get; set; } = true;
 
     /// <summary>
     /// Any extra data that this file has. This can be <c>null</c> if the file has no extra data.

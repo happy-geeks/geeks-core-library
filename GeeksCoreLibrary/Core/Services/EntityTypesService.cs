@@ -88,21 +88,21 @@ public class EntityTypesService : IEntityTypesService, IScopedService
         databaseConnection.AddParameter("entityType", entityType);
         var query = $"""
                      SELECT 
-                                                     entity.*,
-                     	                            IF(entity.friendly_name IS NULL OR entity.friendly_name = '', entity.name, entity.friendly_name) AS displayName,
+                         entity.*,
+                     	 IF(entity.friendly_name IS NULL OR entity.friendly_name = '', entity.name, entity.friendly_name) AS displayName,
                      
-                                                     property.id AS property_id,
-                                                     IF(property.property_name IS NULL OR property.property_name = '', property.display_name, property.property_name) AS property_name, 
-                                                     property.inputtype,
-                                                     property.language_code,
-                                                     property.options,
-                                                     property.also_save_seo_value,
-                                                     property.readonly
-                                                 # DUAL is a fake MySQL table that you can use in queries. We use it because sometimes there is no row in wiser_entity and sometimes no row in wiser_entityproperty, so both of these need to be left joins.
-                                                 FROM (SELECT 1 FROM DUAL) AS d
-                                                 LEFT JOIN {WiserTableNames.WiserEntity} AS entity ON entity.name = ?entityType
-                                                 LEFT JOIN {WiserTableNames.WiserEntityProperty} AS property ON property.entity_name = ?entityType
-                                                 ORDER BY entity.id ASC, property.ordering ASC
+                         property.id AS property_id,
+                         IF(property.property_name IS NULL OR property.property_name = '', property.display_name, property.property_name) AS property_name, 
+                         property.inputtype,
+                         property.language_code,
+                         property.options,
+                         property.also_save_seo_value,
+                         property.readonly
+                     # DUAL is a fake MySQL table that you can use in queries. We use it because sometimes there is no row in wiser_entity and sometimes no row in wiser_entityproperty, so both of these need to be left joins.
+                     FROM (SELECT 1 FROM DUAL) AS d
+                     LEFT JOIN {WiserTableNames.WiserEntity} AS entity ON entity.name = ?entityType
+                     LEFT JOIN {WiserTableNames.WiserEntityProperty} AS property ON property.entity_name = ?entityType
+                     ORDER BY entity.id ASC, property.ordering ASC
                      """;
 
         var dataTable = await databaseConnection.GetAsync(query);
