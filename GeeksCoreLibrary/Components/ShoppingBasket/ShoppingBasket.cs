@@ -4,6 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net.Mime;
 using System.Text;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Account.Interfaces;
@@ -758,7 +759,7 @@ public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel, Shopp
             var pdfFileResult = await GeneratePdfAsync();
 
             DatabaseConnection.ClearParameters();
-            DatabaseConnection.AddParameter("content_type", "application/pdf");
+            DatabaseConnection.AddParameter("content_type", MediaTypeNames.Application.Pdf);
             DatabaseConnection.AddParameter("content", pdfFileResult.FileContents);
             DatabaseConnection.AddParameter("file_name", filename);
             DatabaseConnection.AddParameter("extension", Path.GetExtension(filename));
