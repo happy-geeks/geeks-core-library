@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net.Mime;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Threading.Tasks;
@@ -59,7 +60,7 @@ public class OrderProcessesController(
         }
 
         var html = await RenderAndExecuteComponentAsync(OrderProcess.ComponentModes.PaymentOut, orderProcessId);
-        return Content(html, "text/html");
+        return Content(html, MediaTypeNames.Text.Html);
     }
 
     [Route(Constants.PaymentInPage)]
@@ -75,7 +76,7 @@ public class OrderProcessesController(
         }
 
         var html = await RenderAndExecuteComponentAsync(OrderProcess.ComponentModes.PaymentIn, orderProcessId);
-        return Content(html, "text/html");
+        return Content(html, MediaTypeNames.Text.Html);
     }
 
     [Route(Constants.PaymentReturnPage)]
@@ -91,7 +92,7 @@ public class OrderProcessesController(
         }
 
         var html = await RenderAndExecuteComponentAsync(OrderProcess.ComponentModes.PaymentReturn, orderProcessId);
-        return Content(html, "text/html");
+        return Content(html, MediaTypeNames.Text.Html);
     }
 
     [Route(Constants.DownloadInvoicePage + "{orderId:int}")]
@@ -169,7 +170,7 @@ public class OrderProcessesController(
 
         if (!ombouw)
         {
-            return Content(newBodyHtml, "text/html");
+            return Content(newBodyHtml, MediaTypeNames.Text.Html);
         }
 
         var viewModel = await pagesService.CreatePageViewModelAsync(externalCss, cssTemplates, externalJavascript, javascriptTemplates, newBodyHtml);

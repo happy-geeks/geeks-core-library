@@ -246,7 +246,8 @@ public class WebForm : CmsComponent<WebFormCmsSettingsModel, WebForm.ComponentMo
                     FileName = Path.GetFileName(formFile.FileName),
                     Extension = Path.GetExtension(formFile.FileName),
                     Title = Path.GetFileNameWithoutExtension(formFile.FileName),
-                    PropertyName = "form_attachment"
+                    PropertyName = "form_attachment",
+                    Protected = true
                 };
                 communication.WiserItemFiles.Add(await wiserItemsService.AddItemFileAsync(itemFile, skipPermissionsCheck: true));
             }
