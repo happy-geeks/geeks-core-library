@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.Linq;
+using System.Net.Mime;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -208,7 +209,7 @@ public class HtmlToPdfConverterService(
 
         var baseUri = httpContext == null ? "/" : HttpContextHelpers.GetBaseUri(httpContext).ToString();
         var output = converter.ConvertHtml(htmlToConvert.ToString(), baseUri);
-        var fileResult = new FileContentResult(output, "application/pdf")
+        var fileResult = new FileContentResult(output, MediaTypeNames.Application.Pdf)
         {
             FileDownloadName = EnsureCorrectFileName(settings.FileName)
         };

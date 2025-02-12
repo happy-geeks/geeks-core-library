@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Net;
+using System.Net.Mime;
 using System.Text;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Extensions;
@@ -26,7 +27,7 @@ public class JavascriptController(ITemplatesService templatesService) : Controll
         var javascriptContent = await templatesService.GetGeneralTemplateValueAsync(TemplateTypes.Js, mode);
         Response.Headers.LastModified = javascriptContent.LastChangeDate.ToUniversalTime().ToString("R");
         Response.Headers.Expires = DateTime.Now.AddDays(7).ToUniversalTime().ToString("R");
-        return Content(javascriptContent.Content, "application/javascript", Encoding.UTF8);
+        return Content(javascriptContent.Content, MediaTypeNames.Text.JavaScript, Encoding.UTF8);
     }
 
     [Route("/scripts/gcljs_{templateIds:regex(.*)}.js")]
@@ -42,6 +43,6 @@ public class JavascriptController(ITemplatesService templatesService) : Controll
 
         Response.Headers.LastModified = javascriptContent.LastChangeDate.ToUniversalTime().ToString("R");
         Response.Headers.Expires = DateTime.Now.AddDays(7).ToUniversalTime().ToString("R");
-        return Content(javascriptContent.Content, "application/javascript", Encoding.UTF8);
+        return Content(javascriptContent.Content, MediaTypeNames.Text.JavaScript, Encoding.UTF8);
     }
 }

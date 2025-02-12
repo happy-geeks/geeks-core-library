@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using System.Net.Mime;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
@@ -16,11 +17,11 @@ public static class ExceptionMiddlewareExtensions
             appError.Run(async context =>
             {
                 context.Response.StatusCode = (int) HttpStatusCode.InternalServerError;
-                context.Response.ContentType = "application/json";
+                context.Response.ContentType = MediaTypeNames.Application.Json;
                 var contextFeature = context.Features.Get<IExceptionHandlerFeature>();
                 if (contextFeature != null)
                 {
-                    logger.LogCritical($"An unhandled exception occurred: {contextFeature.Error}");
+                    logger.LogCritical(contextFeature.Error, "An unhandled exception occurred");
 
                     var response = new {error = contextFeature.Error.Message};
                     await context.Response.WriteAsync(JsonConvert.SerializeObject(response));
