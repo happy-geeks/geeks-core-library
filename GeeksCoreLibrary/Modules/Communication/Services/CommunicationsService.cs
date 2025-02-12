@@ -1016,7 +1016,7 @@ public class CommunicationsService : ICommunicationsService, IScopedService
     /// </summary>
     private async Task UpdateCommunicationTableAsync()
     {
-        var tableChanges = await databaseHelpersService.GetLastTableUpdatesAsync(databaseConnection.ConnectedDatabase);
+        var tableChanges = await databaseHelpersService.GetMigrationsStatusAsync(databaseConnection.ConnectedDatabase);
         if ((!tableChanges.ContainsKey(WiserTableNames.WiserCommunication) || tableChanges[WiserTableNames.WiserCommunication] < new DateTime(2022, 10, 18)) && await databaseHelpersService.TableExistsAsync(WiserTableNames.WiserCommunication))
         {
             // We changed the table wiser_communication a lot and the databaseHelpersService does not support renaming columns.

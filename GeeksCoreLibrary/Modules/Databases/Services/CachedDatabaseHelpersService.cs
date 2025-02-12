@@ -157,13 +157,13 @@ public class CachedDatabaseHelpersService(IDatabaseHelpersService databaseHelper
     }
 
     /// <inheritdoc />
-    public async Task<Dictionary<string, DateTime>> GetLastTableUpdatesAsync(string databaseName = null)
+    public async Task<Dictionary<string, DateTime>> GetMigrationsStatusAsync(string databaseName = null)
     {
-        return await GetLastTableUpdatesAsync(this, databaseName);
+        return await GetMigrationsStatusAsync(this, databaseName);
     }
 
     /// <inheritdoc />
-    public async Task<Dictionary<string, DateTime>> GetLastTableUpdatesAsync(IDatabaseHelpersService service, string databaseName = null)
+    public async Task<Dictionary<string, DateTime>> GetMigrationsStatusAsync(IDatabaseHelpersService service, string databaseName = null)
     {
         if (String.IsNullOrWhiteSpace(databaseName))
         {
@@ -176,7 +176,7 @@ public class CachedDatabaseHelpersService(IDatabaseHelpersService databaseHelper
             async cacheEntry =>
             {
                 cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;
-                return await databaseHelpersService.GetLastTableUpdatesAsync(service, databaseName);
+                return await databaseHelpersService.GetMigrationsStatusAsync(service, databaseName);
             }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Database));
     }
 
