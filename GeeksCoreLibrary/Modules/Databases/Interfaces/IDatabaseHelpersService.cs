@@ -144,18 +144,18 @@ public interface IDatabaseHelpersService
     Task DropDatabaseAsync(string databaseName);
 
     /// <summary>
-    /// Gets when all Wiser tables have been updated last.
+    /// Gets the list of all migrations that have been done on the database and the dates and times when they have been done.
     /// </summary>
     /// <returns>A Dictionary with table name and last update datetime.</returns>
-    Task<Dictionary<string, DateTime>> GetLastTableUpdatesAsync(string databaseSchema = null);
+    Task<Dictionary<string, DateTime>> GetMigrationsStatusAsync(string databaseSchema = null);
 
     /// <summary>
-    /// Gets when all Wiser tables have been updated last.
+    /// Gets the list of all migrations that have been done on the database and the dates and times when they have been done.
     /// </summary>
     /// <param name="databaseHelpersService">The <see cref="IDatabaseHelpersService"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to other methods of the same service.</param>
     /// <returns>A Dictionary with table name and last update datetime.</returns>
     /// <param name="databaseName">Optional: The name of the database schema. Leave empty to use the database from the connection string. Default value is <see langword="null"/>.</param>
-    Task<Dictionary<string, DateTime>> GetLastTableUpdatesAsync(IDatabaseHelpersService databaseHelpersService, string databaseName = null);
+    Task<Dictionary<string, DateTime>> GetMigrationsStatusAsync(IDatabaseHelpersService databaseHelpersService, string databaseName = null);
 
     /// <summary>
     /// Check if certain Wiser tables are up-to-date and update them if they're not.
