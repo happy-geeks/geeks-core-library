@@ -13,6 +13,11 @@ namespace GeeksCoreLibrary.Core.Services;
 /// </summary>
 public class FileCacheService : IFileCacheService, ISingletonService
 {
+    /// <summary>
+    /// A thread-safe collection to manage active asynchronous write operations in the file caching service.
+    /// Maps file paths to lazily initialized tasks that handle the file write process.
+    /// Used to prevent concurrent file write operations for the same file path.
+    /// </summary>
     private readonly ConcurrentDictionary<string, Lazy<Task<byte[]>>> activeWrites = new();
     
     /// <inheritdoc />
