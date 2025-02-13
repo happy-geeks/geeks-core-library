@@ -80,7 +80,7 @@ public class WiserTableDefinitions
         new()
         {
             Name = WiserTableNames.WiserItemLink,
-            LastUpdate = new DateTime(2023, 1, 1),
+            LastUpdate = new DateTime(2022, 1, 1),
             Columns =
             [
                 new ColumnSettingsModel("id", MySqlDbType.UInt64, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -1097,7 +1097,7 @@ public class WiserTableDefinitions
         new()
         {
             Name = WiserTableNames.WiserModule,
-            LastUpdate = new DateTime(2023, 1, 1),
+            LastUpdate = new DateTime(2022, 1, 1),
             Columns =
             [
                 new ColumnSettingsModel("id", MySqlDbType.UInt64, notNull: true, isPrimaryKey: true, autoIncrement: true),
