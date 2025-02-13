@@ -154,12 +154,12 @@ public class ObjectsService : IObjectsService, IScopedService
         string query;
         if (typeNumber == -100)
         {
-            query = @"SELECT `value` FROM easy_objects WHERE active = 1 AND `key` = ?key";
+            query = "SELECT `value` FROM easy_objects WHERE active = 1 AND `key` = ?key";
         }
         else
         {
             databaseConnection.AddParameter("typeNumber", typeNumber);
-            query = @"SELECT `value` FROM easy_objects WHERE active = 1 AND `key` = ?key AND typenr = ?typeNumber";
+            query = "SELECT `value` FROM easy_objects WHERE active = 1 AND `key` = ?key AND typenr = ?typeNumber";
         }
 
         var dataTable = await databaseConnection.GetAsync(query);

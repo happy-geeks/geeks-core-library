@@ -49,7 +49,7 @@ public class CachedObjectsService(
 
             var objects = new Dictionary<string, SettingObject>(StringComparer.OrdinalIgnoreCase);
 
-            await using var reader = await databaseConnection.GetReaderAsync(@"SELECT `key`, `value`, `description`, `typenr` FROM easy_objects WHERE active = 1");
+            await using var reader = await databaseConnection.GetReaderAsync("SELECT `key`, `value`, `description`, `typenr` FROM easy_objects WHERE active = 1 AND `key` IS NOT NULL");
             while (await reader.ReadAsync())
             {
                 objects.Add($"{reader.GetString(reader.GetOrdinal("key"))}{reader.GetInt32(reader.GetOrdinal("typenr"))}", reader.ToObjectModel());
