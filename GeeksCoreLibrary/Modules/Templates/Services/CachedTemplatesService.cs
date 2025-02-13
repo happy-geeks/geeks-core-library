@@ -33,6 +33,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services;
 public class CachedTemplatesService(
     ILogger<CachedTemplatesService> logger,
     ITemplatesService templatesService,
+    IFileCacheService fileCacheService,
     IAppCache cache,
     IOptions<GclSettings> gclSettings,
     IDatabaseConnection databaseConnection,
@@ -359,6 +360,18 @@ public class CachedTemplatesService(
 
         string html = null;
         var addedToCache = false;
+        
+        // Check how long this template should be cached:
+        TimeSpan cacheMinutes;
+        if (settings.CacheMinutes == -1)
+        {
+            cacheMinutes = TimeSpan.Zero;
+        }
+        else
+        {
+            cacheMinutes = settings.CacheMinutes == 0 ? gclSettings.DefaultTemplateCacheDuration : TimeSpan.FromMinutes(settings.CacheMinutes);
+        }
+        
         switch (settings.CachingLocation)
         {
             case TemplateCachingLocations.InMemory:
@@ -367,7 +380,7 @@ public class CachedTemplatesService(
                     async cacheEntry =>
                     {
                         addedToCache = true;
-                        cacheEntry.AbsoluteExpirationRelativeToNow = settings.CacheMinutes == 0 ? gclSettings.DefaultTemplateCacheDuration : TimeSpan.FromMinutes(settings.CacheMinutes);
+                        cacheEntry.AbsoluteExpirationRelativeToNow = cacheMinutes;
                         return await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
                     },
                     cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
@@ -385,29 +398,11 @@ public class CachedTemplatesService(
                     var fileName = $"{cacheName}.html";
                     var fullCachePath = Path.Combine(cacheFolder, Constants.ComponentsCacheRootDirectoryName, dynamicContent.Name.StripIllegalPathCharacters(), $"{dynamicContent.Title.StripIllegalPathCharacters()} ({dynamicContent.Id})", fileName);
 
-                    // Check if a cache file already exists and if it hasn't expired yet.
-                    var fileInfo = new FileInfo(fullCachePath);
-                    if (fileInfo.Directory is {Exists: false})
+                    html = await fileCacheService.GetOrAddAsync(fullCachePath, async () =>
                     {
-                        fileInfo.Directory.Create();
-                    }
-                    else if (fileInfo.Exists)
-                    {
-                        if (fileInfo.LastWriteTimeUtc.AddMinutes(settings.CacheMinutes) > DateTime.UtcNow)
-                        {
-                            using var fileReader = new StreamReader(fileInfo.OpenRead(), Encoding.UTF8);
-                            var fileContents = await fileReader.ReadToEndAsync();
-                            html = $"<!-- START DYNAMIC CONTENT FROM CACHE ({dynamicContent.Id}) -->{fileContents}<!-- END DYNAMIC CONTENT FROM CACHE ({dynamicContent.Id}) -->";
-                            return html;
-                        }
-
-                        // Cleanup the old cache file if it has expired.
-                        fileInfo.Delete();
-                    }
-
-                    html = (string) await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
-                    addedToCache = true;
-                    await File.WriteAllTextAsync(fullCachePath, html);
+                        addedToCache = true;
+                        return (string)await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
+                    }, cacheMinutes);
                 }
 
                 break;

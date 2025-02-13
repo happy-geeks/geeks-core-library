@@ -26,6 +26,7 @@ namespace GeeksCoreLibrary.Modules.ItemFiles.Services;
 public class ItemFilesService(
     ILogger<ItemFilesService> logger,
     IDatabaseConnection databaseConnection,
+    IFileCacheService fileCacheService,
     IObjectsService objectsService,
     IWiserItemsService wiserItemsService,
     IHttpClientService httpClientService,
@@ -52,12 +53,11 @@ public class ItemFilesService(
         databaseConnection.AddParameter("itemId", finalItemId);
         databaseConnection.AddParameter("propertyName", propertyName);
         var getImageResult = await databaseConnection.GetAsync($"""
-                                                                
-                                                                                SELECT content_type, content, content_url, protected
-                                                                                FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
-                                                                                WHERE item_id = ?itemId AND property_name = ?propertyName
-                                                                                ORDER BY ordering ASC, id ASC
-                                                                                LIMIT {fileNumber - 1},1
+                                                                SELECT content_type, content, content_url, protected
+                                                                FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
+                                                                WHERE item_id = ?itemId AND property_name = ?propertyName
+                                                                ORDER BY ordering ASC, id ASC
+                                                                LIMIT {fileNumber - 1},1
                                                                 """, skipCache: true);
 
         if (!ValidateQueryResult(getImageResult, encryptedItemId))
@@ -236,12 +236,11 @@ public class ItemFilesService(
         databaseConnection.AddParameter("itemId", finalItemId);
         databaseConnection.AddParameter("propertyName", propertyName);
         var getFileResult = await databaseConnection.GetAsync($"""
-                                                               
-                                                                               SELECT content, content_url, protected
-                                                                               FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
-                                                                               WHERE item_id = ?itemId AND property_name = ?propertyName
-                                                                               ORDER BY ordering ASC, id ASC
-                                                                               LIMIT {fileNumber - 1},1
+                                                               SELECT content, content_url, protected
+                                                               FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
+                                                               WHERE item_id = ?itemId AND property_name = ?propertyName
+                                                               ORDER BY ordering ASC, id ASC
+                                                               LIMIT {fileNumber - 1},1
                                                                """, skipCache: true);
 
         if (!ValidateQueryResult(getFileResult, encryptedItemId))
@@ -436,7 +435,7 @@ public class ItemFilesService(
             }
 
             // No-image file is available, use that the image.
-            fileBytes = await File.ReadAllBytesAsync(noImageFilePath);
+            fileBytes = await fileCacheService.GetBytesAsync(noImageFilePath);
         }
         else
         {
@@ -464,7 +463,7 @@ public class ItemFilesService(
                             var localPath = FileSystemHelpers.GetFileCacheDirectory(webHostEnvironment);
                             if (await amazonS3Service.DownloadObjectFromBucketAsync(s3Bucket, s3Object, localPath))
                             {
-                                fileBytes = await File.ReadAllBytesAsync(Path.Combine(localPath, s3Object));
+                                fileBytes = await fileCacheService.GetBytesAsync(Path.Combine(localPath, s3Object));
                             }
                         }
                         else
@@ -494,7 +493,7 @@ public class ItemFilesService(
                             var localFilePath = Path.Combine(webHostEnvironment.WebRootPath, contentUrl.TrimStart('/'));
                             if (File.Exists(localFilePath))
                             {
-                                fileBytes = await File.ReadAllBytesAsync(localFilePath);
+                                fileBytes = await fileCacheService.GetBytesAsync(localFilePath);
                             }
                         }
                     }
@@ -518,7 +517,7 @@ public class ItemFilesService(
                     }
                 }
 
-                fileBytes = await File.ReadAllBytesAsync(noImageFilePath);
+                fileBytes = await fileCacheService.GetBytesAsync(noImageFilePath);
             }
 
             // Simply return the content without trying to alter it when it's an SVG.
@@ -589,7 +588,7 @@ public class ItemFilesService(
         // Don't save the file to the disk if it's protected (protected files shouldn't be cached).
         if (!fileIsProtected)
         {
-            await File.WriteAllBytesAsync(saveLocation, fileBytes);
+            await fileCacheService.WriteFileIfNotExistsOrExpiredAsync(saveLocation, fileBytes);
         }
 
         return (fileBytes, DateTime.UtcNow);
@@ -799,8 +798,7 @@ public class ItemFilesService(
         // Save file to disk if it isn't protected.
         if (!imageIsProtected)
         {
-            await using var outFileStream = new FileStream(saveLocation, FileMode.Create, FileAccess.Write);
-            outFileStream.Write(outFileBytes, 0, outFileBytes.Length);
+            await fileCacheService.WriteFileIfNotExistsOrExpiredAsync(saveLocation, outFileBytes);
         }
 
         return outFileBytes;

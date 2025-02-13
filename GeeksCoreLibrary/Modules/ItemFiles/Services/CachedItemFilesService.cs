@@ -2,6 +2,7 @@
 using System.IO;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Helpers;
+using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.ItemFiles.Enums;
 using GeeksCoreLibrary.Modules.ItemFiles.Interfaces;
@@ -10,7 +11,7 @@ using Microsoft.Extensions.Options;
 
 namespace GeeksCoreLibrary.Modules.ItemFiles.Services;
 
-public class CachedItemFilesService(IOptions<GclSettings> gclSettings, IItemFilesService itemFilesService, IWebHostEnvironment webHostEnvironment = null)
+public class CachedItemFilesService(IOptions<GclSettings> gclSettings, IItemFilesService itemFilesService, IFileCacheService fileCacheService, IWebHostEnvironment webHostEnvironment = null)
     : IItemFilesService
 {
     private readonly GclSettings gclSettings = gclSettings.Value;
@@ -144,7 +145,7 @@ public class CachedItemFilesService(IOptions<GclSettings> gclSettings, IItemFile
         var localDirectory = FileSystemHelpers.GetFileCacheDirectory(webHostEnvironment);;
         var fileLocation = Path.Combine(localDirectory, localFilename);
 
-        var fileBytes = await File.ReadAllBytesAsync(fileLocation);
+        var fileBytes = await fileCacheService.GetBytesAsync(fileLocation, gclSettings.DefaultItemFileCacheDuration);
         var lastModified = File.GetLastWriteTimeUtc(fileLocation);
 
         return (fileBytes, lastModified);
