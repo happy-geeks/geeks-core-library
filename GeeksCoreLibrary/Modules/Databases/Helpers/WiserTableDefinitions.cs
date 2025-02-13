@@ -76,6 +76,30 @@ public class WiserTableDefinitions
             ]
         },
 
+        // wiser_itemlink
+        new()
+        {
+            Name = WiserTableNames.WiserItemLink,
+            LastUpdate = new DateTime(2023, 1, 1),
+            Columns =
+            [
+                new ColumnSettingsModel("id", MySqlDbType.UInt64, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                new ColumnSettingsModel("item_id", MySqlDbType.UInt64, notNull: true, defaultValue: "0"),
+                new ColumnSettingsModel("destination_item_id", MySqlDbType.UInt64, notNull: true, defaultValue: "0"),
+                new ColumnSettingsModel("ordering", MySqlDbType.Int24, notNull: true, defaultValue: "1"),
+                new ColumnSettingsModel("type", MySqlDbType.Int24, notNull: true, defaultValue: "1"),
+                new ColumnSettingsModel("added_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
+            ],
+            Indexes =
+            [
+                new IndexSettingsModel(WiserTableNames.WiserItemLink, "uniquelink", IndexTypes.Unique, ["item_id", "destination_item_id", "type"]),
+                new IndexSettingsModel(WiserTableNames.WiserItemLink, "type", IndexTypes.Normal, ["type", "destination_item_id", "ordering"]),
+                new IndexSettingsModel(WiserTableNames.WiserItemLink, "item_id", IndexTypes.Normal, ["item_id"]),
+                new IndexSettingsModel(WiserTableNames.WiserItemLink, "destination_item_id", IndexTypes.Normal, ["destination_item_id", "item_id", "ordering"]),
+                new IndexSettingsModel(WiserTableNames.WiserItemLink, "destination_item_id_2", IndexTypes.Normal, ["destination_item_id", "type", "ordering"])
+            ]
+        },
+
         // wiser_itemlinkdetail
         new()
         {
@@ -1066,6 +1090,25 @@ public class WiserTableDefinitions
             Indexes =
             [
                 new IndexSettingsModel(WiserTableNames.WiserUserRoles, "idx_user_id", IndexTypes.Unique, ["user_id", "role_id"])
+            ]
+        },
+
+        // wiser_module
+        new()
+        {
+            Name = WiserTableNames.WiserModule,
+            LastUpdate = new DateTime(2023, 1, 1),
+            Columns =
+            [
+                new ColumnSettingsModel("id", MySqlDbType.UInt64, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                new ColumnSettingsModel("custom_query", MySqlDbType.MediumText),
+                new ColumnSettingsModel("count_query", MySqlDbType.MediumText),
+                new ColumnSettingsModel("options", MySqlDbType.MediumText),
+                new ColumnSettingsModel("name", MySqlDbType.VarChar, 255),
+                new ColumnSettingsModel("icon", MySqlDbType.VarChar, 100),
+                new ColumnSettingsModel("color", MySqlDbType.VarChar, 8),
+                new ColumnSettingsModel("type", MySqlDbType.VarChar, 255),
+                new ColumnSettingsModel("group", MySqlDbType.VarChar, 100)
             ]
         }
     ];
