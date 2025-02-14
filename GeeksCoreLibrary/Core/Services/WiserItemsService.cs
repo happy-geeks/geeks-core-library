@@ -3550,8 +3550,8 @@ public class WiserItemsService(
                                                                                    SET @_username = ?username;
                                                                                    SET @_userId = ?userId;
                                                                                    SET @saveHistory = ?saveHistoryGcl;
-                                                                                   INSERT IGNORE INTO {(linkType > 0 ? linkTablePrefix : tablePrefix)}{WiserTableNames.WiserItemFile} (item_id, content_type, content, content_url, width, height, file_name, extension, added_by, title, property_name, protected, itemlink_id, extra_data) 
-                                                                                   VALUES (?itemId, ?contentType, ?content, ?contentUrl, ?width, ?height, ?fileName, ?extension, ?username, ?title, ?propertyName, ?protected, ?itemLinkId, ?extraData);
+                                                                                   INSERT IGNORE INTO {(linkType > 0 ? linkTablePrefix : tablePrefix)}{WiserTableNames.WiserItemFile} (item_id, content_type, content, content_url, file_name, extension, added_by, title, property_name, protected, itemlink_id, extra_data) 
+                                                                                   VALUES (?itemId, ?contentType, ?content, ?contentUrl, ?fileName, ?extension, ?username, ?title, ?propertyName, ?protected, ?itemLinkId, ?extraData);
                                                                                    SELECT LAST_INSERT_ID();
                                                                    """, true);
 
