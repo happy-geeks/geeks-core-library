@@ -694,8 +694,6 @@ public class WiserTableDefinitions
                 new ColumnSettingsModel("content_type", MySqlDbType.VarChar, 100, notNull: true),
                 new ColumnSettingsModel("content", MySqlDbType.LongBlob),
                 new ColumnSettingsModel("content_url", MySqlDbType.VarChar, 1024),
-                new ColumnSettingsModel("width", MySqlDbType.Int24, notNull: true, defaultValue: "0"),
-                new ColumnSettingsModel("height", MySqlDbType.Int24, notNull: true, defaultValue: "0"),
                 new ColumnSettingsModel("file_name", MySqlDbType.VarChar, 255),
                 new ColumnSettingsModel("extension", MySqlDbType.VarChar, 20),
                 new ColumnSettingsModel("title", MySqlDbType.VarChar, 255),
