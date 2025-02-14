@@ -98,28 +98,26 @@ public class TemplatesController(
                 return Unauthorized();
             }
 
+            if (contentTemplate.Content == null && contentTemplate.ReturnNotFoundWhenPreLoadQueryHasNoData)
+            {
+                return NotFound();
+            }
+
             var useGeneralLayout = !String.Equals(HttpContextHelpers.GetRequestValue(context, "ombouw"), "false", StringComparison.OrdinalIgnoreCase) && !contentTemplate.IsPartial;
             switch (contentTemplate.Type)
             {
                 case TemplateTypes.Js:
-                    return Content(contentTemplate.Content, "application/javascript");
+                    return Content(contentTemplate.Content ?? "", "application/javascript");
                 case TemplateTypes.Scss:
                 case TemplateTypes.Css:
-                    return Content(contentTemplate.Content, "text/css");
+                    return Content(contentTemplate.Content ?? "", "text/css");
                 case TemplateTypes.Query:
                     var jsonResult = await templatesService.GetJsonResponseFromQueryAsync((QueryTemplate) contentTemplate);
                     return Content(JsonConvert.SerializeObject(jsonResult), "application/json");
                 case TemplateTypes.Normal:
                 case TemplateTypes.Unknown:
-                    return Content(contentTemplate.Content, "text/plain");
+                    return Content(contentTemplate.Content ?? "", "text/plain");
                 case TemplateTypes.Html:
-                    // Execute the pre load query before any replacements are being done and before any dynamic components are handled.
-                    var hasResults = await templatesService.ExecutePreLoadQueryAndRememberResultsAsync(contentTemplate);
-                    if (contentTemplate.ReturnNotFoundWhenPreLoadQueryHasNoData && !hasResults)
-                    {
-                        return NotFound();
-                    }
-
                     var noIndex = contentTemplate.RobotsNoIndex;
                     var noFollow = contentTemplate.RobotsNoFollow;
 
