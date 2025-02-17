@@ -1068,7 +1068,7 @@ public class WiserItemsService(
                                     databaseConnection.AddParameter("destinationId", destinationId);
                                     await databaseConnection.ExecuteAsync($"""
                                                                            INSERT IGNORE INTO {linkTablePrefix}{WiserTableNames.WiserItemLink} ({(currentItemIsDestinationId ? "destination_item_id, item_id" : "item_id, destination_item_id")}, type)
-                                                                                                                                                   VALUES (?itemId, ?destinationId, ?linkTypeNumber);
+                                                                           VALUES (?itemId, ?destinationId, ?linkTypeNumber);
                                                                            """);
                                 }
 
