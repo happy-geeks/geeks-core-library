@@ -54,6 +54,12 @@ public class PagesService(
     {
         var template = await templatesService.GetTemplateAsync(id, name, type, parentId, parentName, templateContent == null, skipPermissions);
 
+        // This method is only meant for rendering HTML templates, so skip all other types.
+        if (template.Type != TemplateTypes.Html)
+        {
+            return template;
+        }
+
         // If a content is provided, we don't need to do any replacements.
         if (templateContent != null)
         {
@@ -72,6 +78,15 @@ public class PagesService(
             if (logRenderingOfTemplate)
             {
                 stopWatch.Start();
+            }
+
+
+            // Execute the pre load query before any replacements are being done and before any dynamic components are handled.
+            var hasResults = await templatesService.ExecutePreLoadQueryAndRememberResultsAsync(template);
+            if (template.ReturnNotFoundWhenPreLoadQueryHasNoData && !hasResults)
+            {
+                template.Content = null;
+                return template;
             }
 
             template.Content = await templatesService.DoReplacesAsync(template.Content, templateType: template.Type);
