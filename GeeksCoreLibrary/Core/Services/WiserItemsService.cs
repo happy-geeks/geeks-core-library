@@ -1046,7 +1046,7 @@ public class WiserItemsService(
                                 }
 
                                 var currentItemIsDestinationId = fieldOptions[key].ContainsKey(Constants.CurrentItemIsDestinationIdKey) && (bool) fieldOptions[key][Constants.CurrentItemIsDestinationIdKey];
-                                var linkTablePrefix = await GetTablePrefixForLinkAsync(linkTypeNumber, currentItemIsDestinationId ? Convert.ToString(fieldOptions[key][Constants.EntityTypeKey]) : wiserItem.EntityType);
+                                var linkTablePrefix = await GetTablePrefixForLinkAsync(linkTypeNumber, currentItemIsDestinationId && fieldOptions[key].TryGetValue(Constants.EntityTypeKey, out var fieldOptionsEntityKey) ? Convert.ToString(fieldOptionsEntityKey) : wiserItem.EntityType);
 
                                 databaseConnection.AddParameter("linkTypeNumber", linkTypeNumber);
 
@@ -1068,7 +1068,7 @@ public class WiserItemsService(
                                     databaseConnection.AddParameter("destinationId", destinationId);
                                     await databaseConnection.ExecuteAsync($"""
                                                                            INSERT IGNORE INTO {linkTablePrefix}{WiserTableNames.WiserItemLink} ({(currentItemIsDestinationId ? "destination_item_id, item_id" : "item_id, destination_item_id")}, type)
-                                                                                                                                                   VALUES (?itemId, ?destinationId, ?linkTypeNumber);
+                                                                           VALUES (?itemId, ?destinationId, ?linkTypeNumber);
                                                                            """);
                                 }
 
