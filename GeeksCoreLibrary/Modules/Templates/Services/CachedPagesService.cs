@@ -24,6 +24,7 @@ namespace GeeksCoreLibrary.Modules.Templates.Services;
 public class CachedPagesService(
     ILogger<CachedPagesService> logger,
     IPagesService pagesService,
+    IFileCacheService fileCacheService,
     ITemplatesService templatesService,
     IAppCache cache,
     IOptions<GclSettings> gclSettings,
@@ -57,10 +58,18 @@ public class CachedPagesService(
         var cacheSettings = await templatesService.GetTemplateCacheSettingsAsync(id, name, parentId, parentName);
         string contentCacheKey = null;
 
-        // Check if cache should be skipped:
-        var cachingMinutes = cacheSettings.CachingMinutes == 0 ? gclSettings.DefaultTemplateCacheDuration.Minutes : cacheSettings.CachingMinutes;
-
-        if (cachingMinutes > 0)
+        // Check how long this template should be cached:
+        TimeSpan cacheMinutes;
+        if (cacheSettings.CachingMinutes == -1)
+        {
+            cacheMinutes = TimeSpan.Zero;
+        }
+        else
+        {
+            cacheMinutes = cacheSettings.CachingMinutes == 0 ? gclSettings.DefaultTemplateCacheDuration : TimeSpan.FromMinutes(cacheSettings.CachingMinutes);
+        }
+        
+        if (cacheMinutes.TotalMinutes > 0)
         {
             // Get folder and file name.
             var cacheFolder = FileSystemHelpers.GetOutputCacheDirectory(webHostEnvironment);
@@ -91,37 +100,28 @@ public class CachedPagesService(
                     else
                     {
                         // Build the cache directory, based on template type and name.
-                        fullCachePath = Path.Combine(cacheFolder, Constants.TemplateCacheRootDirectoryName, cacheSettings.Type.ToString(), $"{cacheSettings.Name.StripIllegalPathCharacters()} ({cacheSettings.Id})", cacheFileName);
-                        logger.LogDebug($"Content cache enabled for template '{cacheSettings.Id}', cache file location: {fullCachePath}.");
+                        fullCachePath = Path.Combine(cacheFolder, Constants.TemplateCacheRootDirectoryName,
+                            cacheSettings.Type.ToString(),
+                            $"{cacheSettings.Name.StripIllegalPathCharacters()} ({cacheSettings.Id})", cacheFileName);
+                        logger.LogDebug(
+                            $"Content cache enabled for template '{cacheSettings.Id}', cache file location: {fullCachePath}.");
 
-                        // Check if a cache file already exists and if it hasn't expired yet.
-                        var fileInfo = new FileInfo(fullCachePath);
-                        if (fileInfo.Directory is {Exists: false})
+                        var fileContent =
+                            await fileCacheService.GetTextAsync(fullCachePath, cacheMinutes);
+
+                        if (!String.IsNullOrWhiteSpace(fileContent))
                         {
-                            fileInfo.Directory.Create();
-                        }
-                        else if (fileInfo.Exists)
-                        {
-                            if (fileInfo.LastWriteTimeUtc.AddMinutes(cacheSettings.CachingMinutes) > DateTime.UtcNow)
-                            {
-                                using var fileReader = new StreamReader(fileInfo.OpenRead(), Encoding.UTF8);
-                                var fileContents = await fileReader.ReadToEndAsync();
-                                content = cacheSettings.Type != TemplateTypes.Html
-                                    ? fileContents
-                                    : $"<!-- START PARTIAL TEMPLATE FROM CACHE ({cacheSettings.Id}) -->{fileContents}<!-- END PARTIAL TEMPLATE FROM CACHE ({cacheSettings.Id}) -->";
-                            }
-                            else
-                            {
-                                // Cleanup the old cache file if it has expired.
-                                fileInfo.Delete();
-                            }
+                            content = cacheSettings.Type != TemplateTypes.Html
+                                ? fileContent
+                                : $"<!-- START PARTIAL TEMPLATE FROM CACHE ({cacheSettings.Id}) -->{fileContent}<!-- END PARTIAL TEMPLATE FROM CACHE ({cacheSettings.Id}) -->";
                         }
                     }
-
                     break;
                 }
                 default:
+                {
                     throw new ArgumentOutOfRangeException(nameof(cacheSettings.CachingLocation), cacheSettings.CachingLocation.ToString(), null);
+                }
             }
         }
 
@@ -148,7 +148,7 @@ public class CachedPagesService(
                     cache.GetOrAdd(contentCacheKey,
                         cacheEntry =>
                         {
-                            cacheEntry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(cachingMinutes);
+                            cacheEntry.AbsoluteExpirationRelativeToNow = cacheMinutes;
                             return template;
                         }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
                 }
@@ -159,7 +159,7 @@ public class CachedPagesService(
             {
                 if (!String.IsNullOrEmpty(fullCachePath))
                 {
-                    await File.WriteAllTextAsync(fullCachePath, template.Content);
+                    await fileCacheService.WriteFileIfNotExistsOrExpiredAsync(fullCachePath, template.Content, cacheMinutes);
                 }
 
                 break;
