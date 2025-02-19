@@ -4,7 +4,7 @@
         <RuntimeIdentifiers>win-x64;linux-x64</RuntimeIdentifiers>
         <OutputType>Library</OutputType>
         <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
-        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
         <Version>5.0.2502.2</Version>
         <Company>Happy Horizon B.V.</Company>
         <Description>Our base/core library that we use for most of our other projects.</Description>
@@ -23,25 +23,14 @@
         <IncludeBuildOutput>true</IncludeBuildOutput>
     </PropertyGroup>
 
-    <!-- Default PackageReference when no RuntimeIdentifier is specified -->
-    <ItemGroup Condition="'$(RuntimeIdentifier)' == '' AND $([MSBuild]::IsOsPlatform('Windows'))">
-        <PackageReference Include="EvoPdf.Chromium.Windows" Version="11.4.1" />
+    <!-- Packages with private assets. These packages will not be automatically/implicitly referenced in projects that use the GCL. -->
+    <!-- Developers have to add these packages via NuGet in their own projects. -->
+    <ItemGroup>
+        <PackageReference Include="EvoPdf.Chromium.Windows" Version="11.4.1" PrivateAssets="all" />
+        <PackageReference Include="EvoPdf.Chromium.Linux" Version="11.4.1" PrivateAssets="all" />
     </ItemGroup>
 
-    <ItemGroup Condition="'$(RuntimeIdentifier)' == '' AND $([MSBuild]::IsOsPlatform('Linux'))">
-        <PackageReference Include="EvoPdf.Chromium.Linux" Version="11.4.1" />
-    </ItemGroup>
-
-    <!-- Windows-specific dependency -->
-    <ItemGroup Condition="'$(RuntimeIdentifier)' == 'win-x64'">
-        <PackageReference Include="EvoPdf.Chromium.Windows" Version="11.4.1" />
-    </ItemGroup>
-
-    <!-- Linux-specific dependency -->
-    <ItemGroup Condition="'$(RuntimeIdentifier)' == 'linux-x64'">
-        <PackageReference Include="EvoPdf.Chromium.Linux" Version="11.4.1" />
-    </ItemGroup>
-
+    <!-- Normal package references. -->
     <ItemGroup>
         <PackageReference Include="AspNetCore.HealthChecks.MySql" Version="9.0.0"/>
         <PackageReference Include="AspNetCore.HealthChecks.UI.Client" Version="9.0.0"/>

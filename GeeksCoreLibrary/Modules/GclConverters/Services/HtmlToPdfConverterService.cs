@@ -23,16 +23,38 @@ using Microsoft.Extensions.Options;
 
 namespace GeeksCoreLibrary.Modules.GclConverters.Services;
 
-public class HtmlToPdfConverterService(
-    IDatabaseConnection databaseConnection,
-    IObjectsService objectsService,
-    IStringReplacementsService stringReplacementsService,
-    IOptions<GclSettings> gclSettings,
-    IHttpContextAccessor httpContextAccessor = null,
-    IWebHostEnvironment webHostEnvironment = null)
-    : IHtmlToPdfConverterService, IScopedService
+public class HtmlToPdfConverterService : IHtmlToPdfConverterService, IScopedService
 {
-    private readonly GclSettings gclSettings = gclSettings.Value;
+    private readonly GclSettings gclSettings;
+    private readonly IDatabaseConnection databaseConnection;
+    private readonly IObjectsService objectsService;
+    private readonly IStringReplacementsService stringReplacementsService;
+    private readonly IHttpContextAccessor httpContextAccessor;
+    private readonly IWebHostEnvironment webHostEnvironment;
+
+    public HtmlToPdfConverterService(IDatabaseConnection databaseConnection,
+        IObjectsService objectsService,
+        IStringReplacementsService stringReplacementsService,
+        IOptions<GclSettings> gclSettings,
+        IHttpContextAccessor httpContextAccessor = null,
+        IWebHostEnvironment webHostEnvironment = null)
+    {
+        this.databaseConnection = databaseConnection;
+        this.objectsService = objectsService;
+        this.stringReplacementsService = stringReplacementsService;
+        this.httpContextAccessor = httpContextAccessor;
+        this.webHostEnvironment = webHostEnvironment;
+        this.gclSettings = gclSettings.Value;
+
+        // Check if EvoPdf is loaded, otherwise throw an exception.
+        // We load Evo PDF with PrivateAssets = true, so it won't be automatically loaded in projects that use the GCL.
+        // This is because Evo PDF has separate packages for Windows and Linux, and we can't properly detect which one they need from here.
+        var evoPdfType = Type.GetType("EvoPdf.Chromium.HtmlToPdfConverter, EvoPdf.Chromium");
+        if (evoPdfType == null)
+        {
+            throw new InvalidOperationException("EvoPdf is not loaded. Please ensure you have added the correct NuGet package: Either 'EvoPdf.Chromium.Windows' for Windows or 'EvoPdf.Chromium.Linux' for Linux.");
+        }
+    }
 
     /// <inheritdoc />
     public async Task<FileContentResult> ConvertHtmlStringToPdfAsync(HtmlToPdfRequestModel settings)
