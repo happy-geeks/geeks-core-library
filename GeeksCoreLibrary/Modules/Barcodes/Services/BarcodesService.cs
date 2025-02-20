@@ -14,12 +14,6 @@ public class BarcodesService : IBarcodesService, IScopedService
     /// <inheritdoc />
     public Task<byte[]> GenerateBarcodeAsync(string input, BarcodeFormat format, int width, int height)
     {
-        return Task.FromResult(GenerateBarcode(input, format, width, height));
-    }
-
-    /// <inheritdoc />
-    public byte[] GenerateBarcode(string input, BarcodeFormat format, int width, int height)
-    {
         var factory = new MagickImageFactory();
         var writer = new ZXing.Magick.BarcodeWriter<byte>(factory)
         {
@@ -39,6 +33,6 @@ public class BarcodesService : IBarcodesService, IScopedService
         using var image = new MagickImage(fileBytes);
 
         // Convert the Magick image to a PNG image.
-        return image.ToByteArray(MagickFormat.Png);
+        return Task.FromResult(image.ToByteArray(MagickFormat.Png));
     }
 }

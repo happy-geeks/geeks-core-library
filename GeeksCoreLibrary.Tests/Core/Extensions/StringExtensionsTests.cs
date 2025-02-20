@@ -5,7 +5,6 @@ using FluentAssertions;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Models;
 using JetBrains.Annotations;
-using Microsoft.Extensions.Options;
 using NUnit.Framework;
 
 namespace GeeksCoreLibrary.Tests.Core.Extensions;

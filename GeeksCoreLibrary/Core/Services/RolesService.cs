@@ -9,7 +9,6 @@ using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
-using Newtonsoft.Json;
 
 namespace GeeksCoreLibrary.Core.Services;
 

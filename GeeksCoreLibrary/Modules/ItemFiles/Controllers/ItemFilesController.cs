@@ -7,7 +7,6 @@ using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.ItemFiles.Enums;
 using GeeksCoreLibrary.Modules.ItemFiles.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 

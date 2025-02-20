@@ -279,7 +279,9 @@ public class ItemFilesService(
             }
 
             // No-image file is available, use that the image.
-            result.FileBytes = await fileCacheService.GetBytesAsync(noImageFilePath);
+            var fileResult = await fileCacheService.GetBytesAsync(noImageFilePath);
+            result.FileBytes = fileResult.FileBytes;
+            result.LastModified = fileResult.LastModified;
         }
         else
         {
@@ -304,7 +306,9 @@ public class ItemFilesService(
                             var localPath = FileSystemHelpers.GetFileCacheDirectory(webHostEnvironment);
                             if (await amazonS3Service.DownloadObjectFromBucketAsync(s3Bucket, s3Object, localPath))
                             {
-                                result.FileBytes = await fileCacheService.GetBytesAsync(Path.Combine(localPath, s3Object));
+                                var fileResult = await fileCacheService.GetBytesAsync(Path.Combine(localPath, s3Object));
+                                result.FileBytes = fileResult.FileBytes;
+                                result.LastModified = fileResult.LastModified;
                             }
                         }
                         else
@@ -332,10 +336,9 @@ public class ItemFilesService(
                         else
                         {
                             var localFilePath = Path.Combine(webHostEnvironment.WebRootPath, contentUrl.TrimStart('/'));
-                            if (File.Exists(localFilePath))
-                            {
-                                result.FileBytes = await fileCacheService.GetBytesAsync(localFilePath);
-                            }
+                            var fileResult = await fileCacheService.GetBytesAsync(localFilePath);
+                            result.FileBytes = fileResult.FileBytes;
+                            result.LastModified = fileResult.LastModified;
                         }
                     }
                 }
@@ -356,10 +359,15 @@ public class ItemFilesService(
                     }
                 }
 
-                result.FileBytes = await fileCacheService.GetBytesAsync(noImageFilePath);
+                var fileResult = await fileCacheService.GetBytesAsync(noImageFilePath);
+                result.FileBytes = fileResult.FileBytes;
+                result.LastModified = fileResult.LastModified;
             }
 
-            result.LastModified = DateTime.UtcNow;
+            if (result.LastModified == DateTime.MinValue)
+            {
+                result.LastModified = DateTime.UtcNow;
+            }
 
             // SVG files are vector images, so there is no point in trying to resize them. Return it as is.
             var contentType = file.ContentType ?? "";
@@ -399,10 +407,10 @@ public class ItemFilesService(
 
                 if (Uri.IsWellFormedUriString(contentUrl, UriKind.Absolute))
                 {
-                    var fileResult = await httpClientService.Client.GetAsync(contentUrl);
-                    if (fileResult.StatusCode == HttpStatusCode.OK)
+                    var externalFileResult = await httpClientService.Client.GetAsync(contentUrl);
+                    if (externalFileResult.StatusCode == HttpStatusCode.OK)
                     {
-                        result.FileBytes = await fileResult.Content.ReadAsByteArrayAsync();
+                        result.FileBytes = await externalFileResult.Content.ReadAsByteArrayAsync();
                     }
                 }
                 else
@@ -410,7 +418,9 @@ public class ItemFilesService(
                     var localFilePath = Path.Combine(webHostEnvironment.WebRootPath, contentUrl.TrimStart('/'));
                     if (File.Exists(localFilePath))
                     {
-                        result.FileBytes = await File.ReadAllBytesAsync(localFilePath);
+                        var fileResult = await fileCacheService.GetBytesAsync(localFilePath);
+                        result.FileBytes = fileResult.FileBytes;
+                        result.LastModified = fileResult.LastModified;
                     }
                 }
             }
