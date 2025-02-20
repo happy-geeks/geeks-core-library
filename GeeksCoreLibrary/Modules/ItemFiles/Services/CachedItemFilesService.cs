@@ -36,7 +36,7 @@ public class CachedItemFilesService(
         return await cache.GetOrAddAsync(cacheName,
             async cacheEntry =>
             {
-                cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultWebPageCacheDuration;
+                cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultItemFileCacheDuration;
                 return await innerItemFilesService.GetFileAsync(lookupType, id, propertyName, fileName, entityType, linkType, fileNumber, includeContent);
             }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Files));
     }
@@ -79,24 +79,19 @@ public class CachedItemFilesService(
         fileNameParts.Add(Path.GetFileName(String.IsNullOrWhiteSpace(fileName) ? file.FileName : fileName));
 
         var fileLocation = Path.Combine(cacheDirectory, String.Join("_", fileNameParts));
-        var result = new FileResultModel {FileBytes = null, LastModified = DateTime.MinValue, WiserItemFile = file};
-        await GetFileFromCacheAsync(fileLocation, result);
 
-        // If the file has been cached and the cache time has not expired yet, return the cached file.
-        if (result.FileBytes != null)
+        var (fileBytes, lastModifiedDate) = await fileCacheService.GetOrAddAsync(fileLocation, async () =>
         {
-            return result;
-        }
+            var fileResult = await innerItemFilesService.GetResizedImageAsync(lookupType, id, fileName, propertyName, entityType, linkType, fileNumber, preferredWidth, preferredHeight, resizeMode, anchorPosition);
+            return (fileResult.FileBytes, true);
+        }, gclSettings.DefaultItemFileCacheDuration);
 
-        // If the file has not been cached yet, cache it now and then return it.
-        result = await innerItemFilesService.GetResizedImageAsync(lookupType, id, fileName, propertyName, entityType, linkType, fileNumber, preferredWidth, preferredHeight, resizeMode, anchorPosition);
-        if (result.FileBytes == null || result.FileBytes.Length == 0)
+        return new FileResultModel
         {
-            return result;
-        }
-
-        await File.WriteAllBytesAsync(fileLocation, result.FileBytes);
-        return result;
+            FileBytes = fileBytes,
+            LastModified = lastModifiedDate,
+            WiserItemFile = file
+        };
     }
 
     /// <inheritdoc />
@@ -158,19 +153,19 @@ public class CachedItemFilesService(
         fileNameParts.Add(Path.GetFileName(String.IsNullOrWhiteSpace(fileName) ? file.FileName : fileName));
 
         var fileLocation = Path.Combine(cacheDirectory, String.Join("_", fileNameParts));
-        var result = new FileResultModel {FileBytes = null, LastModified = DateTime.MinValue, WiserItemFile = file};
-        await GetFileFromCacheAsync(fileLocation, result);
 
-        // If the file has been cached and the cache time has not expired yet, return the cached file.
-        if (result.FileBytes != null)
+        var (fileBytes, lastModifiedDate) = await fileCacheService.GetOrAddAsync(fileLocation, async () =>
         {
-            return result;
-        }
+            var fileResult = await innerItemFilesService.GetParsedFileAsync(lookupType, id, fileName, propertyName, entityType, linkType, fileNumber);
+            return (fileResult.FileBytes, true);
+        }, gclSettings.DefaultItemFileCacheDuration);
 
-        // If the file has not been cached yet, cache it now and then return it.
-        result = await innerItemFilesService.GetParsedFileAsync(lookupType, id, fileName, propertyName, entityType, linkType, fileNumber);
-        await File.WriteAllBytesAsync(fileLocation, result.FileBytes);
-        return result;
+        return new FileResultModel
+        {
+            FileBytes = fileBytes,
+            LastModified = lastModifiedDate,
+            WiserItemFile = file
+        };
     }
 
     /// <inheritdoc />
@@ -201,29 +196,5 @@ public class CachedItemFilesService(
     public async Task<FileResultModel> HandleFileAsync(WiserItemFileModel file)
     {
         return await innerItemFilesService.HandleFileAsync(file);
-    }
-
-    /// <summary>
-    /// Validates an image. This will check if the image exists, and if the cache time has not expired yet.
-    /// </summary>
-    /// <param name="fileLocation">The absolute path to the file.</param>
-    /// <param name="result">The <see cref="FileResultModel"/> where we can store the file data in to return to the client.</param>
-    private async Task GetFileFromCacheAsync(string fileLocation, FileResultModel result)
-    {
-        if (gclSettings.DefaultItemFileCacheDuration.TotalSeconds <= 0)
-        {
-            result.LastModified = DateTime.UtcNow;
-            return;
-        }
-
-        var fileInfo = new FileInfo(fileLocation);
-        if (!fileInfo.Exists || DateTime.UtcNow.Subtract(fileInfo.LastWriteTimeUtc) > gclSettings.DefaultItemFileCacheDuration)
-        {
-            result.LastModified = DateTime.UtcNow;
-            return;
-        }
-
-        result.FileBytes = await fileCacheService.GetBytesAsync(fileLocation, gclSettings.DefaultItemFileCacheDuration);
-        result.LastModified = fileInfo.LastWriteTimeUtc;
     }
 }
