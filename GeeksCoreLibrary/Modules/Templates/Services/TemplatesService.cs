@@ -381,8 +381,7 @@ public class TemplatesService(
                          template.template_name,
                          template.template_id,
                          template.template_data_minified, 
-                         template.template_data,
-                         template.pre_load_query
+                         template.template_data
                      FROM {WiserTableNames.WiserTemplate} AS template
                      {joinPart}
                      LEFT JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)
@@ -404,8 +403,7 @@ public class TemplatesService(
         {
             Id = firstRow.Field<int>("template_id"),
             Name = firstRow.Field<string>("template_name"),
-            Content = String.IsNullOrEmpty(contentMinified) ? content : contentMinified,
-            PreLoadQuery = firstRow.Field<string>("pre_load_query")
+            Content = String.IsNullOrEmpty(contentMinified) ? content : contentMinified
         };
     }
 
