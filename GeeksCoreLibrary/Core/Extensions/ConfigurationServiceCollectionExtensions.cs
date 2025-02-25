@@ -200,6 +200,7 @@ public static class ConfigurationServiceCollectionExtensions
     /// <param name="isApi">Optional: Set this to true if you're using the GCL in an API, so that no XSRF protection will be added. Default is <c>false</c>.</param>
     /// <param name="isWeb">Optional: Whether the app is a web app. Default is <c>true</c>.</param>
     /// <returns>The <see cref="IServiceCollection"/> of the startup.</returns>
+    // ReSharper disable once UnusedMethodReturnValue.Global
     public static IServiceCollection AddGclServices(this IServiceCollection services, IConfiguration configuration, bool useCaching = true, bool isApi = false, bool isWeb = true)
     {
         // MVC looks in the directory "Areas" by default, but we use the directory "Modules", so we have to tell MC that.

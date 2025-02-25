@@ -1136,7 +1136,7 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
             {
                 // Get PDF settings.
                 var pdfSettings = await htmlToPdfConverterService.GetHtmlToPdfSettingsAsync(orderProcessSettings.StatusUpdateInvoiceTemplateId, languagesService.CurrentLanguageCode);
-                if (!String.IsNullOrWhiteSpace(pdfSettings.Html))
+                if (!String.IsNullOrWhiteSpace(pdfSettings?.Html))
                 {
                     pdfSettings.Html = await shoppingBasketsService.ReplaceBasketInTemplateAsync(main, lines, basketSettings, pdfSettings.Html, isForConfirmationEmail: true);
                     pdfSettings.Header = await shoppingBasketsService.ReplaceBasketInTemplateAsync(main, lines, basketSettings, pdfSettings.Header, isForConfirmationEmail: true);
@@ -1148,17 +1148,24 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
 
                     // Convert HTML to PDF and save the PDF in wiser_itemfile, linked to the order.
                     var file = await htmlToPdfConverterService.ConvertHtmlStringToPdfAsync(pdfSettings);
-                    var wiserItemFile = new WiserItemFileModel
+                    if (file?.FileContents == null)
                     {
-                        Content = file.FileContents,
-                        FileName = file.FileDownloadName,
-                        Extension = Path.GetExtension(file.FileDownloadName),
-                        ContentType = "application/pdf",
-                        ItemId = main.Id,
-                        PropertyName = Constants.InvoicePdfProperty
-                    };
+                        logger.LogWarning("Failed to convert HTML to PDF for order {orderId}. Most likely cause is that no implementation for 'IHtmlToPdfConverterService' has been loaded.", main.Id);
+                    }
+                    else
+                    {
+                        var wiserItemFile = new WiserItemFileModel
+                        {
+                            Content = file.FileContents,
+                            FileName = file.FileDownloadName,
+                            Extension = Path.GetExtension(file.FileDownloadName),
+                            ContentType = "application/pdf",
+                            ItemId = main.Id,
+                            PropertyName = Constants.InvoicePdfProperty
+                        };
 
-                    fileId = await wiserItemsService.AddItemFileAsync(wiserItemFile, skipPermissionsCheck: true);
+                        fileId = await wiserItemsService.AddItemFileAsync(wiserItemFile, skipPermissionsCheck: true);
+                    }
                 }
             }
 
@@ -1224,21 +1231,13 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
             return true;
         }
 
-        foreach (var mailToSend in mailsToSendToUser)
+        foreach (var mailToSend in mailsToSendToUser.Where(mailToSend => isSuccessfulStatus && mailToSend.Receivers.Any() && !String.IsNullOrWhiteSpace(mailToSend.Content)))
         {
-            if (isSuccessfulStatus && mailToSend.Receivers.Any() && !String.IsNullOrWhiteSpace(mailToSend.Content))
-            {
-                await communicationsService.SendEmailAsync(mailToSend);
-            }
+            await communicationsService.SendEmailAsync(mailToSend);
         }
 
-        foreach (var mailToSend in mailsToSendToMerchant)
+        foreach (var mailToSend in mailsToSendToMerchant.Where(mailToSend => mailToSend.Receivers.Any() && !String.IsNullOrWhiteSpace(mailToSend.Content)))
         {
-            if (!mailToSend.Receivers.Any() || String.IsNullOrWhiteSpace(mailToSend.Content))
-            {
-                continue;
-            }
-
             await communicationsService.SendEmailAsync(mailToSend);
         }
 
