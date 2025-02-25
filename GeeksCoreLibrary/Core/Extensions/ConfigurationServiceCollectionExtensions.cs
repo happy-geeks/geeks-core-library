@@ -75,7 +75,8 @@ public static class ConfigurationServiceCollectionExtensions
     /// <param name="builder"></param>
     /// <param name="env"></param>
     /// <returns></returns>
-    public static IApplicationBuilder UseGclMiddleware(this IApplicationBuilder builder, IWebHostEnvironment env)
+    // ReSharper disable once UnusedMethodReturnValue.Global
+    public static WebApplication UseGclMiddleware(this WebApplication builder, IWebHostEnvironment env)
     {
         if (env.IsDevelopment())
         {
@@ -111,29 +112,24 @@ public static class ConfigurationServiceCollectionExtensions
 
         builder.UseRouting();
 
-        builder.UseEndpoints(endpoints =>
+        builder.MapControllers();
+
+        builder.MapHealthChecks("/health", new HealthCheckOptions
         {
-            endpoints.MapControllerRoute(
-                name: "default",
-                pattern: "{controller=Home}/{action=Index}/{id?}");
+            Predicate = _ => true,
+            ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+        });
 
-            endpoints.MapHealthChecks("/health", new HealthCheckOptions
-            {
-                Predicate = _ => true,
-                ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
-            });
+        builder.MapHealthChecks("/health/database", new HealthCheckOptions
+        {
+            Predicate = healthCheck => healthCheck.Tags.Contains("Database"),
+            ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+        });
 
-            endpoints.MapHealthChecks("/health/database", new HealthCheckOptions
-            {
-                Predicate = healthCheck => healthCheck.Tags.Contains("Database"),
-                ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
-            });
-
-            endpoints.MapHealthChecks("/health/wts", new HealthCheckOptions
-            {
-                Predicate = healthCheck => healthCheck.Tags.Contains("WTS"),
-                ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
-            });
+        builder.MapHealthChecks("/health/wts", new HealthCheckOptions
+        {
+            Predicate = healthCheck => healthCheck.Tags.Contains("WTS"),
+            ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
         });
 
         builder.HandleStartupFunctions();
@@ -146,9 +142,10 @@ public static class ConfigurationServiceCollectionExtensions
     /// </summary>
     /// <param name="builder"></param>
     /// <returns></returns>
-    public static IApplicationBuilder HandleStartupFunctions(this IApplicationBuilder builder)
+    public static void HandleStartupFunctions(this IApplicationBuilder builder)
     {
         var applicationLifetime = builder.ApplicationServices.GetService<IHostApplicationLifetime>();
+        // ReSharper disable once AsyncVoidLambda
         applicationLifetime.ApplicationStarted.Register(async () =>
         {
             // Make sure all important tables exist and are up to date, while starting the application.
@@ -191,8 +188,6 @@ public static class ConfigurationServiceCollectionExtensions
                 logger?.LogError(exception, "Error while updating tables.");
             }
         });
-
-        return builder;
     }
 
     /// <summary>
