@@ -23,13 +23,6 @@
         <IncludeBuildOutput>true</IncludeBuildOutput>
     </PropertyGroup>
 
-    <!-- Packages with private assets. These packages will not be automatically/implicitly referenced in projects that use the GCL. -->
-    <!-- Developers have to add these packages via NuGet in their own projects. -->
-    <ItemGroup>
-        <PackageReference Include="EvoPdf.Chromium.Windows" Version="11.4.1" PrivateAssets="all" />
-        <PackageReference Include="EvoPdf.Chromium.Linux" Version="11.4.1" PrivateAssets="all" />
-    </ItemGroup>
-
     <!-- Normal package references. -->
     <ItemGroup>
         <PackageReference Include="AspNetCore.HealthChecks.MySql" Version="9.0.0"/>
