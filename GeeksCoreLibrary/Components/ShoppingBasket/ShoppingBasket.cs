@@ -4,6 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net.Mime;
 using System.Text;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Account.Interfaces;
@@ -119,7 +120,7 @@ public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel, Shopp
         /// </summary>
         [CmsEnum(HideInCms = true)]
         Legacy = 10,
-        
+
         /// <summary>
         /// For creating replacements that counts the number of products and lines and their respective quantities.
         /// </summary>
@@ -732,7 +733,7 @@ public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel, Shopp
 
         if (saveToDisk)
         {
-            FileSystemHelpers.SaveToFileCacheDirectory(webHostEnvironment, filename, pdfFileResult.FileContents);
+            await FileSystemHelpers.SaveToFileCacheDirectoryAsync(webHostEnvironment, filename, pdfFileResult.FileContents);
         }
         else
         {
@@ -754,7 +755,7 @@ public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel, Shopp
             var pdfFileResult = await GeneratePdfAsync();
 
             DatabaseConnection.ClearParameters();
-            DatabaseConnection.AddParameter("content_type", "application/pdf");
+            DatabaseConnection.AddParameter("content_type", MediaTypeNames.Application.Pdf);
             DatabaseConnection.AddParameter("content", pdfFileResult.FileContents);
             DatabaseConnection.AddParameter("file_name", filename);
             DatabaseConnection.AddParameter("extension", Path.GetExtension(filename));
@@ -845,7 +846,7 @@ public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel, Shopp
 
         return await GetRenderedBasketAsync();
     }
-    
+
     /// <summary>
     /// Handles the ProductsCount mode, this mode calculates the total amount of products and lines, and the total amount of products and lines including their quantities.
     /// </summary>

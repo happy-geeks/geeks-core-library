@@ -13,7 +13,7 @@ public class WiserItemFileExtraDataModel
 {
     /// <summary>
     /// Gets or sets the alt texts for images in multiple languages.
-    /// The key is the language code and the value is the alt text for that language.
+    /// The key is the language code, the value is the alt text for that language.
     /// </summary>
     public Dictionary<string, string> AltTexts { get; set; }
 

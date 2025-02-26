@@ -1,4 +1,5 @@
-﻿using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
+﻿using System.Threading.Tasks;
+using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Modules.Barcodes.Interfaces;
 using ImageMagick;
 using ImageMagick.Factories;
@@ -11,7 +12,7 @@ namespace GeeksCoreLibrary.Modules.Barcodes.Services;
 public class BarcodesService : IBarcodesService, IScopedService
 {
     /// <inheritdoc />
-    public byte[] GenerateBarcode(string input, BarcodeFormat format, int width, int height)
+    public Task<byte[]> GenerateBarcodeAsync(string input, BarcodeFormat format, int width, int height)
     {
         var factory = new MagickImageFactory();
         var writer = new ZXing.Magick.BarcodeWriter<byte>(factory)
@@ -32,6 +33,6 @@ public class BarcodesService : IBarcodesService, IScopedService
         using var image = new MagickImage(fileBytes);
 
         // Convert the Magick image to a PNG image.
-        return image.ToByteArray(MagickFormat.Png);
+        return Task.FromResult(image.ToByteArray(MagickFormat.Png));
     }
 }

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Mime;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Account.Interfaces;
 using GeeksCoreLibrary.Core.Helpers;
@@ -91,7 +92,7 @@ public class RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggi
                 return body;
             }
 
-            if (contentType.Contains("application/json", StringComparison.OrdinalIgnoreCase))
+            if (contentType.Contains(MediaTypeNames.Application.Json, StringComparison.OrdinalIgnoreCase))
             {
                 var json = JToken.Parse(body);
                 await RemoveSensitiveDataAsync(json);
@@ -99,7 +100,7 @@ public class RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggi
                 return json.ToString();
             }
 
-            if (contentType.Contains("application/x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase))
+            if (contentType.Contains(MediaTypeNames.Application.FormUrlEncoded, StringComparison.OrdinalIgnoreCase))
             {
                 var formData = QueryHelpers.ParseQuery(body);
                 foreach (var property in GclSettings.RequestLoggingOptions.SensitiveProperties)

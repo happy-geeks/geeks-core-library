@@ -19,63 +19,67 @@ public class FileCacheService : IFileCacheService, ISingletonService
     /// Used to prevent concurrent file write operations for the same file path.
     /// </summary>
     private readonly ConcurrentDictionary<string, Lazy<Task<byte[]>>> activeWrites = new();
-    
+
     /// <inheritdoc />
-    public async Task<byte[]> GetOrAddAsync(string filePath, Func<Task<(byte[] Content, bool IsCachable)>> generateContentAsync, TimeSpan? cachingTime = null)
+    public async Task<(byte[] FileBytes, DateTime LastModified)> GetOrAddAsync(string filePath, Func<Task<(byte[] Content, bool IsCacheable)>> generateContentAsync, TimeSpan? cachingTime = null)
     {
-        var buffer = await GetBytesAsync(filePath, cachingTime);
-        if (buffer != null)
+        var result = await GetBytesAsync(filePath, cachingTime);
+        if (result.FileBytes != null)
         {
-            return buffer;
+            return result;
         }
 
         var lazyWriteTask = activeWrites.GetOrAdd(filePath, _ =>
-            new(async () =>
+            new Lazy<Task<byte[]>>(async () =>
             {
-                var (content, cachable) = await generateContentAsync();
-                if (cachable)
+                var (content, cacheable) = await generateContentAsync();
+                if (cacheable)
                 {
                     await WriteFileInternalAsync(filePath, content, cachingTime);
                 }
+
                 return content;
             }));
-        return await lazyWriteTask.Value;
+
+        return (await lazyWriteTask.Value, DateTime.UtcNow);
     }
-    
+
     /// <inheritdoc />
     public async Task<string> GetOrAddAsync(string filePath, Func<Task<string>> generateContentAsync, TimeSpan? cachingTime = null)
     {
-        var contentBytes = await GetOrAddAsync(filePath, async () =>
+        var (contentBytes, _) = await GetOrAddAsync(filePath, async () =>
         {
             var content = await generateContentAsync();
             return (Encoding.UTF8.GetBytes(content), true);
         }, cachingTime);
+
         return Encoding.UTF8.GetString(contentBytes);
     }
 
     /// <inheritdoc />
-    public async Task<byte[]> GetBytesAsync(string filePath, TimeSpan? cachingTime = null)
+    public async Task<(byte[] FileBytes, DateTime LastModified)> GetBytesAsync(string filePath, TimeSpan? cachingTime = null)
     {
         var fileInfo = new FileInfo(filePath);
-        if (!CreateDirectoryIfNotExist(fileInfo) && !IsFileExpired(fileInfo, cachingTime))
+        if (CreateDirectoryIfNotExist(fileInfo) || IsFileExpired(fileInfo, cachingTime))
         {
-            if (activeWrites.TryGetValue(filePath, out var writeTask))
-            {
-                return await writeTask.Value;
-            }
-            
-            await using var fileStream = fileInfo.Open(FileMode.Open, FileAccess.Read, FileShare.Read);
-            var buffer = new byte[fileStream.Length];
-            _ = await fileStream.ReadAsync(buffer);
-            return buffer;
+            return (null, DateTime.MinValue);
         }
-        return null;
+
+        if (activeWrites.TryGetValue(filePath, out var writeTask))
+        {
+            return (await writeTask.Value, DateTime.UtcNow);
+        }
+
+        await using var fileStream = fileInfo.Open(FileMode.Open, FileAccess.Read, FileShare.Read);
+        var buffer = new byte[fileStream.Length];
+        _ = await fileStream.ReadAsync(buffer);
+        return (buffer, fileInfo.LastWriteTimeUtc);
     }
-    
+
     /// <inheritdoc />
     public async Task<string> GetTextAsync(string filePath, TimeSpan? cachingTime = null)
     {
-        var buffer = await GetBytesAsync(filePath, cachingTime);
+        var (buffer, _) = await GetBytesAsync(filePath, cachingTime);
         return buffer != null ? Encoding.UTF8.GetString(buffer) : null;
     }
 
@@ -83,15 +87,15 @@ public class FileCacheService : IFileCacheService, ISingletonService
     public async Task WriteFileIfNotExistsOrExpiredAsync(string filePath, byte[] content, TimeSpan? cachingTime = null)
     {
         var lazyWriteTask = activeWrites.GetOrAdd(filePath, _ =>
-            new Lazy<Task<byte[]>>( async () =>
+            new Lazy<Task<byte[]>>(async () =>
             {
                 await WriteFileInternalAsync(filePath, content, cachingTime);
                 return content;
             }));
-        
+
         await lazyWriteTask.Value;
     }
-    
+
     /// <inheritdoc />
     public async Task WriteFileIfNotExistsOrExpiredAsync(string filePath, string content, TimeSpan? cachingTime)
     {
@@ -109,8 +113,8 @@ public class FileCacheService : IFileCacheService, ISingletonService
         {
             return;
         }
-        
-        try 
+
+        try
         {
             var fileInfo = new FileInfo(filePath);
             if (IsFileExpired(fileInfo, cachingTime))
@@ -133,8 +137,7 @@ public class FileCacheService : IFileCacheService, ISingletonService
     /// <returns><c>true</c> if the file is expired or does not exist; otherwise, <c>false</c>.</returns>
     private static bool IsFileExpired(FileInfo fileInfo, TimeSpan? cachingTime)
     {
-        return !fileInfo.Exists || (cachingTime is not null &&
-               DateTime.UtcNow - fileInfo.LastWriteTimeUtc > cachingTime);
+        return !fileInfo.Exists || (cachingTime is not null && DateTime.UtcNow - fileInfo.LastWriteTimeUtc > cachingTime);
     }
 
     /// <summary>

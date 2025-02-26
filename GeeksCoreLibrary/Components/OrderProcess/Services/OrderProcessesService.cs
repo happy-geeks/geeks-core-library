@@ -4,6 +4,7 @@ using System.Data;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net.Mime;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Web;
@@ -1153,9 +1154,10 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
                         Content = file.FileContents,
                         FileName = file.FileDownloadName,
                         Extension = Path.GetExtension(file.FileDownloadName),
-                        ContentType = "application/pdf",
+                        ContentType = MediaTypeNames.Application.Pdf,
                         ItemId = main.Id,
-                        PropertyName = Constants.InvoicePdfProperty
+                        PropertyName = Constants.InvoicePdfProperty,
+                        Protected = true
                     };
 
                     fileId = await wiserItemsService.AddItemFileAsync(wiserItemFile, skipPermissionsCheck: true);

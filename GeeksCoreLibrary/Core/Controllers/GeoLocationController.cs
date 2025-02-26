@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Net.Mime;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -42,6 +43,6 @@ public class GeoLocationController(IGeoLocationService geoLocationService) : Con
         };
 
         var result = JsonConvert.SerializeObject(await geoLocationService.GetAddressInfoAsync(zipCode, houseNumber, houseNumberAddition, country), serializerSettings);
-        return Content(result, "application/json");
+        return Content(result, MediaTypeNames.Application.Json);
     }
 }

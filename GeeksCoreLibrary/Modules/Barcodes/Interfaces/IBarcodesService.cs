@@ -1,4 +1,5 @@
-﻿using ZXing;
+﻿using System.Threading.Tasks;
+using ZXing;
 
 namespace GeeksCoreLibrary.Modules.Barcodes.Interfaces;
 
@@ -34,5 +35,5 @@ public interface IBarcodesService
     /// <param name="width">The width of the image.</param>
     /// <param name="height">The height of the image.</param>
     /// <returns>The bytes of the image file.</returns>
-    byte[] GenerateBarcode(string input, BarcodeFormat format, int width, int height);
+    Task<byte[]> GenerateBarcodeAsync(string input, BarcodeFormat format, int width, int height);
 }

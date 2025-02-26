@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
 using System.Linq;
+using System.Net.Mime;
 using System.Text;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Enums;
@@ -107,16 +108,16 @@ public class TemplatesController(
             switch (contentTemplate.Type)
             {
                 case TemplateTypes.Js:
-                    return Content(contentTemplate.Content ?? "", "application/javascript");
+                    return Content(contentTemplate.Content ?? "", MediaTypeNames.Text.JavaScript);
                 case TemplateTypes.Scss:
                 case TemplateTypes.Css:
-                    return Content(contentTemplate.Content ?? "", "text/css");
+                    return Content(contentTemplate.Content ?? "", MediaTypeNames.Text.Css);
                 case TemplateTypes.Query:
                     var jsonResult = await templatesService.GetJsonResponseFromQueryAsync((QueryTemplate) contentTemplate);
-                    return Content(JsonConvert.SerializeObject(jsonResult), "application/json");
+                    return Content(JsonConvert.SerializeObject(jsonResult), MediaTypeNames.Application.Json);
                 case TemplateTypes.Normal:
                 case TemplateTypes.Unknown:
-                    return Content(contentTemplate.Content ?? "", "text/plain");
+                    return Content(contentTemplate.Content ?? "", MediaTypeNames.Text.Plain);
                 case TemplateTypes.Html:
                     var noIndex = contentTemplate.RobotsNoIndex;
                     var noFollow = contentTemplate.RobotsNoFollow;
@@ -191,7 +192,7 @@ public class TemplatesController(
                     return View(viewModel);
                 }
 
-                return Content(newBodyHtml, "text/html");
+                return Content(newBodyHtml, MediaTypeNames.Text.Html);
             }
 
             // If a component set the status code to a 4xx status code, then return that actual status code
@@ -229,7 +230,7 @@ public class TemplatesController(
             {
                 StatusCode = StatusCodes.Status500InternalServerError,
                 Content = $"<pre>{exception}</pre>",
-                ContentType = "text/html"
+                ContentType = MediaTypeNames.Text.Html
             };
         }
     }
@@ -279,7 +280,7 @@ public class TemplatesController(
 
             var jsonResult = await templatesService.GetJsonResponseFromQueryAsync(result);
 
-            return Content(JsonConvert.SerializeObject(jsonResult), "application/json");
+            return Content(JsonConvert.SerializeObject(jsonResult), MediaTypeNames.Application.Json);
         }
         catch (Exception exception)
         {
@@ -349,7 +350,7 @@ public class TemplatesController(
 
             var jsonResult = await templatesService.GetJsonResponseFromRoutineAsync(result);
 
-            return Content(JsonConvert.SerializeObject(jsonResult), "application/json");
+            return Content(JsonConvert.SerializeObject(jsonResult), MediaTypeNames.Application.Json);
         }
         catch (Exception exception)
         {
@@ -390,7 +391,7 @@ public class TemplatesController(
                 {
                     if (!Int32.TryParse(HttpContextHelpers.GetRequestValue(HttpContext, "contentId"), out componentId) || componentId <= 0)
                     {
-                        return Content("<!-- No component ID found -->", "text/html");
+                        return Content("<!-- No component ID found -->", MediaTypeNames.Text.Html);
                     }
                 }
             }
@@ -400,9 +401,9 @@ public class TemplatesController(
 
             return result switch
             {
-                null => Content("", "text/html"),
-                string resultString => Content(resultString, "text/html"),
-                _ => Content(JsonConvert.SerializeObject(!resultObject.HasValue ? result : resultObject.Value.Data), "application/json")
+                null => Content("", MediaTypeNames.Text.Html),
+                string resultString => Content(resultString, MediaTypeNames.Text.Html),
+                _ => Content(JsonConvert.SerializeObject(!resultObject.HasValue ? result : resultObject.Value.Data), MediaTypeNames.Application.Json)
             };
         }
         catch (Exception exception)
@@ -419,7 +420,7 @@ public class TemplatesController(
             {
                 StatusCode = StatusCodes.Status500InternalServerError,
                 Content = exception.ToString(),
-                ContentType = "text/html"
+                ContentType = MediaTypeNames.Text.Html
             };
         }
     }
@@ -475,8 +476,8 @@ public class TemplatesController(
             var partialTemplateContent = htmlDocument.DocumentNode.SelectSingleNode($"//div[@data-type='partial-template'][@data-name='{partialTemplateName}']")?.InnerHtml;
 
             return String.IsNullOrWhiteSpace(partialTemplateContent)
-                ? Content("The specified partial template can't be found on the current page", "text/html")
-                : Content(partialTemplateContent, "text/html");
+                ? Content("The specified partial template can't be found on the current page", MediaTypeNames.Text.Html)
+                : Content(partialTemplateContent, MediaTypeNames.Text.Html);
         }
         catch (Exception exception)
         {
@@ -493,7 +494,7 @@ public class TemplatesController(
             {
                 StatusCode = StatusCodes.Status500InternalServerError,
                 Content = exception.ToString(),
-                ContentType = "text/html"
+                ContentType = MediaTypeNames.Text.Html
             };
         }
         finally

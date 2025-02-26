@@ -1,61 +1,37 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
+using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Helpers;
+using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Barcodes.Interfaces;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ZXing;
 
 namespace GeeksCoreLibrary.Modules.Barcodes.Services;
 
 /// <inheritdoc cref="IBarcodesService"/>
-public class CachedBarcodesService : IBarcodesService
+public class CachedBarcodesService(
+    IOptions<GclSettings> gclSettings,
+    IBarcodesService barcodesService,
+    IFileCacheService fileCacheService,
+    IWebHostEnvironment webHostEnvironment = null)
+    : IBarcodesService
 {
-    private readonly GclSettings gclSettings;
-    private readonly IBarcodesService barcodesService;
-    private readonly IWebHostEnvironment webHostEnvironment;
-    private readonly ILogger<CachedBarcodesService> logger;
-
-    /// <summary>
-    /// Creates a new instance of <see cref="CachedBarcodesService"/>.
-    /// </summary>
-    public CachedBarcodesService(IOptions<GclSettings> gclSettings, IBarcodesService barcodesService, ILogger<CachedBarcodesService> logger, IWebHostEnvironment webHostEnvironment = null)
-    {
-        this.gclSettings = gclSettings.Value;
-        this.barcodesService = barcodesService;
-        this.webHostEnvironment = webHostEnvironment;
-        this.logger = logger;
-    }
+    private readonly GclSettings gclSettings = gclSettings.Value;
 
     /// <inheritdoc />
-    public byte[] GenerateBarcode(string input, BarcodeFormat format, int width, int height)
+    public async Task<byte[]> GenerateBarcodeAsync(string input, BarcodeFormat format, int width, int height)
     {
-        byte[] fileBytes;
-
         // Retrieve the path of the cache directory.
         var cacheBasePath = FileSystemHelpers.GetFileCacheDirectory(webHostEnvironment);
-        if (String.IsNullOrWhiteSpace(cacheBasePath))
-        {
-            // Log a warning if the directory doesn't exist, and generate a new barcode.
-            logger.LogWarning($"Files cache is enabled but the directory '{cacheBasePath}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
-            fileBytes = barcodesService.GenerateBarcode(input, format, width, height);
-            return fileBytes;
-        }
-
         var filename = $"barcode_{format:G}_{width}x{height}_{input}.png";
         var filePath = Path.Combine(cacheBasePath, filename);
 
-        var file = new FileInfo(filePath);
-        if (file.Exists && DateTime.UtcNow.Subtract(file.LastWriteTimeUtc) <= gclSettings.DefaultItemFileCacheDuration)
-        {
-            return File.ReadAllBytes(filePath);
-        }
+        var (fileBytes, _) = await fileCacheService.GetOrAddAsync(filePath, async () =>
+                (await barcodesService.GenerateBarcodeAsync(input, format, width, height), true),
+            gclSettings.DefaultItemFileCacheDuration);
 
-        // Generate new barcode if it doesn't exist yet or if it's older than one hour.
-        fileBytes = barcodesService.GenerateBarcode(input, format, width, height);
-        FileSystemHelpers.SaveToFileCacheDirectory(webHostEnvironment, filename, fileBytes);
         return fileBytes;
     }
 }
