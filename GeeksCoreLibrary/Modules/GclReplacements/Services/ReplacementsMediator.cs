@@ -264,16 +264,25 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
 
             var value = Convert.ToString(replaceData[variableName], new CultureInfo("en-US"));
 
-            // If the value comes from un untrusted source (e.g. user input), we need to strip HTML tags to prevent XSS attacks.
-            // If the replacements are for a query the inputs are protected using sql parameters so encoding can be skipped.
-            if (unsafeSource.HasValue && !forQuery)
+            if (unsafeSource.HasValue)
             {
-                value = value.StripHtml();
-                value = unsafeSource switch
+                // If the replacement data is from an unsafe source, then skip any user related variables, to make sure that users can't overwrite these.
+                if (variableName.StartsWith("Account_", StringComparison.OrdinalIgnoreCase) || variableName.StartsWith("AccountWiser2_", StringComparison.OrdinalIgnoreCase))
                 {
-                    UnsafeSources.HttpRequest => HttpUtility.UrlEncode(value),
-                    _ => throw new ArgumentOutOfRangeException(nameof(unsafeSource), unsafeSource, null)
-                };
+                    continue;
+                }
+
+                // If the value comes from un untrusted source (e.g. user input), we need to strip HTML tags to prevent XSS attacks.
+                // If the replacements are for a query the inputs are protected using sql parameters so encoding can be skipped.
+                if (!forQuery)
+                {
+                    value = value.StripHtml();
+                    value = unsafeSource switch
+                    {
+                        UnsafeSources.HttpRequest => HttpUtility.UrlEncode(value),
+                        _ => throw new ArgumentOutOfRangeException(nameof(unsafeSource), unsafeSource, null)
+                    };
+                }
             }
 
             if (String.IsNullOrWhiteSpace(value))
