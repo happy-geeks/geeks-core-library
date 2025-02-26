@@ -66,6 +66,12 @@ public class JsonHelpers
                 foreach (var property in arrayProperties)
                 {
                     var array = FlattenJsonArray((JArray) property.Value);
+                    
+                    if (array.Count == 0)
+                    {
+                        continue;
+                    }
+                    
                     var newCombinations = new List<JObject>();
 
                     foreach (var combination in combinations)
