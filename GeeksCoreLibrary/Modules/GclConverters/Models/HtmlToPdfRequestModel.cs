@@ -1,4 +1,4 @@
-﻿using EvoPdf.Chromium;
+﻿using GeeksCoreLibrary.Modules.GclConverters.Enums;
 
 namespace GeeksCoreLibrary.Modules.GclConverters.Models;
 
@@ -51,5 +51,5 @@ public class HtmlToPdfRequestModel
     /// <summary>
     /// Gets or sets the orientation for the PDF. Default is Portrait.
     /// </summary>
-    public PdfPageOrientation? Orientation { get; set; } = PdfPageOrientation.Portrait;
+    public PageOrientation? Orientation { get; set; } = PageOrientation.Portrait;
 }

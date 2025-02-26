@@ -4,6 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace GeeksCoreLibrary.Modules.GclConverters.Interfaces;
 
+/// <summary>
+/// A service for converting HTML to PDF files, with settings that can be stored in the database, or passed as a parameter.
+/// </summary>
 public interface IHtmlToPdfConverterService
 {
     /// <summary>
@@ -28,4 +31,12 @@ public interface IHtmlToPdfConverterService
     /// <param name="contentPropertyName">Optional: If you have a template entity where the HTML content/template is saved in a different property than <see cref="HtmlTemplateConstants.HtmlTemplatePropertyName"/>, you can enter that here.</param>
     /// <returns>The <see cref="HtmlToPdfRequestModel"/> with the settings.</returns>
     Task<HtmlToPdfRequestModel> GetHtmlToPdfSettingsAsync(ulong templateItemId, string languageCode = null, string contentPropertyName = null);
+
+    /// <summary>
+    /// Retrieve the background image for the PDF from Wiser.
+    /// </summary>
+    /// <param name="itemId"></param>
+    /// <param name="backgroundPropertyName"></param>
+    /// <returns></returns>
+    Task<string> RetrieveBackgroundImageAsync(ulong itemId, string backgroundPropertyName);
 }

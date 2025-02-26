@@ -15,4 +15,6 @@ public static class HtmlTemplateConstants
     public const string PdfHeaderPropertyName = "header";
 
     public const string PdfFooterPropertyName = "footer";
+
+    public const string CustomBackGroundPropertySettingName = "pdf_backgroundpropertyname";
 }
