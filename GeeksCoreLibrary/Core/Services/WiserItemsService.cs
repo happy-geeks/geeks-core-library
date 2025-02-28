@@ -4171,7 +4171,7 @@ public class WiserItemsService(
 
                 databaseConnection.AddParameter("id", itemDetail.ItemLinkId);
                 databaseConnection.AddParameter("linkType", setting.LinkType);
-                value.Add("link_type");
+                columnsForQuery[setting.TableName].Add("link_type");
                 parametersForQuery[setting.TableName].Add("?linkType");
 
                 var dataTable = await databaseConnection.GetAsync($"SELECT item_id, destination_item_id FROM {linkTablePrefix}{WiserTableNames.WiserItemLink} WHERE id = ?id");
@@ -4187,7 +4187,7 @@ public class WiserItemsService(
                 }
             }
 
-            value.Add($"`{setting.ColumnName.ToMySqlSafeValue(false)}`");
+            columnsForQuery[setting.TableName].Add($"`{setting.ColumnName.ToMySqlSafeValue(false)}`");
 
             databaseConnection.AddParameter("itemId", wiserItem.Id);
             databaseConnection.AddParameter($"itemLinkId{counter}", itemDetail.ItemLinkId);
@@ -4202,7 +4202,7 @@ public class WiserItemsService(
 
             if (alsoSaveSeoValue)
             {
-                value.Add($"`{setting.ColumnName.ToMySqlSafeValue(false)}{Constants.SeoPropertySuffix}`");
+                columnsForQuery[setting.TableName].Add($"`{setting.ColumnName.ToMySqlSafeValue(false)}{Constants.SeoPropertySuffix}`");
                 parametersForQuery[setting.TableName].Add(deleteValue ? "NULL" : $"?{(useLongValueColumn ? "longValue" : "value")}{Constants.SeoPropertySuffix}{counter}");
             }
 
