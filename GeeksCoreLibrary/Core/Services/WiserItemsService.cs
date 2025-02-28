@@ -1143,14 +1143,7 @@ public class WiserItemsService(
 
                     if (deleteValue)
                     {
-                        if (itemDetail.Id > 0)
-                        {
-                            deleteQueryBuilder.Add($"id = ?itemDetailId{counter}");
-                        }
-                        else
-                        {
-                            deleteQueryBuilder.Add($"(`key` = ?key{counter} AND language_code = ?languageCode{counter})");
-                        }
+                        deleteQueryBuilder.Add(itemDetail.Id > 0 ? $"id = ?itemDetailId{counter}" : $"(`key` = ?key{counter} AND language_code = ?languageCode{counter})");
                     }
                     else if (itemDetail.Id > 0)
                     {
@@ -3636,14 +3629,14 @@ public class WiserItemsService(
         databaseConnection.AddParameter("userId", userId);
         databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
         databaseConnection.AddParameter("performParentUpdate", false); // This is used in triggers. (always set this to false since the wiseritem service takes care of the parent updates in this case)
-               
-        var addItemFileResult = await databaseConnection.GetAsync($"""
-                                                                                   SET @_username = ?username;
-                                                                                   SET @_userId = ?userId;
-                                                                                   SET @saveHistory = ?saveHistoryGcl;
-                                                                                   DELETE FROM {(linkType > 0 ? linkTablePrefix : tablePrefix)}{WiserTableNames.WiserItemFile}
-                                                                                   WHERE id=?id;
-                                                                   """, true);
+
+        await databaseConnection.ExecuteAsync($"""
+            SET @_username = ?username;
+            SET @_userId = ?userId;
+            SET @saveHistory = ?saveHistoryGcl;
+            DELETE FROM {(linkType > 0 ? linkTablePrefix : tablePrefix)}{WiserTableNames.WiserItemFile}
+            WHERE id=?id;
+            """);
 
         return true;
     }
@@ -3699,12 +3692,11 @@ public class WiserItemsService(
 
         databaseConnection.AddParameter("Ids", String.Join(",", ids));
         var queryResult = await databaseConnection.GetAsync($"""
-                                                             
-                                                                             SELECT `id`, `item_id`, `content_type`, `content`, `content_url`, `width`, `height`, `file_name`, `extension`, `added_on`, `added_by`, `title`, `property_name`, `protected`, `itemlink_id`, extra_data
-                                                                             FROM {tablePrefix}{WiserTableNames.WiserItemFile}
-                                                                             WHERE {columnName} IN ({String.Join(",", ids)})
-                                                                             {propertyNameClause}
-                                                             """, true);
+            SELECT `id`, `item_id`, `content_type`, `content`, `content_url`, `width`, `height`, `file_name`, `extension`, `added_on`, `added_by`, `title`, `property_name`, `protected`, `itemlink_id`, extra_data
+            FROM {tablePrefix}{WiserTableNames.WiserItemFile}
+            WHERE {columnName} IN ({String.Join(",", ids)})
+            {propertyNameClause}
+            """, true);
 
         if (queryResult.Rows.Count == 0)
         {
@@ -4104,10 +4096,7 @@ public class WiserItemsService(
     /// <inheritdoc />
     public async Task HandleItemAggregationAsync(IWiserItemsService wiserItemsService, WiserItemModel wiserItem, string encryptionKey = "")
     {
-        if (wiserItem == null)
-        {
-            throw new ArgumentNullException(nameof(wiserItem));
-        }
+        ArgumentNullException.ThrowIfNull(wiserItem);
 
         // Get options from fields. Some fields need to be saved differently based on what options are set.
         var entityTypeSettings = await GetEntityTypeSettingsAsync(wiserItem.EntityType);
@@ -4147,7 +4136,7 @@ public class WiserItemsService(
             settings.AddRange(await wiserItemsService.GetAggregationSettingsAsync(linkType: linkType));
         }
 
-        if (!settings.Any())
+        if (settings.Count == 0)
         {
             return;
         }
@@ -4155,27 +4144,26 @@ public class WiserItemsService(
         // Create tables if they don't exist yet.
         foreach (var tableName in settings.Select(setting => setting.TableName).Distinct())
         {
-            if (await databaseHelpersService.TableExistsAsync(tableName))
+            if (!await databaseHelpersService.TableExistsAsync(tableName))
             {
-                continue;
+                await databaseHelpersService.CreateTableAsync(tableName, new List<ColumnSettingsModel> {new("id", MySqlDbType.UInt64)});
             }
 
-            await databaseHelpersService.CreateTableAsync(tableName, new List<ColumnSettingsModel> {new("id", MySqlDbType.UInt64)});
-            await databaseHelpersService.AddColumnToTableAsync(tableName, new ColumnSettingsModel("title", MySqlDbType.VarChar, 255));
-            await databaseHelpersService.AddColumnToTableAsync(tableName, new ColumnSettingsModel("parent_item_id", MySqlDbType.UInt64));
+            await databaseHelpersService.AddColumnToTableAsync(tableName, new ColumnSettingsModel("title", MySqlDbType.VarChar, 255), false);
+            await databaseHelpersService.AddColumnToTableAsync(tableName, new ColumnSettingsModel("parent_item_id", MySqlDbType.UInt64), false);
 
             var settingsForThisTable = settings.Where(setting => setting.TableName == tableName).ToList();
 
             if (settingsForThisTable.First().LinkType > 0)
             {
-                await databaseHelpersService.AddColumnToTableAsync(tableName, new ColumnSettingsModel("source_item_id", MySqlDbType.UInt64));
-                await databaseHelpersService.AddColumnToTableAsync(tableName, new ColumnSettingsModel("destination_item_id", MySqlDbType.UInt64));
-                await databaseHelpersService.AddColumnToTableAsync(tableName, new ColumnSettingsModel("link_type", MySqlDbType.Int32));
+                await databaseHelpersService.AddColumnToTableAsync(tableName, new ColumnSettingsModel("source_item_id", MySqlDbType.UInt64), false);
+                await databaseHelpersService.AddColumnToTableAsync(tableName, new ColumnSettingsModel("destination_item_id", MySqlDbType.UInt64), false);
+                await databaseHelpersService.AddColumnToTableAsync(tableName, new ColumnSettingsModel("link_type", MySqlDbType.Int32), false);
             }
 
             foreach (var setting in settingsForThisTable)
             {
-                await databaseHelpersService.AddColumnToTableAsync(tableName, setting.ColumnSettings);
+                await databaseHelpersService.AddColumnToTableAsync(tableName, setting.ColumnSettings, false);
 
                 var fieldOptionsToUse = fieldOptions;
 
@@ -4185,18 +4173,17 @@ public class WiserItemsService(
                 }
 
                 var key = $"{setting.PropertyName}_{setting.LanguageCode}";
-                if (fieldOptionsToUse == null || !fieldOptionsToUse.ContainsKey(key))
+                if (fieldOptionsToUse == null || !fieldOptionsToUse.TryGetValue(key, out var options))
                 {
                     continue;
                 }
 
-                var options = fieldOptionsToUse[key];
                 if (!(bool) options[Constants.SaveSeoValueKey])
                 {
                     continue;
                 }
 
-                await databaseHelpersService.AddColumnToTableAsync(tableName, new ColumnSettingsModel($"{setting.ColumnSettings.Name}{Constants.SeoPropertySuffix}", setting.ColumnSettings.Type, setting.ColumnSettings.Length, setting.ColumnSettings.Decimals, setting.ColumnSettings.DefaultValue, setting.ColumnSettings.NotNull));
+                await databaseHelpersService.AddColumnToTableAsync(tableName, new ColumnSettingsModel($"{setting.ColumnSettings.Name}{Constants.SeoPropertySuffix}", setting.ColumnSettings.Type, setting.ColumnSettings.Length, setting.ColumnSettings.Decimals, setting.ColumnSettings.DefaultValue, setting.ColumnSettings.NotNull), false);
             }
         }
 
@@ -4273,8 +4260,8 @@ public class WiserItemsService(
         var query = String.Join(";", columnsForQuery.Select(x =>
             $"""
              INSERT INTO `{x.Key}` ({String.Join(",", x.Value)})
-                             VALUES ({String.Join(",", parametersForQuery[x.Key])})
-                             ON DUPLICATE KEY UPDATE {String.Join(",", x.Value.Select(column => $"{column} = VALUES({column})"))}
+             VALUES ({String.Join(",", parametersForQuery[x.Key])})
+             ON DUPLICATE KEY UPDATE {String.Join(",", x.Value.Select(column => $"{column} = VALUES({column})"))}
              """));
 
         await databaseConnection.ExecuteAsync(query);
@@ -4288,7 +4275,7 @@ public class WiserItemsService(
                 foreach (var parentItem in parentItems)
                 {
                     var parentAggregationSettings = await wiserItemsService.GetAggregationSettingsAsync(parentItem.EntityType);
-                    if (parentAggregationSettings == null || !parentAggregationSettings.Any())
+                    if (parentAggregationSettings == null || parentAggregationSettings.Count == 0)
                     {
                         continue;
                     }
@@ -4416,7 +4403,7 @@ public class WiserItemsService(
                 databaseConnection.AddParameter("saveDetailLanguageCode", itemDetail.LanguageCode ?? "");
                 databaseConnection.AddParameter("saveDetailGroupName", itemDetail.GroupName ?? "");
 
-                string query = null;
+                string query;
                 if (itemDetail.Id == 0)
                 {
                     if (itemId > 0)
@@ -4648,14 +4635,15 @@ public class WiserItemsService(
     }
 
     /// <summary>
-    /// Fills an existing <see cref="WiserItemModel"/> with data from a <see cref="DataRow"/>.
+    /// Creates a <see cref="WiserItemModel"/> and sets its details with data from the given <see cref="DataRow"/>.
     /// </summary>
-    /// <param name="wiserItem"></param>
-    /// <param name="dataRow"></param>
+    /// <param name="dataRow">The <see cref="DataRow"/> containing the data to populate the <see cref="WiserItemModel"/>.</param>
     private static WiserItemModel DataRowToItem(DataRow dataRow)
     {
-        var wiserItem = new WiserItemModel();
-        wiserItem.Id = dataRow.Field<ulong>("id");
+        var wiserItem = new WiserItemModel
+        {
+            Id = dataRow.Field<ulong>("id")
+        };
         if (dataRow.Table.Columns.Contains("original_item_id"))
         {
             wiserItem.OriginalItemId = Convert.ToUInt64(dataRow["original_item_id"]);
@@ -4736,13 +4724,17 @@ public class WiserItemsService(
         ulong seoValueItemDetailId = 0;
         var options = new Dictionary<string, object>();
         var key = $"{wiserItemDetail.Key}_{wiserItemDetail.LanguageCode}";
-        if (fieldOptions != null && fieldOptions.ContainsKey(key))
+        if (fieldOptions != null && fieldOptions.TryGetValue(key, out var fieldOption))
         {
-            options = fieldOptions[key];
+            options = fieldOption;
         }
 
         var hasGroupName = !String.IsNullOrWhiteSpace(wiserItemDetail.GroupName);
-        var previousFields = previousItemDetails.Where(x =>
+
+        // Convert to array to avoid multiple enumeration warnings.
+        var previousItemDetailsArray = previousItemDetails as WiserItemDetailModel[] ?? previousItemDetails.ToArray();
+
+        var previousFields = previousItemDetailsArray.Where(x =>
             x.Id == wiserItemDetail.Id ||
             (
                 x.IsLinkProperty == wiserItemDetail.IsLinkProperty &&
@@ -4761,25 +4753,21 @@ public class WiserItemsService(
         {
             // If we do have a group name, only get a field with the same group name and then figure out which field we're changing, if there are multiple. Because the language code for grouped fields can be changed in Wiser.
             previousFields = previousFields.Where(f => String.Equals(f.GroupName, wiserItemDetail.GroupName, StringComparison.OrdinalIgnoreCase)).ToList();
-            if (previousFields.Count == 1)
+            switch (previousFields.Count)
             {
-                previousField = previousFields.Single();
-            }
-            else if (previousFields.Count > 1)
-            {
-                if (wiserItemDetail.Id > 0)
+                case 1:
+                    previousField = previousFields.Single();
+                    break;
+                case > 1:
                 {
-                    previousField = previousFields.FirstOrDefault(f => f.Id == wiserItemDetail.Id);
-                }
+                    if (wiserItemDetail.Id > 0)
+                    {
+                        previousField = previousFields.FirstOrDefault(f => f.Id == wiserItemDetail.Id);
+                    }
 
-                if (previousField == null)
-                {
-                    previousField = previousFields.FirstOrDefault(f => String.Equals(f.LanguageCode, wiserItemDetail.LanguageCode, StringComparison.OrdinalIgnoreCase));
-                }
+                    previousField ??= previousFields.FirstOrDefault(f => String.Equals(f.LanguageCode, wiserItemDetail.LanguageCode, StringComparison.OrdinalIgnoreCase)) ?? previousFields.FirstOrDefault();
 
-                if (previousField == null)
-                {
-                    previousField = previousFields.FirstOrDefault();
+                    break;
                 }
             }
 
@@ -4794,31 +4782,31 @@ public class WiserItemsService(
             wiserItemDetail.Id = previousField.Id;
         }
 
-        if (!isNewlyCreatedItem && !previousItemDetails.Any())
+        if (!isNewlyCreatedItem && previousItemDetailsArray.Length == 0)
         {
             DataTable queryResult;
 
             if (wiserItemDetail.IsLinkProperty && wiserItemDetail.ItemLinkId > 0)
             {
                 queryResult = await databaseConnection.GetAsync($"""
-                                                                 SELECT id 
-                                                                                                                         FROM {WiserTableNames.WiserItemLinkDetail} 
-                                                                                                                         WHERE itemlink_id = ?itemLinkId{counter} 
-                                                                                                                         AND `key` = ?key{counter} 
-                                                                                                                         AND language_code = ?languageCode{counter}
-                                                                                                                         LIMIT 1
-                                                                 """, true);
+                    SELECT id 
+                    FROM {WiserTableNames.WiserItemLinkDetail} 
+                    WHERE itemlink_id = ?itemLinkId{counter} 
+                        AND `key` = ?key{counter} 
+                        AND language_code = ?languageCode{counter}
+                    LIMIT 1
+                    """, true);
             }
             else
             {
                 queryResult = await databaseConnection.GetAsync($"""
-                                                                 SELECT id 
-                                                                 FROM {tablePrefix}{WiserTableNames.WiserItemDetail} 
-                                                                 WHERE item_id = ?itemId 
-                                                                 AND `key` = ?key{counter} 
-                                                                 AND language_code = ?languageCode{counter}
-                                                                 LIMIT 1
-                                                                 """, true);
+                    SELECT id 
+                    FROM {tablePrefix}{WiserTableNames.WiserItemDetail} 
+                    WHERE item_id = ?itemId 
+                        AND `key` = ?key{counter} 
+                        AND language_code = ?languageCode{counter}
+                    LIMIT 1
+                    """, true);
             }
 
             if (queryResult.Rows.Count > 0)
@@ -4874,7 +4862,7 @@ public class WiserItemsService(
                 useLongValueColumn = wiserItemDetail.Value?.ToString()?.Length > 1000;
 
                 // Check if we need to adjust the value that gets saved in the database, such as encrypting or hashing it.
-                if ((valueChanged || alwaysSaveValues) && options.Any())
+                if ((valueChanged || alwaysSaveValues) && options.Count > 0)
                 {
                     switch (options[Constants.FieldTypeKey].ToString().ToLowerInvariant())
                     {
@@ -4882,17 +4870,17 @@ public class WiserItemsService(
                         {
                             var securityMethod = "GCL_SHA512";
 
-                            if (options.ContainsKey(Constants.SecurityMethodKey))
+                            if (options.TryGetValue(Constants.SecurityMethodKey, out var securityMethodValue))
                             {
-                                securityMethod = options[Constants.SecurityMethodKey]?.ToString()?.ToUpperInvariant();
+                                securityMethod = securityMethodValue?.ToString()?.ToUpperInvariant();
                             }
 
                             var securityKey = "";
                             if (securityMethod.InList("GCL_AES", "JCL_AES", "AES"))
                             {
-                                if (options.ContainsKey(Constants.SecurityKeyKey))
+                                if (options.TryGetValue(Constants.SecurityKeyKey, out var securityKeyValue))
                                 {
-                                    securityKey = options[Constants.SecurityKeyKey]?.ToString() ?? "";
+                                    securityKey = securityKeyValue?.ToString() ?? "";
                                 }
 
                                 if (String.IsNullOrEmpty(securityKey))
@@ -4901,41 +4889,29 @@ public class WiserItemsService(
                                 }
                             }
 
-                            switch (securityMethod)
+                            wiserItemDetail.Value = securityMethod switch
                             {
-                                case "GCL_SHA512":
-                                case "JCL_SHA512":
-                                    wiserItemDetail.Value = wiserItemDetail.Value.ToString().ToSha512ForPasswords();
-                                    break;
-                                case "GCL_AES":
-                                case "JCL_AES":
-                                    wiserItemDetail.Value = wiserItemDetail.Value.ToString().EncryptWithAesWithSalt(securityKey);
-                                    break;
-                                case "AES":
-                                    wiserItemDetail.Value = wiserItemDetail.Value.ToString().EncryptWithAes(securityKey);
-                                    break;
-                                default:
-                                    throw new Exception($"Unsupported security method used ({options[Constants.SecurityMethodKey]} for field '{wiserItemDetail.Key}' with language '{wiserItemDetail.LanguageCode}'!");
-                            }
+                                "GCL_SHA512" or "JCL_SHA512" => wiserItemDetail.Value.ToString().ToSha512ForPasswords(),
+                                "GCL_AES" or "JCL_AES" => wiserItemDetail.Value.ToString().EncryptWithAesWithSalt(securityKey),
+                                "AES" => wiserItemDetail.Value.ToString().EncryptWithAes(securityKey),
+                                _ => throw new Exception($"Unsupported security method used ({options[Constants.SecurityMethodKey]} for field '{wiserItemDetail.Key}' with language '{wiserItemDetail.LanguageCode}'!")
+                            };
 
                             break;
                         }
                         case "date-time picker":
                         {
-                            if (!options.ContainsKey("type") || !(wiserItemDetail.Value is DateTime dateTimeValue))
+                            if (!options.ContainsKey("type") || wiserItemDetail.Value is not DateTime dateTimeValue)
                             {
                                 break;
                             }
 
-                            switch (options["type"]?.ToString()?.ToLowerInvariant())
+                            wiserItemDetail.Value = options["type"]?.ToString()?.ToLowerInvariant() switch
                             {
-                                case "time":
-                                    wiserItemDetail.Value = dateTimeValue.ToString("HH:mm");
-                                    break;
-                                case "date":
-                                    wiserItemDetail.Value = dateTimeValue.ToString("yyyy-MM-dd");
-                                    break;
-                            }
+                                "time" => dateTimeValue.ToString("HH:mm"),
+                                "date" => dateTimeValue.ToString("yyyy-MM-dd"),
+                                _ => wiserItemDetail.Value
+                            };
 
                             break;
                         }
