@@ -4149,10 +4149,9 @@ public class WiserItemsService(
         var counter = 0;
         foreach (var setting in settings)
         {
-            if (!columnsForQuery.TryGetValue(setting.TableName, out var value))
+            if (!columnsForQuery.ContainsKey(setting.TableName))
             {
-                value = ["id", "title", "parent_item_id"];
-                columnsForQuery.Add(setting.TableName, value);
+                columnsForQuery.Add(setting.TableName, ["id", "title", "parent_item_id"]);
                 parametersForQuery.Add(setting.TableName, ["?id", "?title", "?parent_item_id"]);
             }
 
