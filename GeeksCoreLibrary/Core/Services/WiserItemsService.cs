@@ -878,10 +878,10 @@ public class WiserItemsService(
                     var previousValuesQuery = $"""
                                                SELECT 
                                                    d.id,
-                                               	d.key,
-                                               	d.language_code,
-                                               	d.value,
-                                               	d.long_value,
+                                                   d.key,
+                                                   d.language_code,
+                                                   d.value,
+                                                   d.long_value,
                                                    d.groupname
                                                FROM {tablePrefix}{WiserTableNames.WiserItem} i
                                                JOIN {tablePrefix}{WiserTableNames.WiserItemDetail} d ON d.item_id = i.id
@@ -919,10 +919,10 @@ public class WiserItemsService(
                         previousValuesQueryBuilder.Add($"""
                                                         SELECT 
                                                             detail.id,
-                                                        	detail.key,
-                                                        	detail.language_code,
-                                                        	detail.value,
-                                                        	detail.long_value,
+                                                            detail.key,
+                                                            detail.language_code,
+                                                            detail.value,
+                                                            detail.long_value,
                                                             detail.itemlink_id,
                                                             detail.groupname
                                                         FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
@@ -939,10 +939,10 @@ public class WiserItemsService(
                             previousValuesQueryBuilder.Add($"""
                                                             SELECT 
                                                                 detail.id,
-                                                            	detail.key,
-                                                            	detail.language_code,
-                                                            	detail.value,
-                                                            	detail.long_value,
+                                                                detail.key,
+                                                                detail.language_code,
+                                                                detail.value,
+                                                                detail.long_value,
                                                                 detail.itemlink_id,
                                                                 detail.groupname
                                                             FROM {tablePrefix}{WiserTableNames.WiserItem} AS item
@@ -1021,13 +1021,13 @@ public class WiserItemsService(
                         {
                             case "combobox":
                             case "multiselect":
-                                if (!fieldOptions[key].ContainsKey(Constants.SaveValueAsItemLinkKey) || !(bool) fieldOptions[key][Constants.SaveValueAsItemLinkKey])
+                                if (!fieldOptions[key].TryGetValue(Constants.SaveValueAsItemLinkKey, out var saveValueAsItemLinkValue) || !(bool)saveValueAsItemLinkValue)
                                 {
                                     // If the option 'saveValueAsItemLinkKey' doesn't exist or is false, we have to save this field the usual way (in wiser_itemdetail).
                                     break;
                                 }
 
-                                var linkTypeNumber = !fieldOptions[key].ContainsKey(Constants.LinkTypeNumberKey) ? 0 : Convert.ToInt32(fieldOptions[key][Constants.LinkTypeNumberKey]);
+                                var linkTypeNumber = !fieldOptions[key].TryGetValue(Constants.LinkTypeNumberKey, out var linkTypeNumberValue) ? 0 : Convert.ToInt32(linkTypeNumberValue);
                                 if (linkTypeNumber <= 0)
                                 {
                                     // If we have no link type number, we can't save the item link, so save this field the usual way (in wiser_itemdetail).
@@ -1047,6 +1047,7 @@ public class WiserItemsService(
 
                                 var currentItemIsDestinationId = fieldOptions[key].ContainsKey(Constants.CurrentItemIsDestinationIdKey) && (bool) fieldOptions[key][Constants.CurrentItemIsDestinationIdKey];
                                 var linkTablePrefix = await GetTablePrefixForLinkAsync(linkTypeNumber, currentItemIsDestinationId && fieldOptions[key].TryGetValue(Constants.EntityTypeKey, out var fieldOptionsEntityKey) ? Convert.ToString(fieldOptionsEntityKey) : wiserItem.EntityType);
+                                var linkSettings = await GetLinkTypeSettingsAsync(linkTypeNumber);
 
                                 databaseConnection.AddParameter("linkTypeNumber", linkTypeNumber);
 
@@ -1054,7 +1055,7 @@ public class WiserItemsService(
                                 // NOTE: Here we make an assumption that the given linkTypeNumber is not used for anything else!
                                 // NOTE: We can't do this without making that assumption, since we don't know what the old values were.
                                 var wherePart = "";
-                                if (destinationIds.Any())
+                                if (destinationIds.Count > 0)
                                 {
                                     wherePart = $"AND {(!currentItemIsDestinationId ? "destination_item_id" : "item_id")} NOT IN ({String.Join(",", destinationIds)})";
                                 }
@@ -1062,14 +1063,61 @@ public class WiserItemsService(
                                 var query = $"DELETE FROM {linkTablePrefix}{WiserTableNames.WiserItemLink} WHERE {(currentItemIsDestinationId ? "destination_item_id" : "item_id")} = ?itemId AND type = ?linkTypeNumber {wherePart}";
                                 await databaseConnection.ExecuteAsync(query);
 
+                                if (linkSettings.UseItemParentId)
+                                {
+                                    databaseConnection.AddParameter("destinationId", 0);
+                                    databaseConnection.AddParameter("entityType", currentItemIsDestinationId ? linkSettings.SourceEntityType : linkSettings.DestinationEntityType);
+
+                                    if (currentItemIsDestinationId)
+                                    {
+                                        await databaseConnection.ExecuteAsync($"""
+                                            UPDATE {tablePrefix}{WiserTableNames.WiserItem}
+                                            SET parent_item_id = ?destinationId
+                                            WHERE parent_item_id = ?itemId AND entity_type = ?entityType;
+                                            """);
+                                    }
+                                    else
+                                    {
+                                        await databaseConnection.ExecuteAsync($"""
+                                            UPDATE {tablePrefix}{WiserTableNames.WiserItem}
+                                            SET parent_item_id = ?destinationId
+                                            WHERE id = ?itemId AND entity_type = ?entityType;
+                                            """);
+                                    }
+                                }
+
                                 // Save the new values as item links.
                                 foreach (var destinationId in destinationIds)
                                 {
                                     databaseConnection.AddParameter("destinationId", destinationId);
-                                    await databaseConnection.ExecuteAsync($"""
-                                                                           INSERT IGNORE INTO {linkTablePrefix}{WiserTableNames.WiserItemLink} ({(currentItemIsDestinationId ? "destination_item_id, item_id" : "item_id, destination_item_id")}, type)
-                                                                           VALUES (?itemId, ?destinationId, ?linkTypeNumber);
-                                                                           """);
+                                    if (linkSettings.UseItemParentId)
+                                    {
+                                        databaseConnection.AddParameter("entityType", currentItemIsDestinationId ? linkSettings.DestinationEntityType : linkSettings.SourceEntityType);
+
+                                        if (currentItemIsDestinationId)
+                                        {
+                                            await databaseConnection.ExecuteAsync($"""
+                                                UPDATE {tablePrefix}{WiserTableNames.WiserItem}
+                                                SET parent_item_id = ?itemId
+                                                WHERE id = ?destinationId;
+                                                """);
+                                        }
+                                        else
+                                        {
+                                            await databaseConnection.ExecuteAsync($"""
+                                                UPDATE {tablePrefix}{WiserTableNames.WiserItem}
+                                                SET parent_item_id = ?destinationId
+                                                WHERE id = ?itemId;
+                                                """);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        await databaseConnection.ExecuteAsync($"""
+                                            INSERT IGNORE INTO {linkTablePrefix}{WiserTableNames.WiserItemLink} ({(currentItemIsDestinationId ? "destination_item_id, item_id" : "item_id, destination_item_id")}, type)
+                                            VALUES (?itemId, ?destinationId, ?linkTypeNumber);
+                                            """);
+                                    }
                                 }
 
                                 // Continue the foreach, so that we don't save the field normally in wiser_itemdetail.
@@ -1209,14 +1257,14 @@ public class WiserItemsService(
                                 databaseConnection.AddParameter($"itemLinkId{counter}", itemDetail.ItemLinkId);
                                 databaseConnection.AddParameter($"ordering{counter}", itemDetail.Value);
 
-                                var updateOrderingQuery = $@"UPDATE {linkTablePrefix}{WiserTableNames.WiserItemLink} SET ordering = ?ordering{counter} WHERE id = ?itemLinkId{counter}";
+                                var updateOrderingQuery = $"UPDATE {linkTablePrefix}{WiserTableNames.WiserItemLink} SET ordering = ?ordering{counter} WHERE id = ?itemLinkId{counter}";
                                 await databaseConnection.ExecuteAsync(updateOrderingQuery);
                             }
                             else
                             {
                                 databaseConnection.AddParameter($"ordering{counter}", itemDetail.Value);
 
-                                var updateOrderingQuery = $@"UPDATE {WiserTableNames.WiserItem} SET ordering = ?ordering{counter} WHERE id = ?itemId";
+                                var updateOrderingQuery = $"UPDATE {WiserTableNames.WiserItem} SET ordering = ?ordering{counter} WHERE id = ?itemId";
                                 await databaseConnection.ExecuteAsync(updateOrderingQuery);
                             }
 
