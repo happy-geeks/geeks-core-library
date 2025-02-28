@@ -278,6 +278,9 @@ public static class ConfigurationServiceCollectionExtensions
                 .AddHttpCompression();
         }
 
+        // Background services.
+        services.AddHostedService<FolderCleanupBackgroundService>();
+
         // Enable caching.
         services.AddLazyCache();
 
