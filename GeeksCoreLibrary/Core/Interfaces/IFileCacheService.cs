@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Threading.Tasks;
 
 namespace GeeksCoreLibrary.Core.Interfaces;
@@ -57,4 +58,12 @@ public interface IFileCacheService
     /// <param name="content">The byte array content to write to the file.</param>
     /// <param name="cachingTime">The time span defining the expiration duration. If the file's age exceeds this, it will be overwritten.</param>
     Task WriteFileIfNotExistsOrExpiredAsync(string filePath, byte[] content, TimeSpan? cachingTime = null);
+
+    /// <summary>
+    /// Writes a file with content from a stream if it does not exist or if the existing file is older than the specified caching minutes.
+    /// </summary>
+    /// <param name="filePath">The path of the file to write.</param>
+    /// <param name="content">The stream to write to the file.</param>
+    /// <param name="cachingTime">The time span defining the expiration duration. If the file's age exceeds this, it will be overwritten.</param>
+    Task WriteFileIfNotExistsOrExpiredAsync(string filePath, Stream content, TimeSpan? cachingTime = null);
 }
