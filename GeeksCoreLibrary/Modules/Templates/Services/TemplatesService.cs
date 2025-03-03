@@ -1188,31 +1188,27 @@ public class TemplatesService(
                     templateName = await stringReplacementsService.DoAllReplacementsAsync(templateName, dataRow, handleRequest, forQuery: forQuery, handleVariableDefaults: handleVariableDefaults);
                 }
 
+                Template template;
+
                 // Replace templates (syntax is <[templateName]> or <[parentFolder\templateName]>
                 if (templateName.Contains("\\"))
                 {
                     // Contains a parent
                     var split = templateName.Split('\\');
-                    var template = await templatesService.GetTemplateContentAsync(name: split[1], type: templateType, parentName: split[0]);
-                    var templateContent = template.Content;
-                    if (handleStringReplacements)
-                    {
-                        templateContent = await stringReplacementsService.DoAllReplacementsAsync(templateContent, dataRow, handleRequest, false, false, forQuery, handleVariableDefaults: handleVariableDefaults);
-                    }
-
-                    input = input.Replace(m.Groups[0].Value, templateContent, StringComparison.OrdinalIgnoreCase);
+                    template = await templatesService.GetTemplateContentAsync(name: split[1], type: templateType, parentName: split[0]);
                 }
                 else
                 {
-                    var template = await templatesService.GetTemplateContentAsync(name: templateName, type: templateType);
-                    var templateContent = template.Content;
-                    if (handleStringReplacements)
-                    {
-                        templateContent = await stringReplacementsService.DoAllReplacementsAsync(templateContent, dataRow, handleRequest, false, false, forQuery, handleVariableDefaults: handleVariableDefaults);
-                    }
-
-                    input = input.Replace(m.Groups[0].Value, templateContent, StringComparison.OrdinalIgnoreCase);
+                    template = await templatesService.GetTemplateContentAsync(name: templateName, type: templateType);
                 }
+
+                var templateContent = template.Content;
+                if (handleStringReplacements)
+                {
+                    templateContent = await stringReplacementsService.DoAllReplacementsAsync(templateContent, dataRow, handleRequest, false, false, forQuery, handleVariableDefaults: handleVariableDefaults);
+                }
+
+                input = input.Replace(m.Groups[0].Value, templateContent, StringComparison.OrdinalIgnoreCase);
             }
 
             inclusionsRegex = new Regex(@"\[include\[([^{?\]]*)(\?)?([^{?\]]*?)\]\]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
@@ -1226,43 +1222,48 @@ public class TemplatesService(
                     templateName = await stringReplacementsService.DoAllReplacementsAsync(templateName, dataRow, handleRequest, forQuery: forQuery, handleVariableDefaults: handleVariableDefaults);
                 }
 
+                Template template;
+
                 // Replace templates (syntax is [include[templateName]] or [include[parentFolder\templateName]] or [include[templateName?x=y]]
                 if (templateName.Contains("\\"))
                 {
                     // Contains a parent
                     var split = templateName.Split('\\');
-                    var template = await templatesService.GetTemplateContentAsync(name: split[1], type: templateType, parentName: split[0]);
-                    var values = queryString.Split('&', StringSplitOptions.RemoveEmptyEntries).Select(x => new KeyValuePair<string, string>(x.Split('=')[0], x.Split('=')[1]));
-                    var content = replacementsMediator.DoReplacements(template.Content, values, forQuery);
-                    if (handleStringReplacements)
-                    {
-                        content = await stringReplacementsService.DoAllReplacementsAsync(content, dataRow, handleRequest, false, false, forQuery, handleVariableDefaults: handleVariableDefaults);
-                    }
-
-                    if (!String.IsNullOrWhiteSpace(queryString))
-                    {
-                        content = content.Replace("<div class=\"dynamic-content", $"<div data=\"{queryString}\" class=\"/dynamic-content");
-                    }
-
-                    input = input.Replace(m.Groups[0].Value, content, StringComparison.OrdinalIgnoreCase);
+                    template = await templatesService.GetTemplateAsync(name: split[1], type: templateType, parentName: split[0]);
                 }
                 else
                 {
-                    var template = await templatesService.GetTemplateContentAsync(name: templateName, type: templateType);
-                    var values = queryString.Split('&', StringSplitOptions.RemoveEmptyEntries).Select(x => new KeyValuePair<string, string>(x.Split('=')[0], x.Split('=')[1]));
-                    var content = replacementsMediator.DoReplacements(template.Content, values, forQuery);
-                    if (handleStringReplacements)
-                    {
-                        content = await stringReplacementsService.DoAllReplacementsAsync(content, dataRow, handleRequest, false, false, forQuery, handleVariableDefaults: handleVariableDefaults);
-                    }
-
-                    if (!String.IsNullOrWhiteSpace(queryString))
-                    {
-                        content = content.Replace("<div class=\"dynamic-content", $"<div data=\"{queryString}\" class=\"/dynamic-content");
-                    }
-
-                    input = input.Replace(m.Groups[0].Value, content, StringComparison.OrdinalIgnoreCase);
+                    template = await templatesService.GetTemplateAsync(name: templateName, type: templateType);
                 }
+
+                var content = template.Content;
+
+                // Execute pre load query for html template includes if available
+                if (template.Type == TemplateTypes.Html && !String.IsNullOrWhiteSpace(template.PreLoadQuery))
+                {
+                    var query = await DoReplacesAsync(templatesService, template.PreLoadQuery, forQuery: true, templateType: TemplateTypes.Query);
+                    var dataTable = await databaseConnection.GetAsync(query);
+
+                    if (dataTable.Rows.Count > 0)
+                    {
+                        content = replacementsMediator.DoReplacements(content, dataTable.Rows[0], forQuery, prefix: "{template.");
+                    }
+                }
+
+                var values = queryString.Split('&', StringSplitOptions.RemoveEmptyEntries).Select(x => new KeyValuePair<string, string>(x.Split('=')[0], x.Split('=')[1]));
+                content = replacementsMediator.DoReplacements(content, values, forQuery);
+
+                if (handleStringReplacements)
+                {
+                    content = await stringReplacementsService.DoAllReplacementsAsync(content, dataRow, handleRequest, false, false, forQuery, handleVariableDefaults: handleVariableDefaults);
+                }
+
+                if (!String.IsNullOrWhiteSpace(queryString))
+                {
+                    content = content.Replace("<div class=\"dynamic-content", $"<div data=\"{queryString}\" class=\"/dynamic-content");
+                }
+
+                input = input.Replace(m.Groups[0].Value, content, StringComparison.OrdinalIgnoreCase);
             }
         }
 
