@@ -279,7 +279,7 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
                     value = value.StripHtml();
                     value = unsafeSource switch
                     {
-                        UnsafeSources.HttpRequest => HttpUtility.UrlEncode(value),
+                        UnsafeSources.HttpRequest => Uri.EscapeDataString(value),
                         _ => throw new ArgumentOutOfRangeException(nameof(unsafeSource), unsafeSource, null)
                     };
                 }
