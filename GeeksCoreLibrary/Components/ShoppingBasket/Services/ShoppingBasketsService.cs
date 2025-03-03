@@ -1320,61 +1320,60 @@ public class ShoppingBasketsService(
         var pricesIncludesVat = Convert.ToBoolean(await objectsService.FindSystemObjectByDomainNameAsync("PricesIncludeVat", "true"));
         var user = await accountsService.GetUserDataFromCookieAsync();
 
-        if (priceType == ShoppingBasket.PriceTypes.PspPriceInVat || priceType == ShoppingBasket.PriceTypes.PspPriceExVat)
+        switch (priceType)
         {
-            price = await GetPriceAsync(shoppingBasket, basketLines, settings, priceType == ShoppingBasket.PriceTypes.PspPriceInVat ? ShoppingBasket.PriceTypes.InVatInDiscount : ShoppingBasket.PriceTypes.ExVatInDiscount, lineType, onlyIfVatRate, includeDiscountGettingVat);
-            if (price > 0)
+            case ShoppingBasket.PriceTypes.PspPriceInVat:
+            case ShoppingBasket.PriceTypes.PspPriceExVat:
             {
-                var depositPercentagePropertyName = await objectsService.FindSystemObjectByDomainNameAsync("W2CHECKOUT_DepositPercentagePropertyName");
-                var userDetails = await GetUserDetailsAsync();
-                if (!String.IsNullOrWhiteSpace(depositPercentagePropertyName))
+                price = await GetPriceAsync(shoppingBasket, basketLines, settings, priceType == ShoppingBasket.PriceTypes.PspPriceInVat ? ShoppingBasket.PriceTypes.InVatInDiscount : ShoppingBasket.PriceTypes.ExVatInDiscount, lineType, onlyIfVatRate, includeDiscountGettingVat);
+                if (price > 0)
                 {
-                    var depositPercentageValue = "";
+                    var depositPercentagePropertyName = await objectsService.FindSystemObjectByDomainNameAsync("W2CHECKOUT_DepositPercentagePropertyName");
+                    var userDetails = await GetUserDetailsAsync();
+                    if (!String.IsNullOrWhiteSpace(depositPercentagePropertyName))
+                    {
+                        var depositPercentageValue = "";
 
-                    if (user.MainUserId > 0 && userDetails.ContainsKey(depositPercentagePropertyName))
-                    {
-                        depositPercentageValue = userDetails[depositPercentagePropertyName];
-                    }
-                    else
-                    {
-                        var userId = accountsService.GetRecentlyCreatedAccountId();
-                        if (userId == 0)
+                        if (user.MainUserId == 0 || !userDetails.TryGetValue(depositPercentagePropertyName, out depositPercentageValue))
                         {
-                            var userEntityType = await objectsService.FindSystemObjectByDomainNameAsync("userEntityType", "relatie");
-                            var linkTypeToUse = Constants.BasketToUserLinkType;
-
-                            if (shoppingBasket.EntityType != Constants.BasketEntityType)
+                            var userId = accountsService.GetRecentlyCreatedAccountId();
+                            if (userId == 0)
                             {
-                                linkTypeToUse = await wiserItemsService.GetLinkTypeAsync(userEntityType, OrderProcess.Models.Constants.OrderEntityType);
+                                var userEntityType = await objectsService.FindSystemObjectByDomainNameAsync("userEntityType", "relatie");
+                                var linkTypeToUse = Constants.BasketToUserLinkType;
+
+                                if (shoppingBasket.EntityType != Constants.BasketEntityType)
+                                {
+                                    linkTypeToUse = await wiserItemsService.GetLinkTypeAsync(userEntityType, OrderProcess.Models.Constants.OrderEntityType);
+                                }
+
+                                userId = (await wiserItemsService.GetLinkedItemIdsAsync(shoppingBasket.Id, linkTypeToUse, reverse: true, skipPermissionsCheck: true)).FirstOrDefault();
                             }
 
-                            userId = (await wiserItemsService.GetLinkedItemIdsAsync(shoppingBasket.Id, linkTypeToUse, reverse: true, skipPermissionsCheck: true)).FirstOrDefault();
-                        }
-
-                        if (userId > 0)
-                        {
-                            var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(Account.Models.Constants.DefaultEntityType);
-                            databaseConnection.ClearParameters();
-                            databaseConnection.AddParameter("userId", userId);
-                            databaseConnection.AddParameter("depositPercentagePropertyName", depositPercentagePropertyName);
-                            var getValueResult = await databaseConnection.GetAsync($"SELECT `value` FROM `{tablePrefix}{WiserTableNames.WiserItemDetail}` WHERE item_id = ?userId AND `key` = ?depositPercentagePropertyName", true);
-                            if (getValueResult.Rows.Count > 0)
+                            if (userId > 0)
                             {
-                                depositPercentageValue = getValueResult.Rows[0].Field<string>("value");
+                                var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(Account.Models.Constants.DefaultEntityType);
+                                databaseConnection.ClearParameters();
+                                databaseConnection.AddParameter("userId", userId);
+                                databaseConnection.AddParameter("depositPercentagePropertyName", depositPercentagePropertyName);
+                                var getValueResult = await databaseConnection.GetAsync($"SELECT `value` FROM `{tablePrefix}{WiserTableNames.WiserItemDetail}` WHERE item_id = ?userId AND `key` = ?depositPercentagePropertyName", true);
+                                if (getValueResult.Rows.Count > 0)
+                                {
+                                    depositPercentageValue = getValueResult.Rows[0].Field<string>("value");
+                                }
                             }
                         }
-                    }
 
-                    if (!String.IsNullOrWhiteSpace(depositPercentageValue) && Decimal.TryParse(depositPercentageValue.Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out var depositPercentage) && depositPercentage > 0)
-                    {
-                        price = (price / 100) * depositPercentage;
+                        if (!String.IsNullOrWhiteSpace(depositPercentageValue) && Decimal.TryParse(depositPercentageValue.Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out var depositPercentage) && depositPercentage > 0)
+                        {
+                            price = (price / 100) * depositPercentage;
+                        }
                     }
                 }
+
+                break;
             }
-        }
-        else if (priceType == ShoppingBasket.PriceTypes.VatOnly)
-        {
-            if (onlyIfVatRate == -1)
+            case ShoppingBasket.PriceTypes.VatOnly when onlyIfVatRate == 0:
             {
                 // Get VAT of all rates (sum).
                 foreach (var vatRate in GetUniqueVatRates(basketLines, settings))
@@ -1391,50 +1390,45 @@ public class ShoppingBasketsService(
                         price += Math.Round(exVatPrice * await GetVatFactorByRateAsync(shoppingBasket, settings, vatRate), 2, MidpointRounding.AwayFromZero);
                     }
                 }
+                break;
             }
-            else
+            case ShoppingBasket.PriceTypes.VatOnly when onlyIfVatRate > 0 && pricesIncludesVat:
             {
-                // Get VAT of specific rate.
-                if (pricesIncludesVat)
-                {
-                    var inVatPrice = await GetPriceAsync(shoppingBasket, basketLines, settings, includeDiscountGettingVat ? ShoppingBasket.PriceTypes.InVatInDiscount : ShoppingBasket.PriceTypes.InVatExDiscount, lineType, onlyIfVatRate);
-                    var factor = await GetVatFactorByRateAsync(shoppingBasket, settings, onlyIfVatRate);
-                    price += Math.Round(inVatPrice / (1 + factor) * factor, 2, MidpointRounding.AwayFromZero);
-                }
-                else
-                {
-                    var exVatPrice = await GetPriceAsync(shoppingBasket, basketLines, settings, includeDiscountGettingVat ? ShoppingBasket.PriceTypes.ExVatInDiscount : ShoppingBasket.PriceTypes.ExVatExDiscount, lineType, onlyIfVatRate);
-                    price += Math.Round(exVatPrice * await GetVatFactorByRateAsync(shoppingBasket, settings, onlyIfVatRate), 2, MidpointRounding.AwayFromZero);
-                }
+                 var inVatPrice = await GetPriceAsync(shoppingBasket, basketLines, settings, includeDiscountGettingVat ? ShoppingBasket.PriceTypes.InVatInDiscount : ShoppingBasket.PriceTypes.InVatExDiscount, lineType, onlyIfVatRate);
+                 var factor = await GetVatFactorByRateAsync(shoppingBasket, settings, onlyIfVatRate);
+                 price += Math.Round(inVatPrice / (1 + factor) * factor, 2, MidpointRounding.AwayFromZero);
+                 break;
             }
-        }
-        else
-        {
-            switch (pricesIncludesVat)
+            case ShoppingBasket.PriceTypes.VatOnly when onlyIfVatRate > 0 && !pricesIncludesVat:
             {
-                case true when priceType == ShoppingBasket.PriceTypes.ExVatExDiscount || priceType == ShoppingBasket.PriceTypes.ExVatInDiscount:
-                {
-                    var priceInVat = await GetPriceAsync(shoppingBasket, basketLines, settings, priceType == ShoppingBasket.PriceTypes.ExVatExDiscount ? ShoppingBasket.PriceTypes.InVatExDiscount : ShoppingBasket.PriceTypes.InVatInDiscount, lineType, onlyIfVatRate);
-                    price = priceInVat - await GetPriceAsync(shoppingBasket, basketLines, settings, ShoppingBasket.PriceTypes.VatOnly, lineType, onlyIfVatRate);
-                    break;
-                }
-                case false when priceType == ShoppingBasket.PriceTypes.InVatExDiscount || priceType == ShoppingBasket.PriceTypes.InVatInDiscount:
-                {
-                    var priceExVat = await GetPriceAsync(shoppingBasket, basketLines, settings, priceType == ShoppingBasket.PriceTypes.InVatExDiscount ? ShoppingBasket.PriceTypes.ExVatExDiscount : ShoppingBasket.PriceTypes.ExVatInDiscount, lineType, onlyIfVatRate);
-                    price = priceExVat + await GetPriceAsync(shoppingBasket, basketLines, settings, ShoppingBasket.PriceTypes.VatOnly, lineType, onlyIfVatRate);
-                    break;
-                }
-                default:
-                {
-                    var lines = String.IsNullOrWhiteSpace(lineType) ? basketLines : basketLines.Where(l => l.GetDetailValue("type") == lineType).ToList();
+                var exVatPrice = await GetPriceAsync(shoppingBasket, basketLines, settings, includeDiscountGettingVat ? ShoppingBasket.PriceTypes.ExVatInDiscount : ShoppingBasket.PriceTypes.ExVatExDiscount, lineType, onlyIfVatRate);
+                price += Math.Round(exVatPrice * await GetVatFactorByRateAsync(shoppingBasket, settings, onlyIfVatRate), 2, MidpointRounding.AwayFromZero);
+                break;
+            }
+            case ShoppingBasket.PriceTypes.ExVatExDiscount when pricesIncludesVat:
+            case ShoppingBasket.PriceTypes.ExVatInDiscount when pricesIncludesVat:
+            {
+                var priceInVat = await GetPriceAsync(shoppingBasket, basketLines, settings, priceType == ShoppingBasket.PriceTypes.ExVatExDiscount ? ShoppingBasket.PriceTypes.InVatExDiscount : ShoppingBasket.PriceTypes.InVatInDiscount, lineType, onlyIfVatRate);
+                price = priceInVat - await GetPriceAsync(shoppingBasket, basketLines, settings, ShoppingBasket.PriceTypes.VatOnly, lineType, onlyIfVatRate);
+                break;
+            }
+            case ShoppingBasket.PriceTypes.InVatExDiscount when !pricesIncludesVat:
+            case ShoppingBasket.PriceTypes.InVatInDiscount when !pricesIncludesVat:
+            {
+                var priceExVat = await GetPriceAsync(shoppingBasket, basketLines, settings, priceType == ShoppingBasket.PriceTypes.InVatExDiscount ? ShoppingBasket.PriceTypes.ExVatExDiscount : ShoppingBasket.PriceTypes.ExVatInDiscount, lineType, onlyIfVatRate);
+                price = priceExVat + await GetPriceAsync(shoppingBasket, basketLines, settings, ShoppingBasket.PriceTypes.VatOnly, lineType, onlyIfVatRate);
+                break;
+            }
+            default:
+            {
+                var lines = String.IsNullOrWhiteSpace(lineType) ? basketLines : basketLines.Where(l => l.GetDetailValue("type") == lineType).ToList();
 
-                    foreach (var line in lines)
-                    {
-                        price += await GetLinePriceAsync(shoppingBasket, line, settings, priceType, false, true, onlyIfVatRate);
-                    }
-
-                    break;
+                foreach (var line in lines)
+                {
+                    price += await GetLinePriceAsync(shoppingBasket, line, settings, priceType, false, true, onlyIfVatRate);
                 }
+
+                break;
             }
         }
 
