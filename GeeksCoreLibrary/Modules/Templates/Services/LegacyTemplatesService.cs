@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Web;
 using GeeksCoreLibrary.Components.Account.Interfaces;
 using GeeksCoreLibrary.Components.Filter.Interfaces;
 using GeeksCoreLibrary.Core.Enums;
@@ -1053,7 +1054,7 @@ public class LegacyTemplatesService : ITemplatesService
                     // Contains a parent
                     var split = templateName.Split('\\');
                     var template = await templatesService.GetTemplateAsync(name: split[1], type: templateType, parentName: split[0]);
-                    var values = queryString.Split('&', StringSplitOptions.RemoveEmptyEntries).Select(x => new KeyValuePair<string, string>(x.Split('=')[0], x.Split('=')[1]));
+                    var values = HttpUtility.ParseQueryString(queryString);
                     var content = stringReplacementsService.DoReplacements(template.Content, values, forQuery);
                     if (handleStringReplacements)
                     {
@@ -1070,7 +1071,7 @@ public class LegacyTemplatesService : ITemplatesService
                 else
                 {
                     var template = await templatesService.GetTemplateAsync(name: templateName, type: templateType);
-                    var values = queryString.Split('&', StringSplitOptions.RemoveEmptyEntries).Select(x => new KeyValuePair<string, string>(x.Split('=')[0], x.Split('=')[1]));
+                    var values = HttpUtility.ParseQueryString(queryString);
                     var content = stringReplacementsService.DoReplacements(template.Content, values, forQuery);
                     if (handleStringReplacements)
                     {

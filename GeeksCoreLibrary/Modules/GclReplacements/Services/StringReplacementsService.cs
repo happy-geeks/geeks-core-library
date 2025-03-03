@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Data;
 using System.Linq;
 using System.Reflection;
@@ -280,6 +281,12 @@ public class StringReplacementsService(
 
     /// <inheritdoc />
     public string DoReplacements(string input, DataRow replaceData, bool forQuery = false, bool caseSensitive = true, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode")
+    {
+        return replacementsMediator.DoReplacements(input, replaceData, forQuery, caseSensitive, prefix, suffix, defaultFormatter);
+    }
+
+    /// <inheritdoc />
+    public string DoReplacements(string input, NameValueCollection replaceData, bool forQuery = false, bool caseSensitive = true, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode", UnsafeSources? unsafeSource = null)
     {
         return replacementsMediator.DoReplacements(input, replaceData, forQuery, caseSensitive, prefix, suffix, defaultFormatter);
     }
