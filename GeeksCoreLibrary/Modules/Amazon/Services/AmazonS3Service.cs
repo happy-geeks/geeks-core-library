@@ -1,11 +1,12 @@
 ﻿using System;
-using System.Threading;
+using System.IO;
 using System.Threading.Tasks;
 using Amazon;
 using Amazon.Runtime;
 using Amazon.S3;
 using Amazon.S3.Model;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
+using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Amazon.Interfaces;
 using GeeksCoreLibrary.Modules.Amazon.Models;
@@ -14,7 +15,7 @@ using Microsoft.Extensions.Options;
 
 namespace GeeksCoreLibrary.Modules.Amazon.Services;
 
-public class AmazonS3Service(ILogger<AmazonS3Service> logger, IOptions<GclSettings> gclSettings)
+public class AmazonS3Service(ILogger<AmazonS3Service> logger, IOptions<GclSettings> gclSettings, IFileCacheService fileCacheService)
     : IAmazonS3Service, IScopedService
 {
     private readonly GclSettings gclSettings = gclSettings.Value;
@@ -80,7 +81,7 @@ public class AmazonS3Service(ILogger<AmazonS3Service> logger, IOptions<GclSettin
         try
         {
             // Save object to local file.
-            await response.WriteResponseStreamToFileAsync($"{saveDirectory}\\{objectName}", true, CancellationToken.None);
+            await fileCacheService.WriteFileIfNotExistsOrExpiredAsync($"{saveDirectory}\\{objectName}", response.ResponseStream, gclSettings.DefaultItemFileCacheDuration);
             return response.HttpStatusCode == System.Net.HttpStatusCode.OK;
         }
         catch (AmazonS3Exception ex)
@@ -142,5 +143,12 @@ public class AmazonS3Service(ILogger<AmazonS3Service> logger, IOptions<GclSettin
         return !String.IsNullOrWhiteSpace(region)
             ? new AmazonS3Client(RegionEndpoint.GetBySystemName(region))
             : new AmazonS3Client();
+    }
+
+    private byte[] ResponseStreamToBytes(Stream responseStream)
+    {
+        using var memoryStream = new MemoryStream();
+        responseStream.CopyTo(memoryStream);
+        return memoryStream.ToArray();
     }
 }
