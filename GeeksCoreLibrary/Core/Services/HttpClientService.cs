@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net;
 using System.Net.Http;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Interfaces;
@@ -13,8 +14,12 @@ public class HttpClientService : IHttpClientService, ISingletonService
     {
         var socketsHandler = new SocketsHttpHandler
         {
-            PooledConnectionLifetime = TimeSpan.FromMinutes(2)
+            PooledConnectionLifetime = TimeSpan.FromMinutes(2),
         };
-        Client = new HttpClient(socketsHandler);
+        Client = new HttpClient(socketsHandler)
+        {
+            DefaultRequestVersion =  HttpVersion.Version30,
+            DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower
+        };
     }
 }
