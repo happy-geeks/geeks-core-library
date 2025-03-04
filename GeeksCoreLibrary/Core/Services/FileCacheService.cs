@@ -72,6 +72,9 @@ public class FileCacheService : IFileCacheService, ISingletonService
         if (activeWrites.TryGetValue(filePath, out var fileLock))
         {
             await fileLock.WaitAsync();
+            // if we had to wait for a filewrite then the file was just refreshed
+            // so we can release immediately.
+            fileLock.Release();
         }
 
         await using var fileStream = fileInfo.Open(FileMode.Open, FileAccess.Read, FileShare.Read);
