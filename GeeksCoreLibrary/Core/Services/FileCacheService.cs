@@ -72,6 +72,9 @@ public class FileCacheService : IFileCacheService, ISingletonService
         if (activeWrites.TryGetValue(filePath, out var fileLock))
         {
             await fileLock.WaitAsync();
+            // if we had to wait for a filewrite then the file was just refreshed
+            // so we can release immediately.
+            fileLock.Release();
         }
 
         await using var fileStream = fileInfo.Open(FileMode.Open, FileAccess.Read, FileShare.Read);
@@ -137,11 +140,19 @@ public class FileCacheService : IFileCacheService, ISingletonService
             return;
         }
 
-        var fileInfo = new FileInfo(filePath);
-        if (IsFileExpired(fileInfo, cachingTime))
+        try
         {
-            await using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None);
-            await fileStream.WriteAsync(content);
+            var fileInfo = new FileInfo(filePath);
+            if (IsFileExpired(fileInfo, cachingTime))
+            {
+                await using var fileStream =
+                    new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None);
+                await fileStream.WriteAsync(content);
+            }
+        }
+        finally
+        {
+            activeWrites.TryRemove(filePath, out _);
         }
     }
 
@@ -156,16 +167,23 @@ public class FileCacheService : IFileCacheService, ISingletonService
             return;
         }
 
-        var fileInfo = new FileInfo(filePath);
-        if (IsFileExpired(fileInfo, cachingTime))
+        try
         {
-            await using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.ReadWrite, FileShare.Read, 8192);
-            var buffer = new byte[8192];
-            int read;
-            while ((read = await content.ReadAsync(buffer)) > 0)
+            var fileInfo = new FileInfo(filePath);
+            if (IsFileExpired(fileInfo, cachingTime))
             {
-                await fileStream.WriteAsync(buffer.AsMemory(0, read));
+                await using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.ReadWrite, FileShare.Read, 8192);
+                var buffer = new byte[8192];
+                int read;
+                while ((read = await content.ReadAsync(buffer)) > 0)
+                {
+                    await fileStream.WriteAsync(buffer.AsMemory(0, read));
+                }
             }
+        }
+        finally
+        {
+            activeWrites.TryRemove(filePath, out _);
         }
     }
 
