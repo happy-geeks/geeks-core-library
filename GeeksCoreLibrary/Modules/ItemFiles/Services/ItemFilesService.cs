@@ -226,7 +226,7 @@ public class ItemFilesService(
     /// <inheritdoc />
     public async Task<FileResultModel> GetParsedFileAsync(FileLookupTypes lookupType, object id, string fileName, string propertyName = null, string entityType = null, int linkType = 0, int fileNumber = 1)
     {
-        var extension = Path.HasExtension(fileName) ? Path.GetExtension(fileName) : ".png";
+        var extension = Path.HasExtension(fileName) ? Path.GetExtension(fileName) : ".pdf";
         var file = await GetFileAsync(lookupType, id, propertyName: propertyName, fileName: fileName, entityType, linkType, fileNumber)
                    ?? new WiserItemFileModel {Id = 0, PropertyName = propertyName ?? "Unknown", FileName = $"Unknown{extension}"};
 
