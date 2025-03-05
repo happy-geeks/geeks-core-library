@@ -1131,7 +1131,9 @@ public class DataSelectorsService(IOptions<GclSettings> gclSettings, IDatabaseCo
         pdfSettings.Html = htmlResult;
 
         var pdfFile = await htmlToPdfConverterService.ConvertHtmlStringToPdfAsync(pdfSettings);
-        return (pdfFile, HttpStatusCode.OK, String.Empty);
+        return pdfFile?.FileContents == null
+            ? (null, HttpStatusCode.InternalServerError, "Failed to convert HTML to PDF for DataSelector. Most likely cause is that no implementation for 'IHtmlToPdfConverterService' has been loaded.")
+            : (pdfFile, HttpStatusCode.OK, String.Empty);
     }
 
     /// <inheritdoc />

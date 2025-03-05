@@ -119,7 +119,7 @@ public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel, Shopp
         /// </summary>
         [CmsEnum(HideInCms = true)]
         Legacy = 10,
-        
+
         /// <summary>
         /// For creating replacements that counts the number of products and lines and their respective quantities.
         /// </summary>
@@ -614,7 +614,7 @@ public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel, Shopp
     public async Task<FileContentResult> GeneratePdfAsync()
     {
         var (html, contentItemId, pdfDocumentOptions) = await GetDocumentTemplateHtmlAsync();
-        var pdfBackgroundPropertyName = await objectsService.FindSystemObjectByDomainNameAsync("pdf_backgroundpropertyname");
+        var pdfBackgroundPropertyName = await objectsService.FindSystemObjectByDomainNameAsync(HtmlTemplateConstants.CustomBackGroundPropertySettingName);
         var pdfFileResult = await htmlToPdfConverterService.ConvertHtmlStringToPdfAsync(new HtmlToPdfRequestModel {Html = html, ItemId = contentItemId, BackgroundPropertyName = pdfBackgroundPropertyName, DocumentOptions = pdfDocumentOptions});
 
         return pdfFileResult;
@@ -729,6 +729,10 @@ public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel, Shopp
     public async Task<string> HandleGeneratePdfModeAsync(string filename = null, bool saveToDisk = false)
     {
         var pdfFileResult = await GeneratePdfAsync();
+        if (pdfFileResult?.FileContents == null)
+        {
+            throw new NotImplementedException($"Failed to convert HTML to PDF for basket {Main.Id}. Most likely cause is that no implementation for 'IHtmlToPdfConverterService' has been loaded.");
+        }
 
         if (saveToDisk)
         {
@@ -845,7 +849,7 @@ public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel, Shopp
 
         return await GetRenderedBasketAsync();
     }
-    
+
     /// <summary>
     /// Handles the ProductsCount mode, this mode calculates the total amount of products and lines, and the total amount of products and lines including their quantities.
     /// </summary>

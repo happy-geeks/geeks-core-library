@@ -71,20 +71,20 @@ public class DataSelectorController(IDataSelectorsService dataSelectorsService) 
             return File(excelResult.FileContents, excelResult.ContentType);
         }
 
-        if (!String.IsNullOrWhiteSpace(data.OutputTemplate) || !String.IsNullOrWhiteSpace(data.ContentItemId))
+        if (String.IsNullOrWhiteSpace(data.OutputTemplate) && String.IsNullOrWhiteSpace(data.ContentItemId))
         {
-            FileContentResult pdfResult;
-            (pdfResult, statusCode, error) = await dataSelectorsService.ToPdfAsync(data);
-
-            if (statusCode != HttpStatusCode.OK)
-            {
-                return StatusCode((int) statusCode, error);
-            }
-
-            return File(pdfResult.FileContents, pdfResult.ContentType);
+            return Json(result);
         }
 
-        return Json(result);
+        (var pdfResult, statusCode, error) = await dataSelectorsService.ToPdfAsync(data);
+
+        if (statusCode != HttpStatusCode.OK)
+        {
+            return StatusCode((int) statusCode, error);
+        }
+
+        return File(pdfResult.FileContents, pdfResult.ContentType);
+
     }
 
     /// <summary>
