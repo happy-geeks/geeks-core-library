@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Web;
 using GeeksCoreLibrary.Components.Account.Interfaces;
 using GeeksCoreLibrary.Components.Filter.Interfaces;
 using GeeksCoreLibrary.Core.Enums;
@@ -1250,7 +1251,7 @@ public class TemplatesService(
                     }
                 }
 
-                var values = queryString.Split('&', StringSplitOptions.RemoveEmptyEntries).Select(x => new KeyValuePair<string, string>(x.Split('=')[0], x.Split('=')[1]));
+                var values = HttpUtility.ParseQueryString(queryString);
                 content = replacementsMediator.DoReplacements(content, values, forQuery);
 
                 if (handleStringReplacements)

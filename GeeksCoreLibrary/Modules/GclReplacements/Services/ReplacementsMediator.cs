@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Data;
 using System.Globalization;
 using System.Linq;
@@ -90,6 +91,23 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
         foreach (var column in replaceData.Table.Columns.Cast<DataColumn>())
         {
             dataDictionary.Add(column.ColumnName, replaceData[column]);
+        }
+
+        return DoReplacements(input, dataDictionary, prefix, suffix, forQuery, defaultFormatter, unsafeSource);
+    }
+
+    /// <inheritdoc />
+    public string DoReplacements(string input, NameValueCollection replaceData, bool forQuery = false, bool caseSensitive = true, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode", UnsafeSources? unsafeSource = null)
+    {
+        if (replaceData == null)
+        {
+            return input;
+        }
+
+        var dataDictionary = new Dictionary<string, object>(caseSensitive ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+        foreach (var key in replaceData.AllKeys.Where(k => !String.IsNullOrWhiteSpace(k)))
+        {
+            dataDictionary.Add(key, replaceData[key]);
         }
 
         return DoReplacements(input, dataDictionary, prefix, suffix, forQuery, defaultFormatter, unsafeSource);
