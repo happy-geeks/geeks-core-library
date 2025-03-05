@@ -185,7 +185,9 @@ public class ItemFilesService(
     /// <inheritdoc />
     public async Task<FileResultModel> GetResizedImageAsync(FileLookupTypes lookupType, object id, string fileName, string propertyName = null, string entityType = null, int linkType = 0, int fileNumber = 1, uint preferredWidth = 0, uint preferredHeight = 0, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center)
     {
-        var file = await GetFileAsync(lookupType, id, propertyName: propertyName, fileName: fileName, entityType, linkType, fileNumber) ?? new WiserItemFileModel {Id = 0, PropertyName = propertyName ?? "Unknown", FileName = "Unknown.png"};
+        var extension = Path.HasExtension(fileName) ? Path.GetExtension(fileName) : ".png";
+        var file = await GetFileAsync(lookupType, id, propertyName: propertyName, fileName: fileName, entityType, linkType, fileNumber)
+                   ?? new WiserItemFileModel {Id = 0, PropertyName = propertyName ?? "Unknown", FileName = $"Unknown{extension}"};
 
         if (!String.IsNullOrWhiteSpace(fileName))
         {
@@ -224,7 +226,9 @@ public class ItemFilesService(
     /// <inheritdoc />
     public async Task<FileResultModel> GetParsedFileAsync(FileLookupTypes lookupType, object id, string fileName, string propertyName = null, string entityType = null, int linkType = 0, int fileNumber = 1)
     {
-        var file = await GetFileAsync(lookupType, id, propertyName: propertyName, fileName: fileName, entityType, linkType, fileNumber) ?? new WiserItemFileModel {Id = 0, PropertyName = propertyName ?? "Unknown", FileName = "Unknown.pdf"};
+        var extension = Path.HasExtension(fileName) ? Path.GetExtension(fileName) : ".png";
+        var file = await GetFileAsync(lookupType, id, propertyName: propertyName, fileName: fileName, entityType, linkType, fileNumber)
+                   ?? new WiserItemFileModel {Id = 0, PropertyName = propertyName ?? "Unknown", FileName = $"Unknown{extension}"};
 
         if (!String.IsNullOrWhiteSpace(fileName))
         {
