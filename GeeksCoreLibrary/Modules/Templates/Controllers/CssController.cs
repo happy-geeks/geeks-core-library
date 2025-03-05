@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Net;
+using System.Net.Mime;
 using System.Text;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Extensions;
@@ -26,7 +27,7 @@ public class CssController(ITemplatesService templatesService) : Controller
         var cssContent = await templatesService.GetGeneralTemplateValueAsync(TemplateTypes.Css, mode);
         Response.Headers.LastModified = cssContent.LastChangeDate.ToUniversalTime().ToString("R");
         Response.Headers.Expires = DateTime.Now.AddDays(7).ToUniversalTime().ToString("R");
-        return Content(cssContent.Content, "text/css", Encoding.UTF8);
+        return Content(cssContent.Content, MediaTypeNames.Text.Css, Encoding.UTF8);
     }
 
     [Route("/css/gclcss_{templateIds:regex(.*)}.css")]
@@ -42,6 +43,6 @@ public class CssController(ITemplatesService templatesService) : Controller
 
         Response.Headers.LastModified = cssContent.LastChangeDate.ToUniversalTime().ToString("R");
         Response.Headers.Expires = DateTime.Now.AddDays(7).ToUniversalTime().ToString("R");
-        return Content(cssContent.Content, "text/css", Encoding.UTF8);
+        return Content(cssContent.Content, MediaTypeNames.Text.Css, Encoding.UTF8);
     }
 }

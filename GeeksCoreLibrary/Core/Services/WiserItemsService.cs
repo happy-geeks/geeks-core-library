@@ -21,7 +21,7 @@ using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Models;
 using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
-using GeeksCoreLibrary.Modules.ItemFiles.Models;
+using GeeksCoreLibrary.Modules.ItemFiles.Helpers;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
@@ -3518,8 +3518,6 @@ public class WiserItemsService(
         databaseConnection.AddParameter("content", wiserItemFile.Content);
         databaseConnection.AddParameter("contentType", wiserItemFile.ContentType);
         databaseConnection.AddParameter("contentUrl", wiserItemFile.ContentUrl);
-        databaseConnection.AddParameter("width", wiserItemFile.Width);
-        databaseConnection.AddParameter("height", wiserItemFile.Height);
         databaseConnection.AddParameter("fileName", Path.GetFileNameWithoutExtension(wiserItemFile.FileName).ConvertToSeo() + Path.GetExtension(wiserItemFile.FileName)?.ToLowerInvariant());
         databaseConnection.AddParameter("extension", wiserItemFile.Extension);
         databaseConnection.AddParameter("title", wiserItemFile.Title);
@@ -3528,9 +3526,11 @@ public class WiserItemsService(
         databaseConnection.AddParameter("extraData", wiserItemFile.ExtraData == null ? null : JsonConvert.SerializeObject(wiserItemFile.ExtraData));
         databaseConnection.AddParameter("username", username);
         databaseConnection.AddParameter("userId", userId);
-        databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
-        databaseConnection.AddParameter("performParentUpdate", false); // This is used in triggers. (always set this to false since the wiseritem service takes care of the parent updates in this case)
-               
+        // This is used in triggers, to enable/disable the tracking of changes in the wiser_history table.
+        databaseConnection.AddParameter("saveHistoryGcl", saveHistory);
+        // This is used in triggers. We always set it to false here, because the WiserItemsService takes care of the parent updates for this.
+        databaseConnection.AddParameter("performParentUpdate", false);
+
         if (overWriteByFileName)
         {
             var queryResult = await databaseConnection.GetAsync($"""
@@ -3541,29 +3541,28 @@ public class WiserItemsService(
             foreach (DataRow row in queryResult.Rows)
             {
                 var id = Convert.ToUInt64(row["id"]);
-                await RemoveItemFileAsync(id, username, userId, saveHistory, true, entityType, linkType);    
+                await RemoveItemFileAsync(id, username, userId, saveHistory, true, entityType, linkType);
             }
         }
-        
+
         var addItemFileResult = await databaseConnection.GetAsync($"""
-                                                                   
                                                                                    SET @_username = ?username;
                                                                                    SET @_userId = ?userId;
                                                                                    SET @saveHistory = ?saveHistoryGcl;
-                                                                                   INSERT IGNORE INTO {(linkType > 0 ? linkTablePrefix : tablePrefix)}{WiserTableNames.WiserItemFile} (item_id, content_type, content, content_url, width, height, file_name, extension, added_by, title, property_name, protected, itemlink_id, extra_data) 
-                                                                                   VALUES (?itemId, ?contentType, ?content, ?contentUrl, ?width, ?height, ?fileName, ?extension, ?username, ?title, ?propertyName, ?protected, ?itemLinkId, ?extraData);
+                                                                                   INSERT IGNORE INTO {(linkType > 0 ? linkTablePrefix : tablePrefix)}{WiserTableNames.WiserItemFile} (item_id, content_type, content, content_url, file_name, extension, added_by, title, property_name, protected, itemlink_id, extra_data) 
+                                                                                   VALUES (?itemId, ?contentType, ?content, ?contentUrl, ?fileName, ?extension, ?username, ?title, ?propertyName, ?protected, ?itemLinkId, ?extraData);
                                                                                    SELECT LAST_INSERT_ID();
                                                                    """, true);
 
         return Convert.ToUInt64(addItemFileResult.Rows[0][0]);
     }
-    
+
     /// <inheritdoc />
     public async Task<bool> RemoveItemFileAsync(ulong itemFileId, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, string entityType = null, int linkType = 0)
     {
         return await RemoveItemFileAsync(this, itemFileId, username, userId, saveHistory, skipPermissionsCheck, entityType, linkType);
     }
-    
+
     /// <inheritdoc />
     public async Task<bool> RemoveItemFileAsync(IWiserItemsService wiserItemsService, ulong itemFileId, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, string entityType = null, int linkType = 0)
     {
@@ -3574,12 +3573,12 @@ public class WiserItemsService(
         {
             databaseConnection.AddParameter("itemFileId", itemFileId);
             var queryResult = await databaseConnection.GetAsync($"SELECT item_id, itemlink_id FROM {(linkType > 0 ? linkTablePrefix : tablePrefix)}{WiserTableNames.WiserItemFile} WHERE id = ?itemFileId", true);
-            
+
             if (queryResult.Rows.Count == 0)
             {
                 throw new Exception($"Item file with id '{itemFileId}' not found in table {(linkType > 0 ? linkTablePrefix : tablePrefix)}{WiserTableNames.WiserItemFile}.");
             }
-            
+
             var itemId = Convert.ToUInt64(queryResult.Rows[0]["item_id"]);
             var itemLinkId = Convert.ToUInt64(queryResult.Rows[0]["itemlink_id"]);
             var destinationItemId = 0UL;
@@ -3703,11 +3702,7 @@ public class WiserItemsService(
             return result;
         }
 
-        foreach (DataRow dataRow in queryResult.Rows)
-        {
-            var itemFile = DataRowToItemFile(dataRow);
-            result.Add(itemFile);
-        }
+        result.AddRange(queryResult.Rows.Cast<DataRow>().Select(WiserFileHelpers.DataRowToItemFile));
 
         return result;
     }
@@ -4673,33 +4668,6 @@ public class WiserItemsService(
 
         wiserItem.Changed = false;
         return wiserItem;
-    }
-
-    /// <summary>
-    /// Fills an existing <see cref="WiserItemFileModel"/> with data from a <see cref="DataRow"/>.
-    /// </summary>
-    /// <param name="dataRow"></param>
-    public static WiserItemFileModel DataRowToItemFile(DataRow dataRow)
-    {
-        return new WiserItemFileModel
-        {
-            Id = Convert.ToUInt64(dataRow["id"]),
-            AddedBy = dataRow.Field<string>("added_by"),
-            AddedOn = dataRow.Field<DateTime>("added_on"),
-            ItemId = Convert.ToUInt64(dataRow["item_id"]),
-            ItemLinkId = Convert.ToUInt64(dataRow["itemlink_id"]),
-            ContentType = dataRow.Field<string>("content_type"),
-            Content = dataRow.Field<byte[]>("content"),
-            ContentUrl = dataRow.Field<string>("content_url"),
-            Width = Convert.ToInt32(dataRow["width"]),
-            Height = Convert.ToInt32(dataRow["height"]),
-            FileName = dataRow.Field<string>("file_name"),
-            Extension = dataRow.Field<string>("extension"),
-            Title = dataRow.Field<string>("title"),
-            PropertyName = dataRow.Field<string>("property_name"),
-            Protected = dataRow.Field<bool>("protected"),
-            ExtraData = dataRow.IsNull("extra_data") ? null : JsonConvert.DeserializeObject<WiserItemFileExtraDataModel>(dataRow.Field<string>("extra_data")!)
-        };
     }
 
     /// <summary>

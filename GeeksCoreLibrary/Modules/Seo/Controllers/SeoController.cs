@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net.Mime;
 using System.Text;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Models;
@@ -32,7 +33,7 @@ public class SeoController(IObjectsService objectsService, ISeoService seoServic
         }
 
         Response.Headers.AcceptRanges = "bytes";
-        return Content(robotsTxt, "text/plain", Encoding.UTF8);
+        return Content(robotsTxt, MediaTypeNames.Text.Plain, Encoding.UTF8);
     }
 
     [Route("googlesitemap.xml")]
@@ -46,7 +47,7 @@ public class SeoController(IObjectsService objectsService, ISeoService seoServic
             return NotFound();
         }
 
-        return Content(siteMap.ToString(), "text/xml", Encoding.UTF8);
+        return Content(siteMap.ToString(), MediaTypeNames.Text.Xml, Encoding.UTF8);
     }
 
     [Route("googleimagesitemap.xml")]
@@ -60,6 +61,6 @@ public class SeoController(IObjectsService objectsService, ISeoService seoServic
             return NotFound();
         }
 
-        return Content(siteMap.ToString(), "text/xml", Encoding.UTF8);
+        return Content(siteMap.ToString(), MediaTypeNames.Text.Xml, Encoding.UTF8);
     }
 }

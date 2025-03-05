@@ -6,6 +6,7 @@ using RestSharp;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Mime;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Extensions;
@@ -274,9 +275,10 @@ public class PostNLService : IPostNLService, IScopedService
                         Content = Convert.FromBase64String(label.Content),
                         Extension = ".pdf",
                         FileName = $"{label.Labeltype}.pdf",
-                        ContentType = "application/pdf",
+                        ContentType = MediaTypeNames.Application.Pdf,
                         PropertyName = "postnl_label",
-                        Title = barcode
+                        Title = barcode,
+                        Protected = true
                     }, skipPermissionsCheck: true);
                 }
             }
@@ -347,7 +349,7 @@ public class PostNLService : IPostNLService, IScopedService
             var restClient = new RestClient(gclSettings.PostNlApiBaseUrl);
             var restRequest = new RestRequest("/shipment/v2_2/label?confirm=true", Method.Post);
             requestString = JsonConvert.SerializeObject(request, Formatting.None, new JsonSerializerSettings {NullValueHandling = NullValueHandling.Ignore});
-            restRequest.AddParameter("application/json", requestString, ParameterType.RequestBody);
+            restRequest.AddParameter(MediaTypeNames.Application.Json, requestString, ParameterType.RequestBody);
             restRequest.AddJsonBody(request);
             restRequest.AddHeader("apiKey", gclSettings.PostNlShippingApiKey);
 

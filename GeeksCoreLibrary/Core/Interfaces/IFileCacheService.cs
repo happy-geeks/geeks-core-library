@@ -25,7 +25,7 @@ public interface IFileCacheService
     /// <param name="generateContent">A function to generate string content if the file is expired.</param>
     /// <param name="cachingTime">The time span defining the expiration duration. If the file's age exceeds this, it will be overwritten.</param>
     /// <returns>The content of the file as a string.</returns>
-    Task<byte[]> GetOrAddAsync(string filePath, Func<Task<(byte[] Content, bool IsCachable)>> generateContent, TimeSpan? cachingTime = null);
+    Task<(byte[] FileBytes, DateTime LastModified)> GetOrAddAsync(string filePath, Func<Task<(byte[] Content, bool IsCacheable)>> generateContent, TimeSpan? cachingTime = null);
 
     /// <summary>
     /// Retrieves the byte content from a file if it is not expired.
@@ -33,7 +33,7 @@ public interface IFileCacheService
     /// <param name="filePath">The path of the file to read.</param>
     /// <param name="cachingTime">The time span defining the expiration duration. If the file's age exceeds this, it will be overwritten.</param>
     /// <returns>The byte content of the file.</returns>
-    Task<byte[]> GetBytesAsync(string filePath, TimeSpan? cachingTime = null);
+    Task<(byte[] FileBytes, DateTime LastModified)> GetBytesAsync(string filePath, TimeSpan? cachingTime = null);
 
     /// <summary>
     /// Retrieves the text content from a file if it is not expired.

@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Data;
 using System.IO;
 using System.Linq;
+using System.Net.Mime;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -103,7 +104,7 @@ public abstract class CmsComponent<T, T2> : ViewComponent
 
         var parameterValues = new List<object>();
         var methodParameters = method.GetParameters();
-        if (!String.IsNullOrWhiteSpace(HttpContext.Request.ContentType) && !HttpContext.Request.ContentType.StartsWith("application/json", StringComparison.OrdinalIgnoreCase))
+        if (!String.IsNullOrWhiteSpace(HttpContext.Request.ContentType) && !HttpContext.Request.ContentType.StartsWith(MediaTypeNames.Application.Json, StringComparison.OrdinalIgnoreCase))
         {
             foreach (var parameter in methodParameters)
             {

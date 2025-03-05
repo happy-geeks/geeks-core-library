@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Mime;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Extensions;
@@ -23,6 +25,7 @@ using Microsoft.Extensions.Logging;
 
 namespace GeeksCoreLibrary.Modules.ItemFiles.Services;
 
+/// <inheritdoc cref="IItemFilesService" />
 public class ItemFilesService(
     ILogger<ItemFilesService> logger,
     IDatabaseConnection databaseConnection,
@@ -36,419 +39,263 @@ public class ItemFilesService(
     : IItemFilesService, IScopedService
 {
     /// <inheritdoc />
-    public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemImageAsync(ulong itemId, string propertyName, uint preferredWidth, uint preferredHeight, string filename, int fileNumber, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
+    public async Task<WiserItemFileModel> GetFileAsync(FileLookupTypes lookupType, object id, string propertyName = null, string fileName = null, string entityType = null, int linkType = 0, int fileNumber = 1, bool includeContent = true)
     {
-        if (!TryGetFinalId(itemId, encryptedItemId, out var finalItemId))
+        // Property name needs to have a value, except when getting a file via it's own ID.
+        if (String.IsNullOrWhiteSpace(propertyName) && lookupType is not FileLookupTypes.ItemFileId and not FileLookupTypes.ItemLinkFileId)
         {
-            return (null, DateTime.MinValue);
+            throw new ArgumentNullException(nameof(propertyName));
         }
 
-        var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
+        // If we are looking up by file name, the file name must be provided.
+        if (lookupType is FileLookupTypes.ItemLinkFileName or FileLookupTypes.ItemFileName && String.IsNullOrWhiteSpace(fileName))
+        {
+            throw new ArgumentNullException(nameof(fileName));
+        }
+
+        // Parse the ID and decrypt it if it's a string.
+        var parsedId = 0UL;
+        var hasValidEncryptedId = false;
+        switch (id)
+        {
+            case ulong ulongId:
+                parsedId = ulongId;
+                break;
+            case string encryptedId:
+                try
+                {
+                    var unencryptedId = encryptedId.DecryptWithAesWithSalt(withDateTime: true);
+                    parsedId = UInt64.Parse(unencryptedId);
+                    hasValidEncryptedId = true;
+                }
+                catch (Exception exception)
+                {
+                    logger.LogError(exception, "Failed to decrypt encrypted ID when trying to retrieve a file. Encrypted value might have expired, or encrypted using a different encryption key.");
+                }
+
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(id), "ID must be either an ulong or a string.");
+        }
+
+        // We need a valid ID to continue.
+        if (parsedId == 0)
+        {
+            throw new ArgumentNullException(nameof(id));
+        }
+
+        // The file number should never be lower than 1.
         if (fileNumber < 1)
         {
             fileNumber = 1;
         }
 
-        databaseConnection.ClearParameters();
-        databaseConnection.AddParameter("itemId", finalItemId);
+        // Generate the query to get the file.
+        var whereClause = new List<string>();
+        string tablePrefix;
+        switch (lookupType)
+        {
+            case FileLookupTypes.ItemId:
+            case FileLookupTypes.ItemFileName:
+                tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
+                whereClause.Add("item_id = ?id");
+                whereClause.Add("property_name = ?propertyName");
+                break;
+            case FileLookupTypes.ItemFileId:
+                tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
+                whereClause.Add("id = ?id");
+                break;
+            case FileLookupTypes.ItemLinkId:
+            case FileLookupTypes.ItemLinkFileName:
+                tablePrefix = await wiserItemsService.GetTablePrefixForLinkAsync(linkType, entityType);
+                whereClause.Add("itemlink_id = ?id");
+                whereClause.Add("property_name = ?propertyName");
+                break;
+            case FileLookupTypes.ItemLinkFileId:
+                tablePrefix = await wiserItemsService.GetTablePrefixForLinkAsync(linkType, entityType);
+                whereClause.Add("id = ?id");
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(lookupType), lookupType, null);
+        }
+
+        databaseConnection.AddParameter("id", parsedId);
         databaseConnection.AddParameter("propertyName", propertyName);
-        var getImageResult = await databaseConnection.GetAsync($"""
-                                                                SELECT content_type, content, content_url, protected
-                                                                FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
-                                                                WHERE item_id = ?itemId AND property_name = ?propertyName
-                                                                ORDER BY ordering ASC, id ASC
-                                                                LIMIT {fileNumber - 1},1
-                                                                """, skipCache: true);
+        databaseConnection.AddParameter("fileNumber", fileNumber);
 
-        if (!ValidateQueryResult(getImageResult, encryptedItemId))
+        var columnsToGet = new List<string> {"id", "item_id", "content_type", "file_name", "extension", "added_on", "added_by", "property_name", "protected", "itemlink_id"};
+        if (includeContent)
         {
-            // If file is protected, but tried to retrieve it without an encrypted item ID should result in a 404 status.
-            return (null, DateTime.MinValue);
+            columnsToGet.AddRange(["content", "content_url", "extra_data", "title"]);
         }
 
-        var entityTypePart = String.IsNullOrWhiteSpace(entityType) ? "" : $"_{entityType}";
-        var localDirectory = FileSystemHelpers.GetFileCacheDirectory(webHostEnvironment);
-        if (String.IsNullOrWhiteSpace(localDirectory))
+        var query = $"""
+                     SELECT {String.Join(", ", columnsToGet)}
+                     FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
+                     WHERE {String.Join(" AND ", whereClause)}
+                     ORDER BY ordering ASC, id ASC
+                     """;
+
+        var dataTable = await databaseConnection.GetAsync(query, skipCache: true);
+
+        // If the file was not found, return null.
+        if (dataTable.Rows.Count == 0)
         {
-            logger.LogError($"Could not retrieve image because the directory '{localDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
-            return (null, DateTime.MinValue);
+            return null;
         }
 
-        var localFilename = $"image_wiser{entityTypePart}_{finalItemId}_{propertyName}_{resizeMode:G}-{anchorPosition:G}_{preferredWidth}_{preferredHeight}_{fileNumber}_{Path.GetFileName(filename)}";
-        var fileLocation = Path.Combine(localDirectory, localFilename);
-
-        // Calling HandleImage with the dataRow parameter set to null will cause the function to return a no-image if possible.
-        return await HandleImage(getImageResult.Rows.Count == 0 ? null : getImageResult.Rows[0], fileLocation, propertyName, preferredWidth, preferredHeight, resizeMode, anchorPosition);
-    }
-
-    /// <inheritdoc />
-    public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemLinkImageAsync(ulong itemLinkId, string propertyName, uint preferredWidth, uint preferredHeight, string filename, int fileNumber, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemLinkId = null, int linkType = 0)
-    {
-        if (!TryGetFinalId(itemLinkId, encryptedItemLinkId, out var finalItemLinkId))
+        WiserItemFileModel result = null;
+        if (lookupType is FileLookupTypes.ItemFileId or FileLookupTypes.ItemLinkFileId)
         {
-            return (null, DateTime.MinValue);
+            // If we are looking up by file ID, we can just return the first row.
+            // Use Single LinQ method, so that we get an error if there is less or more than one row.
+            result = WiserFileHelpers.DataRowToItemFile(dataTable.Rows.Cast<DataRow>().Single());
         }
-
-        var tablePrefix = await wiserItemsService.GetTablePrefixForLinkAsync(linkType);
-
-        databaseConnection.ClearParameters();
-        databaseConnection.AddParameter("itemLinkId", finalItemLinkId);
-        databaseConnection.AddParameter("propertyName", propertyName);
-        var getImageResult = await databaseConnection.GetAsync($"""
-                                                                
-                                                                                SELECT content_type, content, content_url, protected
-                                                                                FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
-                                                                                WHERE itemlink_id = ?itemLinkId AND property_name = ?propertyName
-                                                                                ORDER BY ordering ASC, id ASC
-                                                                                LIMIT {fileNumber - 1},1
-                                                                """, skipCache: true);
-
-        if (!ValidateQueryResult(getImageResult, encryptedItemLinkId))
+        else
         {
-            // If file is protected, but tried to retrieve it without an encrypted item ID should result in a 404 status.
-            return (null, DateTime.MinValue);
-        }
-
-        var linkTypePart = linkType == 0 ? "" : $"_{linkType}";
-        var localDirectory = FileSystemHelpers.GetFileCacheDirectory(webHostEnvironment);
-        if (String.IsNullOrWhiteSpace(localDirectory))
-        {
-            logger.LogError($"Could not retrieve image because the directory '{localDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
-            return (null, DateTime.MinValue);
-        }
-
-        var localFilename = $"image_wiser_{finalItemLinkId}_itemlink{linkTypePart}_{propertyName}_{resizeMode:G}-{anchorPosition:G}_{preferredWidth}_{preferredHeight}_{fileNumber}_{Path.GetFileName(filename)}";
-        var fileLocation = Path.Combine(localDirectory, localFilename);
-
-        // Calling HandleImage with the dataRow parameter set to null will cause the function to return a no-image if possible.
-        return await HandleImage(getImageResult.Rows.Count == 0 ? null : getImageResult.Rows[0], fileLocation, propertyName, preferredWidth, preferredHeight, resizeMode, anchorPosition);
-    }
-
-    /// <inheritdoc />
-    public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserDirectImageAsync(ulong itemId, uint preferredWidth, uint preferredHeight, string filename, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
-    {
-        if (!TryGetFinalId(itemId, encryptedItemId, out var finalItemId))
-        {
-            return (null, DateTime.MinValue);
-        }
-
-        var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
-
-        databaseConnection.ClearParameters();
-        databaseConnection.AddParameter("fileId", finalItemId);
-        var getImageResult = await databaseConnection.GetAsync($"""
-                                                                
-                                                                                SELECT content_type, content, content_url, protected
-                                                                                FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
-                                                                                WHERE id = ?fileId
-                                                                """, skipCache: true);
-
-        if (!ValidateQueryResult(getImageResult, encryptedItemId))
-        {
-            // If file is protected, but tried to retrieve it without an encrypted item ID should result in a 404 status.
-            return (null, DateTime.MinValue);
-        }
-
-        var entityTypePart = String.IsNullOrWhiteSpace(entityType) ? "" : $"_{entityType}";
-        var localDirectory = FileSystemHelpers.GetFileCacheDirectory(webHostEnvironment);
-        if (String.IsNullOrWhiteSpace(localDirectory))
-        {
-            logger.LogError($"Could not retrieve image because the directory '{localDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
-            return (null, DateTime.MinValue);
-        }
-
-        var localFilename = $"image_wiser{entityTypePart}_{finalItemId}_direct_{resizeMode:G}-{anchorPosition:G}_{preferredWidth}_{preferredHeight}_{Path.GetFileName(filename)}";
-        var fileLocation = Path.Combine(localDirectory, localFilename);
-
-        // Calling HandleImage with the dataRow parameter set to null will cause the function to return a no-image if possible.
-        return await HandleImage(getImageResult.Rows.Count == 0 ? null : getImageResult.Rows[0], fileLocation, "", preferredWidth, preferredHeight, resizeMode, anchorPosition);
-    }
-
-    /// <inheritdoc />
-    public async Task<(byte[] fileBytes, DateTime lastModified)> GetWiserImageByFileNameAsync(ulong itemId, string propertyName, uint preferredWidth, uint preferredHeight, string filename, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
-    {
-        if (!TryGetFinalId(itemId, encryptedItemId, out var finalItemId) || finalItemId == 0 || String.IsNullOrWhiteSpace(filename))
-        {
-            return (null, DateTime.MinValue);
-        }
-
-        var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
-
-        databaseConnection.ClearParameters();
-        databaseConnection.AddParameter("itemId", finalItemId);
-        databaseConnection.AddParameter("propertyName", propertyName);
-        var getImagesResult = await databaseConnection.GetAsync($"""
-                                                                 SELECT content_type, content, content_url, file_name, protected
-                                                                 FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
-                                                                 WHERE item_id = ?itemId AND property_name = ?propertyName
-                                                                 ORDER BY ordering ASC, id ASC
-                                                                 """, skipCache: true);
-
-        // First retrieve the data row with the image that has the right file name.
-        DataRow imageDataRow = null;
-        foreach (var dataRow in getImagesResult.Rows.Cast<DataRow>())
-        {
-            var dataRowFileName = dataRow.Field<string>("file_name");
-            if (String.IsNullOrWhiteSpace(dataRowFileName)) continue;
-
-            if (!Path.GetFileNameWithoutExtension(dataRowFileName).Equals(Path.GetFileNameWithoutExtension(filename), StringComparison.OrdinalIgnoreCase)) continue;
-
-            imageDataRow = dataRow;
-            break;
-        }
-
-        if (imageDataRow != null)
-        {
-            // If file is protected, but tried to retrieve it without an encrypted item ID should result in a 404 status.
-            var isProtected = Convert.ToBoolean(imageDataRow["protected"]);
-            if (isProtected && String.IsNullOrWhiteSpace(encryptedItemId))
+            // For other loookup types, we need to loop through the rows to find the correct file.
+            for (var index = 0; index < dataTable.Rows.Count; index++)
             {
-                return (null, DateTime.MinValue);
+                var dataRow = dataTable.Rows[index];
+                var file = WiserFileHelpers.DataRowToItemFile(dataRow);
+
+                // If the lookup type is by file name, we need to find the file with the correct name.
+                if (lookupType is FileLookupTypes.ItemFileName or FileLookupTypes.ItemLinkFileName && String.Equals(Path.GetFileNameWithoutExtension(file.FileName), Path.GetFileNameWithoutExtension(fileName), StringComparison.OrdinalIgnoreCase))
+                {
+                    result = file;
+                    break;
+                }
+
+                // If the lookup type is by file number, we need to find the file with the correct number.
+                if (index + 1 != fileNumber)
+                {
+                    continue;
+                }
+
+                result = file;
+                break;
             }
         }
 
-        var entityTypePart = String.IsNullOrWhiteSpace(entityType) ? "" : $"_{entityType}";
-        var localDirectory = FileSystemHelpers.GetFileCacheDirectory(webHostEnvironment);
-        if (String.IsNullOrWhiteSpace(localDirectory))
-        {
-            logger.LogError($"Could not retrieve image because the directory '{localDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
-            return (null, DateTime.MinValue);
-        }
 
-        var localFilename = $"image_wiser{entityTypePart}_{itemId}_filename_{propertyName}_{resizeMode:G}-{anchorPosition:G}_{preferredWidth}_{preferredHeight}_{Path.GetFileName(filename)}";
-        var fileLocation = Path.Combine(localDirectory, localFilename);
-
-        // Calling HandleImage with the dataRow parameter set to null will cause the function to return a no-image if possible.
-        return await HandleImage(imageDataRow, fileLocation, propertyName, preferredWidth, preferredHeight, resizeMode, anchorPosition);
+        // If the file is protected, but no encrypted ID was used, return null.
+        return result == null || (result.Protected && !hasValidEncryptedId) ? null : result;
     }
 
     /// <inheritdoc />
-    public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemFileAsync(ulong itemId, string propertyName, string filename, int fileNumber, string encryptedItemId = null, string entityType = null)
+    public async Task<FileResultModel> GetResizedImageAsync(FileLookupTypes lookupType, object id, string fileName, string propertyName = null, string entityType = null, int linkType = 0, int fileNumber = 1, uint preferredWidth = 0, uint preferredHeight = 0, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center)
     {
-        if (!TryGetFinalId(itemId, encryptedItemId, out var finalItemId))
+        var extension = Path.HasExtension(fileName) ? Path.GetExtension(fileName) : ".png";
+        var file = await GetFileAsync(lookupType, id, propertyName: propertyName, fileName: fileName, entityType, linkType, fileNumber)
+                   ?? new WiserItemFileModel {Id = 0, PropertyName = propertyName ?? "Unknown", FileName = $"Unknown{extension}"};
+
+        if (!String.IsNullOrWhiteSpace(fileName))
         {
-            return (null, DateTime.MinValue);
+            file.FileName = fileName;
         }
 
-        var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
-
-        databaseConnection.ClearParameters();
-        databaseConnection.AddParameter("itemId", finalItemId);
-        databaseConnection.AddParameter("propertyName", propertyName);
-        var getFileResult = await databaseConnection.GetAsync($"""
-                                                               SELECT content, content_url, protected
-                                                               FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
-                                                               WHERE item_id = ?itemId AND property_name = ?propertyName
-                                                               ORDER BY ordering ASC, id ASC
-                                                               LIMIT {fileNumber - 1},1
-                                                               """, skipCache: true);
-
-        if (!ValidateQueryResult(getFileResult, encryptedItemId))
-        {
-            // If file is protected, but tried to retrieve it without an encrypted item ID should result in a 404 status.
-            return (null, DateTime.MinValue);
-        }
-
-        var entityTypePart = String.IsNullOrWhiteSpace(entityType) ? "" : $"_{entityType}";
-        var localDirectory = FileSystemHelpers.GetFileCacheDirectory(webHostEnvironment);
-        if (String.IsNullOrWhiteSpace(localDirectory))
-        {
-            logger.LogError($"Could not retrieve file because the directory '{localDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
-            return (null, DateTime.MinValue);
-        }
-
-        var localFilename = $"file_wiser2{entityTypePart}_{finalItemId}_{propertyName}_{fileNumber}_{Path.GetFileName(filename)}";
-        var fileLocation = Path.Combine(localDirectory, localFilename);
-
-        return getFileResult.Rows.Count == 0
-            ? (null, DateTime.MinValue)
-            : await HandleFile(getFileResult.Rows[0], fileLocation);
+        // If the file is a link to an external file, this will attempt to download the file and return the bytes.
+        // This will also resize the image to the requested dimensions and convert it to a different format if needed.
+        return await HandleImageAsync(file, preferredWidth, preferredHeight, resizeMode, anchorPosition);
     }
 
     /// <inheritdoc />
-    public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserItemLinkFileAsync(ulong itemLinkId, string propertyName, string filename, int fileNumber, string encryptedItemLinkId = null, int linkType = 0)
+    public async Task<FileResultModel> GetWiserItemImageAsync(ulong itemId, string propertyName, uint preferredWidth, uint preferredHeight, string fileName, int fileNumber, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
     {
-        if (!TryGetFinalId(itemLinkId, encryptedItemLinkId, out var finalItemLinkId))
-        {
-            return (null, DateTime.MinValue);
-        }
-
-        var tablePrefix = await wiserItemsService.GetTablePrefixForLinkAsync(linkType);
-
-        databaseConnection.ClearParameters();
-        databaseConnection.AddParameter("itemLinkId", finalItemLinkId);
-        databaseConnection.AddParameter("propertyName", propertyName);
-        var getFileResult = await databaseConnection.GetAsync($"""
-                                                               
-                                                                               SELECT content, content_url, protected
-                                                                               FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
-                                                                               WHERE itemlink_id = ?itemLinkId AND property_name = ?propertyName
-                                                                               ORDER BY ordering ASC, id ASC
-                                                                               LIMIT {fileNumber - 1},1
-                                                               """, skipCache: true);
-
-        if (!ValidateQueryResult(getFileResult, encryptedItemLinkId))
-        {
-            // If file is protected, but tried to retrieve it without an encrypted item ID should result in a 404 status.
-            return (null, DateTime.MinValue);
-        }
-
-        var linkTypePart = linkType == 0 ? "" : $"_{linkType}";
-        var localDirectory = FileSystemHelpers.GetFileCacheDirectory(webHostEnvironment);
-        if (String.IsNullOrWhiteSpace(localDirectory))
-        {
-            logger.LogError($"Could not retrieve file because the directory '{localDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
-            return (null, DateTime.MinValue);
-        }
-
-        var localFilename = $"file_wiser2_{finalItemLinkId}_itemlink{linkTypePart}_{propertyName}_{fileNumber}_{Path.GetFileName(filename)}";
-        var fileLocation = Path.Combine(localDirectory, localFilename);
-
-        return getFileResult.Rows.Count == 0
-            ? (null, DateTime.MinValue)
-            : await HandleFile(getFileResult.Rows[0], fileLocation);
+        return await GetResizedImageAsync(FileLookupTypes.ItemId, String.IsNullOrWhiteSpace(encryptedItemId) ? itemId : encryptedItemId, fileName: fileName, propertyName: propertyName, entityType: entityType, fileNumber: fileNumber, preferredWidth: preferredWidth, preferredHeight: preferredHeight, resizeMode: resizeMode, anchorPosition: anchorPosition);
     }
 
     /// <inheritdoc />
-    public async Task<(byte[] FileBytes, DateTime LastModified)> GetWiserDirectFileAsync(ulong itemId, string filename, string encryptedItemId = null, string entityType = null)
+    public async Task<FileResultModel> GetWiserItemLinkImageAsync(ulong itemLinkId, string propertyName, uint preferredWidth, uint preferredHeight, string fileName, int fileNumber, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemLinkId = null, int linkType = 0)
     {
-        if (!TryGetFinalId(itemId, encryptedItemId, out var finalItemId))
-        {
-            return (null, DateTime.MinValue);
-        }
-
-        var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(entityType);
-
-        databaseConnection.ClearParameters();
-        databaseConnection.AddParameter("fileId", finalItemId);
-        var getFileResult = await databaseConnection.GetAsync($"""
-                                                               
-                                                                               SELECT content, content_url, protected
-                                                                               FROM `{tablePrefix}{WiserTableNames.WiserItemFile}`
-                                                                               WHERE id = ?fileId
-                                                               """, skipCache: true);
-
-        if (!ValidateQueryResult(getFileResult, encryptedItemId))
-        {
-            // If file is protected, but tried to retrieve it without an encrypted item ID should result in a 404 status.
-            return (null, DateTime.MinValue);
-        }
-
-        var entityTypePart = String.IsNullOrWhiteSpace(entityType) ? "" : $"_{entityType}";
-        var localDirectory = FileSystemHelpers.GetFileCacheDirectory(webHostEnvironment);
-        if (String.IsNullOrWhiteSpace(localDirectory))
-        {
-            logger.LogError($"Could not retrieve file because the directory '{localDirectory}' does not exist. Please create it and give it modify permissions to the user that is running the website.");
-            return (null, DateTime.MinValue);
-        }
-
-        var localFilename = $"file_wiser2{entityTypePart}_{finalItemId}_direct_{Path.GetFileName(filename)}";
-        var fileLocation = Path.Combine(localDirectory, localFilename);
-
-        return getFileResult.Rows.Count == 0
-            ? (null, DateTime.MinValue)
-            : await HandleFile(getFileResult.Rows[0], fileLocation);
+        return await GetResizedImageAsync(FileLookupTypes.ItemLinkId, String.IsNullOrWhiteSpace(encryptedItemLinkId) ? itemLinkId : encryptedItemLinkId, fileName: fileName, propertyName: propertyName, linkType: linkType, fileNumber: fileNumber, preferredWidth: preferredWidth, preferredHeight: preferredHeight, resizeMode: resizeMode, anchorPosition: anchorPosition);
     }
 
-    /// <summary>
-    /// Returns true if encryptedId was null or empty, or if the decryption succeeded.
-    /// </summary>
-    /// <param name="id"></param>
-    /// <param name="encryptedId"></param>
-    /// <param name="result">Either the result of encryptedId if it was a valid encrypted value, the value of <paramref name="id"/>, or 0 if <paramref name="encryptedId"/> contained an invalid value.</param>
-    /// <returns></returns>
-    private bool TryGetFinalId(ulong id, string encryptedId, out ulong result)
+    /// <inheritdoc />
+    public async Task<FileResultModel> GetWiserDirectImageAsync(ulong itemId, uint preferredWidth, uint preferredHeight, string fileName, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
     {
-        if (String.IsNullOrWhiteSpace(encryptedId))
-        {
-            result = id;
-            return true;
-        }
-
-        try
-        {
-            var unencryptedId = encryptedId.DecryptWithAesWithSalt(withDateTime: true);
-            return UInt64.TryParse(unencryptedId, out result);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to decrypt encrypted item ID when trying to retrieve image. Encrypted value might have expired, or encrypted using a different encryption key.");
-            result = 0;
-            return false;
-        }
+        return await GetResizedImageAsync(FileLookupTypes.ItemFileId, String.IsNullOrWhiteSpace(encryptedItemId) ? itemId : encryptedItemId, fileName: fileName, entityType: entityType, preferredWidth: preferredWidth, preferredHeight: preferredHeight, resizeMode: resizeMode, anchorPosition: anchorPosition);
     }
 
-    /// <summary>
-    /// Validates the result of the query. Will return <see langword="false"/> if the resulting file is protected, but no encrypted ID was used.
-    /// Will return <see langword="true"/> in all other cases, even if the query result was empty (no rows).
-    /// </summary>
-    /// <param name="queryResult"></param>
-    /// <param name="encryptedId"></param>
-    /// <returns></returns>
-    private static bool ValidateQueryResult(DataTable queryResult, string encryptedId)
+    /// <inheritdoc />
+    public async Task<FileResultModel> GetWiserImageByFileNameAsync(ulong itemId, string propertyName, uint preferredWidth, uint preferredHeight, string fileName, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
     {
-        if (queryResult.Rows.Count == 0)
-        {
-            // No result should still return true, so a no-image can be used instead.
-            return true;
-        }
-
-        var isProtected = Convert.ToBoolean(queryResult.Rows[0]["protected"]);
-        return !isProtected || !String.IsNullOrWhiteSpace(encryptedId);
+        return await GetResizedImageAsync(FileLookupTypes.ItemFileName, String.IsNullOrWhiteSpace(encryptedItemId) ? itemId : encryptedItemId, fileName: fileName, entityType: entityType, preferredWidth: preferredWidth, preferredHeight: preferredHeight, resizeMode: resizeMode, anchorPosition: anchorPosition);
     }
 
-    /// <summary>
-    /// Converts the data into an image of the given size, format, and quality, and will return the bytes of that image.
-    /// </summary>
-    /// <param name="dataRow"></param>
-    /// <param name="saveLocation"></param>
-    /// <param name="propertyName"></param>
-    /// <param name="preferredWidth"></param>
-    /// <param name="preferredHeight"></param>
-    /// <param name="resizeMode"></param>
-    /// <param name="anchorPosition"></param>
-    /// <returns></returns>
-    private async Task<(byte[] FileBytes, DateTime LastModified)> HandleImage(DataRow dataRow, string saveLocation, string propertyName, uint preferredWidth, uint preferredHeight, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center)
+    /// <inheritdoc />
+    public async Task<FileResultModel> GetParsedFileAsync(FileLookupTypes lookupType, object id, string fileName, string propertyName = null, string entityType = null, int linkType = 0, int fileNumber = 1)
     {
+        var extension = Path.HasExtension(fileName) ? Path.GetExtension(fileName) : ".pdf";
+        var file = await GetFileAsync(lookupType, id, propertyName: propertyName, fileName: fileName, entityType, linkType, fileNumber)
+                   ?? new WiserItemFileModel {Id = 0, PropertyName = propertyName ?? "Unknown", FileName = $"Unknown{extension}"};
+
+        if (!String.IsNullOrWhiteSpace(fileName))
+        {
+            file.FileName = fileName;
+        }
+
+        // If the file is a link to an external file, this will attempt to download the file and return the bytes.
+        return await HandleFileAsync(file);
+    }
+
+    /// <inheritdoc />
+    public async Task<FileResultModel> GetWiserItemFileAsync(ulong itemId, string propertyName, string fileName, int fileNumber, string encryptedItemId = null, string entityType = null)
+    {
+        return await GetParsedFileAsync(FileLookupTypes.ItemId, String.IsNullOrWhiteSpace(encryptedItemId) ? itemId : encryptedItemId, fileName: fileName, entityType: entityType);
+    }
+
+    /// <inheritdoc />
+    public async Task<FileResultModel> GetWiserItemLinkFileAsync(ulong itemLinkId, string propertyName, string fileName, int fileNumber, string encryptedItemLinkId = null, int linkType = 0)
+    {
+        return await GetParsedFileAsync(FileLookupTypes.ItemLinkId, String.IsNullOrWhiteSpace(encryptedItemLinkId) ? itemLinkId : encryptedItemLinkId, fileName: fileName, linkType: linkType);
+    }
+
+    /// <inheritdoc />
+    public async Task<FileResultModel> GetWiserDirectFileAsync(ulong itemId, string fileName, string encryptedItemId = null, string entityType = null)
+    {
+        return await GetParsedFileAsync(FileLookupTypes.ItemFileId, String.IsNullOrWhiteSpace(encryptedItemId) ? itemId : encryptedItemId, fileName: fileName, entityType: entityType);
+    }
+
+    /// <inheritdoc />
+    public async Task<FileResultModel> HandleImageAsync(WiserItemFileModel file, uint preferredWidth, uint preferredHeight, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center)
+    {
+        var result = new FileResultModel {FileBytes = null, LastModified = DateTime.MinValue, WiserItemFile = file};
         if (String.IsNullOrEmpty(webHostEnvironment?.WebRootPath))
         {
-            return (null, DateTime.MinValue);
+            return result;
         }
 
-        byte[] fileBytes;
-        var imageIsProtected = false;
+        var extension = Path.GetExtension(file.FileName);
 
-        if (dataRow == null)
+        if (file.Id == 0)
         {
-            var extension = Path.GetExtension(saveLocation);
-
             // No row found in the database, check if a no-image file is available.
-            var noImageFilePath = Path.Combine(webHostEnvironment.WebRootPath, "img", $"noimg_{propertyName}{extension}");
+            var noImageFilePath = Path.Combine(webHostEnvironment.WebRootPath, "img", $"noimg_{file.PropertyName}{extension}");
             if (!File.Exists(noImageFilePath))
             {
                 noImageFilePath = Path.Combine(webHostEnvironment.WebRootPath, "img", $"noimg{extension}");
                 if (!File.Exists(noImageFilePath))
                 {
                     // A no-image file could not be found; abort.
-                    return (null, DateTime.MinValue);
+                    return result;
                 }
             }
 
             // No-image file is available, use that the image.
-            fileBytes = await fileCacheService.GetBytesAsync(noImageFilePath);
+            var fileResult = await fileCacheService.GetBytesAsync(noImageFilePath);
+            result.FileBytes = fileResult.FileBytes;
+            result.LastModified = fileResult.LastModified;
         }
         else
         {
-            // Check if image is protected.
-            imageIsProtected = Convert.ToBoolean(dataRow["protected"]);
-
             // Retrieve the image bytes from the data row.
-            fileBytes = dataRow.Field<byte[]>("content");
+            result.FileBytes = file.Content;
 
-            if (fileBytes == null || fileBytes.Length == 0)
+            if (result.FileBytes == null || result.FileBytes.Length == 0)
             {
                 // Data row didn't contain a file directly, but might contain a content URL.
-                var contentUrl = dataRow.Field<string>("content_url");
+                var contentUrl = file.ContentUrl;
 
                 if (!String.IsNullOrWhiteSpace(contentUrl))
                 {
@@ -463,7 +310,9 @@ public class ItemFilesService(
                             var localPath = FileSystemHelpers.GetFileCacheDirectory(webHostEnvironment);
                             if (await amazonS3Service.DownloadObjectFromBucketAsync(s3Bucket, s3Object, localPath))
                             {
-                                fileBytes = await fileCacheService.GetBytesAsync(Path.Combine(localPath, s3Object));
+                                var fileResult = await fileCacheService.GetBytesAsync(Path.Combine(localPath, s3Object));
+                                result.FileBytes = fileResult.FileBytes;
+                                result.LastModified = fileResult.LastModified;
                             }
                         }
                         else
@@ -478,78 +327,78 @@ public class ItemFilesService(
                     }
 
                     // No image bytes were found, try to retrieve the image from the content URL.
-                    if (fileBytes == null || fileBytes.Length == 0)
+                    if (result.FileBytes == null || result.FileBytes.Length == 0)
                     {
                         if (Uri.IsWellFormedUriString(contentUrl, UriKind.Absolute))
                         {
                             var fileResult = await httpClientService.Client.GetAsync(contentUrl);
                             if (fileResult.StatusCode == HttpStatusCode.OK)
                             {
-                                fileBytes = await fileResult.Content.ReadAsByteArrayAsync();
+                                result.FileBytes = await fileResult.Content.ReadAsByteArrayAsync();
                             }
                         }
                         else
                         {
                             var localFilePath = Path.Combine(webHostEnvironment.WebRootPath, contentUrl.TrimStart('/'));
-                            if (File.Exists(localFilePath))
-                            {
-                                fileBytes = await fileCacheService.GetBytesAsync(localFilePath);
-                            }
+                            var fileResult = await fileCacheService.GetBytesAsync(localFilePath);
+                            result.FileBytes = fileResult.FileBytes;
+                            result.LastModified = fileResult.LastModified;
                         }
                     }
                 }
             }
 
-            var extension = Path.GetExtension(saveLocation);
-
             // Final check to see if the image bytes were retrieved.
-            if (fileBytes == null || fileBytes.Length == 0)
+            if (result.FileBytes == null || result.FileBytes.Length == 0)
             {
                 // Try to get a no-image file instead.
-                var noImageFilePath = Path.Combine(webHostEnvironment.WebRootPath, "img", $"noimg_{propertyName}{extension}");
+                var noImageFilePath = Path.Combine(webHostEnvironment.WebRootPath, "img", $"noimg_{file.PropertyName}{extension}");
                 if (!File.Exists(noImageFilePath))
                 {
                     noImageFilePath = Path.Combine(webHostEnvironment.WebRootPath, "img", $"noimg{extension}");
                     if (!File.Exists(noImageFilePath))
                     {
                         // A no-image file could not be found; abort.
-                        return (null, DateTime.MinValue);
+                        return result;
                     }
                 }
 
-                fileBytes = await fileCacheService.GetBytesAsync(noImageFilePath);
+                var fileResult = await fileCacheService.GetBytesAsync(noImageFilePath);
+                result.FileBytes = fileResult.FileBytes;
+                result.LastModified = fileResult.LastModified;
             }
 
-            // Simply return the content without trying to alter it when it's an SVG.
-            var contentType = dataRow.Field<string>("content_type") ?? "";
-            if (contentType.Equals("image/svg+xml", StringComparison.OrdinalIgnoreCase))
+            if (result.LastModified == DateTime.MinValue)
             {
-                return (fileBytes, DateTime.UtcNow);
+                result.LastModified = DateTime.UtcNow;
+            }
+
+            // SVG files are vector images, so there is no point in trying to resize them. Return it as is.
+            var contentType = file.ContentType ?? "";
+            if (contentType.Equals(MediaTypeNames.Image.Svg, StringComparison.OrdinalIgnoreCase))
+            {
+                return result;
             }
         }
 
-        var outFileBytes = await ResizeImageWithImageMagick(fileBytes, saveLocation, imageIsProtected, preferredWidth, preferredHeight, resizeMode, anchorPosition);
+        await ResizeImageWithImageMagickAsync(result, preferredWidth, preferredHeight, resizeMode, anchorPosition);
 
-        return (outFileBytes, DateTime.UtcNow);
+        return result;
     }
 
-    private async Task<(byte[] FileBytes, DateTime LastModified)> HandleFile(DataRow dataRow, string saveLocation)
+    /// <inheritdoc />
+    public async Task<FileResultModel> HandleFileAsync(WiserItemFileModel file)
     {
-        if (dataRow == null)
+        var result = new FileResultModel {FileBytes = null, LastModified = DateTime.MinValue, WiserItemFile = file};
+        if (file == null || file.Id == 0)
         {
-            return (null, DateTime.MinValue);
+            return result;
         }
 
-        // Check if image is protected.
-        var fileIsProtected = Convert.ToBoolean(dataRow["protected"]);
-
-        // Retrieve the image bytes from the data row.
-        var fileBytes = dataRow.Field<byte[]>("content");
-
-        if (fileBytes == null || fileBytes.Length == 0)
+        if (result.FileBytes == null || result.FileBytes.Length == 0)
         {
             // Data row didn't contain a file directly, but might contain a content URL.
-            var contentUrl = dataRow.Field<string>("content_url");
+            var contentUrl = file.ContentUrl;
 
             if (!String.IsNullOrWhiteSpace(contentUrl))
             {
@@ -562,10 +411,10 @@ public class ItemFilesService(
 
                 if (Uri.IsWellFormedUriString(contentUrl, UriKind.Absolute))
                 {
-                    var fileResult = await httpClientService.Client.GetAsync(contentUrl);
-                    if (fileResult.StatusCode == HttpStatusCode.OK)
+                    var externalFileResult = await httpClientService.Client.GetAsync(contentUrl);
+                    if (externalFileResult.StatusCode == HttpStatusCode.OK)
                     {
-                        fileBytes = await fileResult.Content.ReadAsByteArrayAsync();
+                        result.FileBytes = await externalFileResult.Content.ReadAsByteArrayAsync();
                     }
                 }
                 else
@@ -573,46 +422,40 @@ public class ItemFilesService(
                     var localFilePath = Path.Combine(webHostEnvironment.WebRootPath, contentUrl.TrimStart('/'));
                     if (File.Exists(localFilePath))
                     {
-                        fileBytes = await File.ReadAllBytesAsync(localFilePath);
+                        var fileResult = await fileCacheService.GetBytesAsync(localFilePath);
+                        result.FileBytes = fileResult.FileBytes;
+                        result.LastModified = fileResult.LastModified;
                     }
                 }
             }
         }
 
-        // Final check to see if a the image bytes were retrieved.
-        if (fileBytes == null || fileBytes.Length == 0)
+        // Final check to see if the file bytes were retrieved.
+        if (result.FileBytes is {Length: > 0})
         {
-            return (null, DateTime.MinValue);
+            result.LastModified = DateTime.UtcNow;
         }
 
-        // Don't save the file to the disk if it's protected (protected files shouldn't be cached).
-        if (!fileIsProtected)
-        {
-            await fileCacheService.WriteFileIfNotExistsOrExpiredAsync(saveLocation, fileBytes);
-        }
-
-        return (fileBytes, DateTime.UtcNow);
+        return result;
     }
 
     /// <summary>
-    /// Internal function to resize the image using the Magick.NET library. The extension of <paramref name="saveLocation"/> will be used to determine the image's file format.
+    /// Internal function to resize the image using the Magick.NET library. The file extension from the <see cref="WiserItemFileModel.FileName"/> property will be used to determine the image's file format.
     /// </summary>
-    /// <param name="fileBytes">The byte array of the source image.</param>
-    /// <param name="saveLocation">The location on the file system where the result should be saved. Note that the image will not be saved to the disk if <paramref name="imageIsProtected"/> is set to <see langword="true"/>.</param>
-    /// <param name="imageIsProtected">Whether the image that is being resized is protected. If set to <see langword="true"/>, it will not be saved to disk.</param>
+    /// <param name="file">The image data.</param>
     /// <param name="preferredWidth">The width the resized image should preferably be resized to. Depending on the resize mod and dimensions of the source file the resized image might not be resized to the preferred width.</param>
     /// <param name="preferredHeight">The height the resized image should preferably be resized to. Depending on the resize mod and dimensions of the source file the resized image might not be resized to the preferred height.</param>
     /// <param name="resizeMode">The method of resizing.</param>
     /// <param name="anchorPosition">The anchor position that the <see cref="ResizeModes.Crop"/> and <see cref="ResizeModes.Fill"/> resize modes use.</param>
     /// <returns>The byte array of the resized image.</returns>
-    private async Task<byte[]> ResizeImageWithImageMagick(byte[] fileBytes, string saveLocation, bool imageIsProtected, uint preferredWidth, uint preferredHeight, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center)
+    private async Task ResizeImageWithImageMagickAsync(FileResultModel file, uint preferredWidth, uint preferredHeight, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center)
     {
-        var extension = Path.GetExtension(saveLocation);
+        var extension = Path.GetExtension(file.WiserItemFile.FileName);
 
         // Determine image format.
         MagickFormat imageFormat;
         var imageQuality = 100u;
-        switch (extension.ToLowerInvariant())
+        switch (extension?.ToLowerInvariant())
         {
             case ".jpg":
             case ".jpeg":
@@ -647,7 +490,7 @@ public class ItemFilesService(
                 imageFormat = MagickFormat.Avif;
                 break;
             default:
-                throw new NotSupportedException("Unsupported file type.");
+                throw new ArgumentOutOfRangeException(nameof(extension), extension, null);
         }
 
         var fillColor = MagickColors.Transparent;
@@ -656,13 +499,12 @@ public class ItemFilesService(
             fillColor = MagickColors.White;
         }
 
-        byte[] outFileBytes;
         if (preferredWidth > 0 && preferredHeight > 0)
         {
             // GIF images are a bit different because they have multiple frames.
             if (imageFormat == MagickFormat.Gif)
             {
-                using var collection = new MagickImageCollection(fileBytes);
+                using var collection = new MagickImageCollection(file.FileBytes);
 
                 // This will remove the optimization and change the image to how it looks at that point
                 // during the animation. More info here: http://www.imagemagick.org/Usage/anim_basics/#coalesce
@@ -698,11 +540,11 @@ public class ItemFilesService(
                 collection.OptimizePlus();
                 collection.OptimizeTransparency();
 
-                outFileBytes = collection.ToByteArray();
+                file.FileBytes = collection.ToByteArray();
             }
             else
             {
-                using var image = new MagickImage(fileBytes);
+                using var image = new MagickImage(file.FileBytes);
 
                 if (fillColor != MagickColors.Transparent)
                 {
@@ -740,14 +582,14 @@ public class ItemFilesService(
                         throw new ArgumentOutOfRangeException(nameof(resizeMode), resizeMode, null);
                 }
 
-                outFileBytes = image.ToByteArray(imageFormat);
+                file.FileBytes = image.ToByteArray(imageFormat);
             }
         }
         else
         {
             if (imageFormat == MagickFormat.Gif)
             {
-                using var collection = new MagickImageCollection(fileBytes);
+                using var collection = new MagickImageCollection(file.FileBytes);
 
                 // This will remove the optimization and change the image to how it looks at that point
                 // during the animation. More info here: http://www.imagemagick.org/Usage/anim_basics/#coalesce
@@ -767,11 +609,11 @@ public class ItemFilesService(
                 collection.OptimizePlus();
                 collection.OptimizeTransparency();
 
-                outFileBytes = collection.ToByteArray();
+                file.FileBytes = collection.ToByteArray();
             }
             else
             {
-                using var image = new MagickImage(fileBytes);
+                using var image = new MagickImage(file.FileBytes);
 
                 if (fillColor != MagickColors.Transparent)
                 {
@@ -791,16 +633,8 @@ public class ItemFilesService(
                     }
                 }
 
-                outFileBytes = image.ToByteArray(imageFormat);
+                file.FileBytes = image.ToByteArray(imageFormat);
             }
         }
-
-        // Save file to disk if it isn't protected.
-        if (!imageIsProtected)
-        {
-            await fileCacheService.WriteFileIfNotExistsOrExpiredAsync(saveLocation, outFileBytes);
-        }
-
-        return outFileBytes;
     }
 }

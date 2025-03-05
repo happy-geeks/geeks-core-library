@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Net.Mime;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Http;
@@ -31,8 +32,7 @@ public class AddAntiForgeryMiddleware(RequestDelegate next, ILogger<AddAntiForge
             // The HTML should be generated at this point; read the entire response body as a string.
             newBody.Position = 0;
 
-            // ReSharper disable once ConditionIsAlwaysTrueOrFalse <--- "context.Response.ContentType" actually is NULL in some cases, I don't know why ReSharper thinks that it can't be.
-            if (context.Response.ContentType == null || !context.Response.ContentType.Contains("text/html"))
+            if (context.Response.ContentType == null || !context.Response.ContentType.Contains(MediaTypeNames.Text.Html))
             {
                 // If the content type is not HTML, just copy the new stream back into the original stream.
                 await newBody.CopyToAsync(originalBody);

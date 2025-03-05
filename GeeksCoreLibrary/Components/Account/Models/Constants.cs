@@ -1,4 +1,6 @@
-﻿namespace GeeksCoreLibrary.Components.Account.Models;
+﻿using System.Net.Mime;
+
+namespace GeeksCoreLibrary.Components.Account.Models;
 
 public static class Constants
 {
@@ -114,13 +116,13 @@ public static class Constants
                                                   ON DUPLICATE KEY UPDATE `value` = NOW();
                                                   """;
 
-    internal const string DefaultLoginJavascript = """
+    internal const string DefaultLoginJavascript = $$"""
                                                    function setupHttpRequest{contentId}(container, method, extraQueryStringParameters) {
                                                        var url = '/GclComponent.gcl?contentId={contentId}&callMethod=' + method + '&ombouw=false&type=Account' + (extraQueryStringParameters || '');
                                                        
                                                        var xhr = new XMLHttpRequest();
                                                        xhr.open('POST', url);
-                                                       xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+                                                       xhr.setRequestHeader('Content-Type', '{{MediaTypeNames.Application.FormUrlEncoded}}');
                                                        xhr.onload = function() {
                                                            if (xhr.status !== 200) {
                                                                alert('Request failed');

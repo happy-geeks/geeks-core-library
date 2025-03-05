@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Mime;
 using System.Security.Authentication;
 using System.Security.Cryptography;
 using System.Text;
@@ -21,6 +22,7 @@ using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;
 using RestSharp;
 using RestSharp.Authenticators;
+using ContentType = RestSharp.ContentType;
 using OrderProcessConstants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
 
 namespace GeeksCoreLibrary.Modules.PostalServices.NeDistri.Services;
@@ -105,9 +107,10 @@ public class NeDistriService(IOptions<GclSettings> gclSettings, IWiserItemsServi
                     Content = mergedStream.GetBuffer(),
                     Extension = ".pdf",
                     FileName = $"NeDistri-{createOrderResponse.Response.Id}.pdf",
-                    ContentType = "application/pdf",
+                    ContentType = MediaTypeNames.Application.Pdf,
                     PropertyName = "NeDistri_label",
-                    Title = $"NeDistri-Label-{createOrderResponse.Response.Id}"
+                    Title = $"NeDistri-Label-{createOrderResponse.Response.Id}",
+                    Protected = true
                 }, skipPermissionsCheck: true);
             }
 

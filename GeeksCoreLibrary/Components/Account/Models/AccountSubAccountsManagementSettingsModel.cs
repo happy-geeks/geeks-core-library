@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel;
+using System.Net.Mime;
 
 namespace GeeksCoreLibrary.Components.Account.Models;
 
@@ -89,7 +90,7 @@ internal class AccountSubAccountsManagementSettingsModel
                   """)]
     internal string TemplateError { get; }
 
-    [DefaultValue("""
+    [DefaultValue($$"""
                   (() => {
                   	let selectedSubAccount = 0;
                   	
@@ -98,7 +99,7 @@ internal class AccountSubAccountsManagementSettingsModel
                   		
                   		const xhr = new XMLHttpRequest();
                   		xhr.open('POST', url);
-                  		xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+                  		xhr.setRequestHeader('Content-Type', '{{MediaTypeNames.Application.FormUrlEncoded}}');
                   		xhr.onload = () => {
                   			if (xhr.status !== 200) {
                   				alert('Request failed');

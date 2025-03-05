@@ -22,12 +22,12 @@ public class FileCacheService : IFileCacheService, ISingletonService
     private readonly ConcurrentDictionary<string, SemaphoreSlim> activeWrites = new();
 
     /// <inheritdoc />
-    public async Task<byte[]> GetOrAddAsync(string filePath, Func<Task<(byte[] Content, bool IsCachable)>> generateContentAsync, TimeSpan? cachingTime = null)
+    public async Task<(byte[] FileBytes, DateTime LastModified)> GetOrAddAsync(string filePath, Func<Task<(byte[] Content, bool IsCacheable)>> generateContentAsync, TimeSpan? cachingTime = null)
     {
-        var buffer = await GetBytesAsync(filePath, cachingTime);
-        if (buffer != null)
+        var result = await GetBytesAsync(filePath, cachingTime);
+        if (result.FileBytes != null)
         {
-            return buffer;
+            return result;
         }
 
         var fileLock = activeWrites.GetOrAdd(filePath, _ => new SemaphoreSlim(1, 1));
@@ -41,32 +41,33 @@ public class FileCacheService : IFileCacheService, ISingletonService
                 await WriteFileInternalAsync(filePath, content, cachingTime);
             }
 
-            return content;
+            return (content, DateTime.UtcNow);
         }
         finally
         {
             fileLock.Release();
         }
     }
-    
+
     /// <inheritdoc />
     public async Task<string> GetOrAddAsync(string filePath, Func<Task<string>> generateContentAsync, TimeSpan? cachingTime = null)
     {
-        var contentBytes = await GetOrAddAsync(filePath, async () =>
+        var (contentBytes, _) = await GetOrAddAsync(filePath, async () =>
         {
             var content = await generateContentAsync();
             return (Encoding.UTF8.GetBytes(content), true);
         }, cachingTime);
+
         return Encoding.UTF8.GetString(contentBytes);
     }
 
     /// <inheritdoc />
-    public async Task<byte[]> GetBytesAsync(string filePath, TimeSpan? cachingTime = null)
+    public async Task<(byte[] FileBytes, DateTime LastModified)> GetBytesAsync(string filePath, TimeSpan? cachingTime = null)
     {
         var fileInfo = new FileInfo(filePath);
         if (CreateDirectoryIfNotExist(fileInfo) || IsFileExpired(fileInfo, cachingTime))
         {
-            return null;
+            return (null, DateTime.MinValue);
         }
 
         if (activeWrites.TryGetValue(filePath, out var fileLock))
@@ -80,13 +81,13 @@ public class FileCacheService : IFileCacheService, ISingletonService
         await using var fileStream = fileInfo.Open(FileMode.Open, FileAccess.Read, FileShare.Read);
         var buffer = new byte[fileStream.Length];
         _ = await fileStream.ReadAsync(buffer);
-        return buffer;
+        return (buffer, fileInfo.LastWriteTimeUtc);
     }
-    
+
     /// <inheritdoc />
     public async Task<string> GetTextAsync(string filePath, TimeSpan? cachingTime = null)
     {
-        var buffer = await GetBytesAsync(filePath, cachingTime);
+        var (buffer, _) = await GetBytesAsync(filePath, cachingTime);
         return buffer != null ? Encoding.UTF8.GetString(buffer) : null;
     }
 
@@ -105,7 +106,7 @@ public class FileCacheService : IFileCacheService, ISingletonService
             fileLock.Release();
         }
     }
-    
+
     /// <inheritdoc />
     public async Task WriteFileIfNotExistsOrExpiredAsync(string filePath, string content, TimeSpan? cachingTime)
     {
@@ -145,8 +146,7 @@ public class FileCacheService : IFileCacheService, ISingletonService
             var fileInfo = new FileInfo(filePath);
             if (IsFileExpired(fileInfo, cachingTime))
             {
-                await using var fileStream =
-                    new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None);
+                await using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None);
                 await fileStream.WriteAsync(content);
             }
         }
@@ -195,8 +195,7 @@ public class FileCacheService : IFileCacheService, ISingletonService
     /// <returns><c>true</c> if the file is expired or does not exist; otherwise, <c>false</c>.</returns>
     private static bool IsFileExpired(FileInfo fileInfo, TimeSpan? cachingTime)
     {
-        return !fileInfo.Exists || (cachingTime is not null &&
-               DateTime.UtcNow - fileInfo.LastWriteTimeUtc > cachingTime);
+        return !fileInfo.Exists || (cachingTime is not null && DateTime.UtcNow - fileInfo.LastWriteTimeUtc > cachingTime);
     }
 
     /// <summary>
@@ -210,7 +209,7 @@ public class FileCacheService : IFileCacheService, ISingletonService
     /// </returns>
     private static bool CreateDirectoryIfNotExist(FileInfo fileInfo)
     {
-        if (fileInfo.Directory is not { Exists: false })
+        if (fileInfo.Directory is not {Exists: false})
         {
             return false;
         }

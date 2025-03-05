@@ -389,13 +389,13 @@ public class MySqlDatabaseHelpersService : IDatabaseHelpersService, IScopedServi
     }
 
     /// <inheritdoc />
-    public async Task<Dictionary<string, DateTime>> GetLastTableUpdatesAsync(string databaseName = null)
+    public async Task<Dictionary<string, DateTime>> GetMigrationsStatusAsync(string databaseName = null)
     {
-        return await GetLastTableUpdatesAsync(this, databaseName);
+        return await GetMigrationsStatusAsync(this, databaseName);
     }
 
     /// <inheritdoc />
-    public async Task<Dictionary<string, DateTime>> GetLastTableUpdatesAsync(IDatabaseHelpersService databaseHelpersService, string databaseName = null)
+    public async Task<Dictionary<string, DateTime>> GetMigrationsStatusAsync(IDatabaseHelpersService databaseHelpersService, string databaseName = null)
     {
         var result = new Dictionary<string, DateTime>();
 
@@ -460,7 +460,7 @@ public class MySqlDatabaseHelpersService : IDatabaseHelpersService, IScopedServi
     public async Task<bool> CheckAndUpdateTablesAsync(IDatabaseHelpersService databaseHelpersService, List<string> tablesToUpdate, string databaseName = null)
     {
         var changesMade = false;
-        var tableChanges = await databaseHelpersService.GetLastTableUpdatesAsync(databaseName);
+        var tableChanges = await databaseHelpersService.GetMigrationsStatusAsync(databaseName);
 
         if (String.IsNullOrWhiteSpace(databaseName))
         {
@@ -491,7 +491,7 @@ public class MySqlDatabaseHelpersService : IDatabaseHelpersService, IScopedServi
 
             // Table is not up-to-date, so update it now.
             await CreateOrUpdateTableAsync(tableName, tableDefinition.Columns, tableDefinition.CharacterSet, tableDefinition.Collation, databaseName);
-            if (tableDefinition.Indexes != null && tableDefinition.Indexes.Any())
+            if (tableDefinition.Indexes != null && tableDefinition.Indexes.Count != 0)
             {
                 await CreateOrUpdateIndexesAsync(tableDefinition.Indexes, databaseName);
             }
@@ -500,7 +500,7 @@ public class MySqlDatabaseHelpersService : IDatabaseHelpersService, IScopedServi
             if (WiserTableNames.TablesWithArchive.Contains(tableName))
             {
                 await CreateOrUpdateTableAsync($"{tableName}{WiserTableNames.ArchiveSuffix}", tableDefinition.Columns, tableDefinition.CharacterSet, tableDefinition.Collation, databaseName);
-                if (tableDefinition.Indexes != null && tableDefinition.Indexes.Any())
+                if (tableDefinition.Indexes != null && tableDefinition.Indexes.Count != 0)
                 {
                     tableDefinition.Indexes.ForEach(index => index.TableName += WiserTableNames.ArchiveSuffix);
                     await CreateOrUpdateIndexesAsync(tableDefinition.Indexes, databaseName);
@@ -511,7 +511,7 @@ public class MySqlDatabaseHelpersService : IDatabaseHelpersService, IScopedServi
             // Update dedicated entity tables.
             if (WiserTableNames.TablesThatCanHaveEntityPrefix.Contains(tableName))
             {
-                var query = $@"SELECT DISTINCT dedicated_table_prefix FROM {WiserTableNames.WiserEntity} WHERE dedicated_table_prefix IS NOT NULL AND dedicated_table_prefix != ''";
+                var query = $"SELECT DISTINCT dedicated_table_prefix FROM {WiserTableNames.WiserEntity} WHERE dedicated_table_prefix IS NOT NULL AND dedicated_table_prefix != ''";
                 var dataTable = await databaseConnection.GetAsync(query);
                 foreach (DataRow dataRow in dataTable.Rows)
                 {
@@ -523,7 +523,7 @@ public class MySqlDatabaseHelpersService : IDatabaseHelpersService, IScopedServi
 
                     // Normal tables.
                     await CreateOrUpdateTableAsync($"{tablePrefix}{tableName}", tableDefinition.Columns, tableDefinition.CharacterSet, tableDefinition.Collation, databaseName);
-                    if (tableDefinition.Indexes != null && tableDefinition.Indexes.Any())
+                    if (tableDefinition.Indexes != null && tableDefinition.Indexes.Count != 0)
                     {
                         tableDefinition.Indexes.ForEach(index => index.TableName = $"{tablePrefix}{index.TableName}");
                         await CreateOrUpdateIndexesAsync(tableDefinition.Indexes, databaseName);
@@ -544,7 +544,7 @@ public class MySqlDatabaseHelpersService : IDatabaseHelpersService, IScopedServi
             // Update dedicated link tables.
             if (WiserTableNames.TablesThatCanHaveLinkPrefix.Contains(tableName))
             {
-                var query = $@"SELECT DISTINCT type FROM {WiserTableNames.WiserLink} WHERE use_dedicated_table = 1";
+                var query = $"SELECT DISTINCT type FROM {WiserTableNames.WiserLink} WHERE use_dedicated_table = 1";
                 var dataTable = await databaseConnection.GetAsync(query);
                 foreach (DataRow dataRow in dataTable.Rows)
                 {
@@ -552,7 +552,7 @@ public class MySqlDatabaseHelpersService : IDatabaseHelpersService, IScopedServi
 
                     // Normal tables.
                     await CreateOrUpdateTableAsync($"{tablePrefix}{tableName}", tableDefinition.Columns, tableDefinition.CharacterSet, tableDefinition.Collation, databaseName);
-                    if (tableDefinition.Indexes != null && tableDefinition.Indexes.Any())
+                    if (tableDefinition.Indexes != null && tableDefinition.Indexes.Count != 0)
                     {
                         tableDefinition.Indexes.ForEach(index => index.TableName = $"{tablePrefix}{index.TableName}");
                         await CreateOrUpdateIndexesAsync(tableDefinition.Indexes, databaseName);
@@ -561,7 +561,7 @@ public class MySqlDatabaseHelpersService : IDatabaseHelpersService, IScopedServi
 
                     // Archive tables.
                     await CreateOrUpdateTableAsync($"{tablePrefix}{tableName}{WiserTableNames.ArchiveSuffix}", tableDefinition.Columns, tableDefinition.CharacterSet, tableDefinition.Collation, databaseName);
-                    if (tableDefinition.Indexes != null && tableDefinition.Indexes.Any())
+                    if (tableDefinition.Indexes != null && tableDefinition.Indexes.Count != 0)
                     {
                         tableDefinition.Indexes.ForEach(index => index.TableName = $"{tablePrefix}{index.TableName}{WiserTableNames.ArchiveSuffix}");
                         await CreateOrUpdateIndexesAsync(tableDefinition.Indexes, databaseName);
@@ -812,9 +812,11 @@ public class MySqlDatabaseHelpersService : IDatabaseHelpersService, IScopedServi
     /// <inheritdoc />
     public async Task OptimizeTablesAsync(params string[] tableNames)
     {
-        if (tableNames.Any())
+        if (tableNames.Length == 0)
         {
-            await databaseConnection.ExecuteAsync($"OPTIMIZE TABLE {String.Join(',', tableNames.Select(tableName => $"`{tableName.ToMySqlSafeValue(false)}`"))}");
+            return;
         }
+        
+        await databaseConnection.ExecuteAsync($"OPTIMIZE TABLE {String.Join(',', tableNames.Select(tableName => $"`{tableName.ToMySqlSafeValue(false)}`"))}");
     }
 }

@@ -5,11 +5,20 @@ using System.Text;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Models;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.StaticFiles;
 
 namespace GeeksCoreLibrary.Core.Helpers;
 
+/// <summary>
+/// A helper class that contains methods for working with the file system.
+/// </summary>
 public static class FileSystemHelpers
 {
+    /// <summary>
+    /// Gets the directory where the file cache is stored.
+    /// </summary>
+    /// <param name="webHostEnvironment">Provides information about the web hosting environment an application is running in.</param>
+    /// <returns>The complete path to the file cache directory if it exists, or <c>null</c> if it doesn't.</returns>
     public static string GetFileCacheDirectory(IWebHostEnvironment webHostEnvironment)
     {
         if (webHostEnvironment == null)
@@ -21,6 +30,11 @@ public static class FileSystemHelpers
         return !Directory.Exists(result) ? null : result;
     }
 
+    /// <summary>
+    /// Gets the directory where the output cache files are stored.
+    /// </summary>
+    /// <param name="webHostEnvironment">Provides information about the web hosting environment an application is running in.</param>
+    /// <returns>The complete path to the output cache directory if it exists, or <c>null</c> if it doesn't.</returns>
     public static string GetOutputCacheDirectory(IWebHostEnvironment webHostEnvironment)
     {
         if (webHostEnvironment == null)
@@ -50,6 +64,13 @@ public static class FileSystemHelpers
         return !Directory.Exists(result) ? null : result;
     }
 
+    /// <summary>
+    /// Save a file into the file cache on the hard disk.
+    /// </summary>
+    /// <param name="webHostEnvironment">Provides information about the web hosting environment an application is running in.</param>
+    /// <param name="filename">The name of the file to save.</param>
+    /// <param name="fileBytes">The contents of the file to save.</param>
+    /// <returns>The full file path to the newly saved file, or <c>null</c> if it could not be saved.</returns>
     public static string SaveToFileCacheDirectory(IWebHostEnvironment webHostEnvironment, string filename, byte[] fileBytes)
     {
         if (webHostEnvironment == null)
@@ -65,6 +86,31 @@ public static class FileSystemHelpers
 
         var fileLocation = Path.Combine(directoryLocation, Path.GetFileName(filename));
         File.WriteAllBytes(fileLocation, fileBytes);
+        return fileLocation;
+    }
+
+    /// <summary>
+    /// Save a file into the file cache on the hard disk.
+    /// </summary>
+    /// <param name="webHostEnvironment">Provides information about the web hosting environment an application is running in.</param>
+    /// <param name="filename">The name of the file to save.</param>
+    /// <param name="fileBytes">The contents of the file to save.</param>
+    /// <returns>The full file path to the newly saved file, or <c>null</c> if it could not be saved.</returns>
+    public static async Task<string> SaveToFileCacheDirectoryAsync(IWebHostEnvironment webHostEnvironment, string filename, byte[] fileBytes)
+    {
+        if (webHostEnvironment == null)
+        {
+            return null;
+        }
+
+        var directoryLocation = GetFileCacheDirectory(webHostEnvironment);
+        if (String.IsNullOrWhiteSpace(directoryLocation))
+        {
+            return null;
+        }
+
+        var fileLocation = Path.Combine(directoryLocation, Path.GetFileName(filename));
+        await File.WriteAllBytesAsync(fileLocation, fileBytes);
         return fileLocation;
     }
 
@@ -122,6 +168,34 @@ public static class FileSystemHelpers
         return fileLocation;
     }
 
+    /// <summary>
+    /// Get the content type of an image.
+    /// It will first get the content type based on the magic number from the byte array.
+    /// If that fails, it will try to determine the content type via the file extension.
+    /// If that also fails, it will return the <see cref="defaultValue"/>.
+    /// </summary>
+    /// <param name="fileName">The name of the file. It doesn't matter if this contains a path or not, as long as it ends with the file name (including extension).</param>
+    /// <param name="fileBytes">The contents of the file.</param>
+    /// <param name="defaultValue">Optional: The content type to use if we could not determine it via the name or content.</param>
+    /// <returns>The content type of the file.</returns>
+    public static string GetContentTypeOfImage(string fileName, byte[] fileBytes, string defaultValue = "")
+    {
+        // First try to determine the content type by the magic number.
+        var contentType = GetMediaTypeByMagicNumber(fileBytes);
+        if (!String.IsNullOrWhiteSpace(contentType))
+        {
+            return contentType;
+        }
+
+        var provider = new FileExtensionContentTypeProvider();
+        return provider.TryGetContentType(fileName, out contentType) ? contentType : defaultValue;
+    }
+
+    /// <summary>
+    /// Get the content type of an image, based on its magic number.
+    /// </summary>
+    /// <param name="fileBytes">The file contents.</param>
+    /// <returns>The content type if it was found, otherwise an empty string.</returns>
     public static string GetMediaTypeByMagicNumber(byte[] fileBytes)
     {
         if (fileBytes == null || fileBytes.Length == 0)
@@ -209,37 +283,14 @@ public static class FileSystemHelpers
         }
         else
         {
-            // UNKNOWN
-            // NOTE: There's not guarantee that this works.
-            mimeType = "image/*";
+            mimeType = "";
         }
 
         return mimeType;
     }
 
     /// <summary>
-    /// <para>
-    /// Turns an image extension into a IANA media type (a.k.a. MIME type). Most extensions will just turn into "image/{extension}" but there are a few exceptions.
-    /// See below for the exceptions.
-    /// </para>
-    /// <list>
-    ///     <item>
-    ///         <term>jpg, jpe, jif, jfif, jfi</term>
-    ///         <description>image/jpeg</description>
-    ///     </item>
-    ///     <item>
-    ///         <term>svg</term>
-    ///         <description>image/svg+xml</description>
-    ///     </item>
-    ///     <item>
-    ///         <term>tif</term>
-    ///         <description>image/tiff</description>
-    ///     </item>
-    ///     <item>
-    ///         <term>ico</term>
-    ///         <description>image/x-icon</description>
-    ///     </item>
-    /// </list>
+    /// Return the content type of a file based on its extension.
     /// </summary>
     /// <param name="extension">The extension of an image. The dot in front will be trimmed if present.</param>
     /// <returns>The correct media type.</returns>
@@ -251,18 +302,24 @@ public static class FileSystemHelpers
         }
 
         extension = extension.ToLowerInvariant().TrimStart('.');
-        return extension switch
+        var provider = new FileExtensionContentTypeProvider();
+        if (!provider.TryGetContentType($"file.{extension}", out var contentType))
         {
-            "jpg" => "image/jpeg",
-            "jpe" => "image/jpeg",
-            "jif" => "image/jpeg",
-            "jfif" => "image/jpeg",
-            "jfi" => "image/jpeg",
-            "svg" => "image/svg+xml",
-            "tif" => "image/tiff",
-            "avifs" => "image/avif",
+            contentType = extension switch
+            {
+                "jpg" => "image/jpeg",
+                "jpe" => "image/jpeg",
+                "jif" => "image/jpeg",
+                "jfif" => "image/jpeg",
+                "jfi" => "image/jpeg",
+                "svg" => "image/svg+xml",
+                "tif" => "image/tiff",
+                "avifs" => "image/avif",
             "ico" => "image/x-icon",
-            _ => $"image/{extension}"
-        };
+                _ => $"image/{extension}"
+            };
+        }
+
+        return contentType;
     }
 }
