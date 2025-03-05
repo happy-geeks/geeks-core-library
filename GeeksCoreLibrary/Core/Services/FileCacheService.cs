@@ -20,6 +20,7 @@ public class FileCacheService : IFileCacheService, ISingletonService
     /// Used to prevent concurrent file write operations for the same file path.
     /// </summary>
     private readonly ConcurrentDictionary<string, SemaphoreSlim> activeWrites = new();
+
     /// <inheritdoc />
     public async Task<(byte[] FileBytes, DateTime LastModified)> GetOrAddAsync(string filePath, Func<Task<(byte[] Content, bool IsCacheable)>> generateContentAsync, TimeSpan? cachingTime = null)
     {
@@ -101,7 +102,7 @@ public class FileCacheService : IFileCacheService, ISingletonService
             await WriteFileInternalAsync(filePath, content, cachingTime);
         }
         finally
-{
+        {
             fileLock.Release();
         }
     }
@@ -145,8 +146,7 @@ public class FileCacheService : IFileCacheService, ISingletonService
             var fileInfo = new FileInfo(filePath);
             if (IsFileExpired(fileInfo, cachingTime))
             {
-                await using var fileStream =
-                    new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None);
+                await using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None);
                 await fileStream.WriteAsync(content);
             }
         }
@@ -209,7 +209,7 @@ public class FileCacheService : IFileCacheService, ISingletonService
     /// </returns>
     private static bool CreateDirectoryIfNotExist(FileInfo fileInfo)
     {
-        if (fileInfo.Directory is not { Exists: false })
+        if (fileInfo.Directory is not {Exists: false})
         {
             return false;
         }
