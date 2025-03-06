@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Web;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Enums;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
@@ -28,7 +29,7 @@ public class RewriteUrlToTemplateMiddleware(RequestDelegate next, ILogger<Rewrit
     /// Invoke the middleware.
     /// Services are added here instead of the constructor, because the constructor of a middleware can only contain Singleton services.
     /// </summary>
-    public async Task Invoke(HttpContext context, IObjectsService objectsService, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IActionDescriptorCollectionProvider actionDescriptorCollectionProvider)
+    public async Task Invoke(HttpContext context, IObjectsService objectsService, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IActionDescriptorCollectionProvider actionDescriptorCollectionProvider, IReplacementsMediator replacementsMediator)
     {
         logger.LogDebug("Invoked RewriteUrlToTemplateMiddleware");
 
@@ -92,7 +93,7 @@ public class RewriteUrlToTemplateMiddleware(RequestDelegate next, ILogger<Rewrit
             context.Items.Add(Constants.OriginalPathAndQueryStringKey, $"{path}{queryString.Value}");
         }
 
-        await HandleRewritesAsync(context, path, queryString, templatesService, objectsService, databaseConnection);
+        await HandleRewritesAsync(context, path, queryString, templatesService, objectsService, databaseConnection, replacementsMediator);
 
         await next.Invoke(context);
     }
@@ -107,7 +108,7 @@ public class RewriteUrlToTemplateMiddleware(RequestDelegate next, ILogger<Rewrit
     /// <param name="templatesService">The templates service.</param>
     /// <param name="objectsService">The objects service.</param>
     /// <param name="databaseConnection">The database connection.</param>
-    private async Task HandleRewritesAsync(HttpContext context, string path, QueryString queryStringFromUrl, ITemplatesService templatesService, IObjectsService objectsService, IDatabaseConnection databaseConnection)
+    private async Task HandleRewritesAsync(HttpContext context, string path, QueryString queryStringFromUrl, ITemplatesService templatesService, IObjectsService objectsService, IDatabaseConnection databaseConnection, IReplacementsMediator replacementsMediator)
     {
         logger.LogDebug($"Start HandleRewrites, path: {path}");
 
@@ -136,7 +137,7 @@ public class RewriteUrlToTemplateMiddleware(RequestDelegate next, ILogger<Rewrit
                     context.Request.Path = "/template.gcl";
                     break;
                 case TemplateTypes.Query when template is QueryTemplate{ UsedForRedirect: true }:
-                    var redirectTo = await RunRedirectQuery(template, queryString, databaseConnection);
+                    var redirectTo = await RunRedirectQuery(template, queryString, databaseConnection, templatesService, replacementsMediator);
                     if (redirectTo is null)
                     {
                         context.Response.StatusCode = StatusCodes.Status404NotFound;
@@ -279,7 +280,7 @@ public class RewriteUrlToTemplateMiddleware(RequestDelegate next, ILogger<Rewrit
                 var template = await templatesService.GetTemplateAsync(number);
                 if (template is QueryTemplate { UsedForRedirect: true })
                 {
-                    var redirectTo = await RunRedirectQuery(template, queryString, databaseConnection);
+                    var redirectTo = await RunRedirectQuery(template, queryString, databaseConnection, templatesService, replacementsMediator);
                     if (redirectTo is null)
                     {
                         context.Response.StatusCode = StatusCodes.Status404NotFound;
@@ -311,15 +312,15 @@ public class RewriteUrlToTemplateMiddleware(RequestDelegate next, ILogger<Rewrit
         }
     }
 
-    private async Task<string> RunRedirectQuery(Template template, QueryString queryString, IDatabaseConnection databaseConnection)
+    private async Task<string> RunRedirectQuery(Template template, QueryString queryString, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IReplacementsMediator replacementsMediator)
     {
         var queryStringCollection = HttpUtility.ParseQueryString(queryString.ToString());
-        foreach (var key in queryStringCollection.AllKeys)
-        {
-            databaseConnection.AddParameter(key, queryStringCollection[key]);
-        }
+        var query = template.Content;
 
-        var dataTable = await databaseConnection.GetAsync(template.Content);
+        query = replacementsMediator.DoReplacements(query, queryStringCollection, forQuery: true);
+        query = await templatesService.DoReplacesAsync(query, forQuery: true, templateType: TemplateTypes.Query);
+
+        var dataTable = await databaseConnection.GetAsync(query);
         if (dataTable.Rows.Count != 1)
             // TODO: log error
             return null;
@@ -331,7 +332,7 @@ public class RewriteUrlToTemplateMiddleware(RequestDelegate next, ILogger<Rewrit
             switch (column.ColumnName.ToLower())
             {
                 case "templateid":
-                    var id = dataRow.Field<int>(column);
+                    var id = dataRow.Field<long>(column);
                     if (id > 0)
                         result = id.ToString();
                     break;
@@ -341,7 +342,7 @@ public class RewriteUrlToTemplateMiddleware(RequestDelegate next, ILogger<Rewrit
                         result = url;
                     break;
                 default:
-                    queryString.Add(column.ColumnName, dataRow.Field<string>(column));
+                    queryString = queryString.Add(column.ColumnName, dataRow.Field<string>(column));
                     break;
             }
         }

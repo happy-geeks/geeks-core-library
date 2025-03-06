@@ -165,6 +165,18 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
     }
 
     /// <inheritdoc />
+    public string DoReplacements(string input, NameValueCollection replaceData, bool forQuery = false, bool caseSensitive = false, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode", bool isFromUnsafeSource = false)
+    {
+        var dataDictionary = new Dictionary<string, object>(caseSensitive ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+        foreach (var item in replaceData.AllKeys)
+        {
+            dataDictionary.Add(item!, replaceData[item]);
+        }
+
+        return DoReplacements(input, dataDictionary, prefix, suffix, forQuery, defaultFormatter, isFromUnsafeSource);
+    }
+
+    /// <inheritdoc />
     public string DoReplacements(string input, JToken replaceData, bool forQuery = false, bool caseSensitive = true, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode", UnsafeSources? unsafeSource = null)
     {
         if (replaceData == null)
