@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Data;
 using GeeksCoreLibrary.Modules.GclReplacements.Extensions;
 using GeeksCoreLibrary.Modules.GclReplacements.Models;
@@ -102,6 +103,20 @@ public interface IReplacementsMediator
     /// <param name="isFromUnsafeSource">Optional: The <see cref="replaceData"/> is from an untrusted source, e.g. user input.</param>
     /// <returns>The original string with all replacements done.</returns>
     string DoReplacements(string input, ISession replaceData, bool forQuery = false, bool caseSensitive = true, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode", bool isFromUnsafeSource = false);
+
+    /// <summary>
+    /// Performs replacements on a string using a name/value collection. You need this after parsing a query string parameter.
+    /// </summary>
+    /// <param name="input">The string to do replacements on.</param>
+    /// <param name="replaceData">The data that needs to be used for the replacements.</param>
+    /// <param name="forQuery">Optional: Set to true to make all replaced values safe against SQL injection. You should only set this to true for SQL queries. Default is false.</param>
+    /// <param name="caseSensitive">Optional: Whether the variable names in the replacement data dictionary should be case sensitive. Default is true.</param>
+    /// <param name="prefix">Optional: The string that is used as the prefix for every variable that needs to be replaced. Default value is "{".</param>
+    /// <param name="suffix">Optional: The string that is used as the suffix for every variable that needs to be replaced. Default value is "}".</param>
+    /// <param name="defaultFormatter">Optional: The default formatter to use. This should be HtmlEncode for anything that gets output to the browser. Default value is "HtmlEncode".</param>
+    /// <param name="isFromUnsafeSource">Optional: The <see cref="replaceData"/> is from an untrusted source, e.g. user input.</param>
+    /// <returns>The original string with all replacements done.</returns>
+    string DoReplacements(string input, NameValueCollection replaceData, bool forQuery = false, bool caseSensitive = true, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode", bool isFromUnsafeSource = false);
 
     /// <summary>
     /// Performs replacements on a string using a JToken. This function is the most generic function, and all other replacement functions also use this function.

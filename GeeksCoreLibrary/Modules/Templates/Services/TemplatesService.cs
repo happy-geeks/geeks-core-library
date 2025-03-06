@@ -1821,28 +1821,28 @@ public class TemplatesService : ITemplatesService
         var results = new List<Template>();
         foreach (DataRow dataRow in dataTable.Rows)
         {
-            TemplateTypes type = dataRow.Field<TemplateTypes>("template_type");
-                switch (type)
-                {
-                    case TemplateTypes.Query:
-                        results.Add(new QueryTemplate
-                        {
-                            Id = dataRow.Field<int>("template_id"),
-                            Type = type,
-                            UrlRegex = dataRow.Field<string>("url_regex"),
-                            UsedForRedirect = dataRow.Field<bool>("query_used_for_redirect")
-                        });
-                        break;
-                    default:
-                        results.Add(new Template
-                        {
-                            Id = dataRow.Field<int>("template_id"),
-                            Type = type,
-                            UrlRegex = dataRow.Field<string>("url_regex")
-                        });
-                        break;
-                }
+            var type = dataRow.Field<TemplateTypes>("template_type");
+            switch (type)
+            {
+                case TemplateTypes.Query:
+                    results.Add(new QueryTemplate
+                    {
+                        Id = dataRow.Field<int>("template_id"),
+                        Type = type,
+                        UrlRegex = dataRow.Field<string>("url_regex"),
+                        UsedForRedirect = dataRow.Field<bool>("query_used_for_redirect")
+                    });
+                    break;
+                default:
+                    results.Add(new Template
+                    {
+                        Id = dataRow.Field<int>("template_id"),
+                        Type = type,
+                        UrlRegex = dataRow.Field<string>("url_regex")
+                    });
+                    break;
             }
+        }
 
         return results;
     }
