@@ -1,11 +1,10 @@
 ﻿using System;
-using System.IO;
+using System.IO.Abstractions;
 using System.Threading;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Models;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -15,7 +14,8 @@ namespace GeeksCoreLibrary.Core.Services;
 public class FolderCleanupBackgroundService(
     ILogger<FolderCleanupBackgroundService> logger,
     IWebHostEnvironment webHostEnvironment,
-    IOptions<GclSettings> gclSettings)
+    IOptions<GclSettings> gclSettings,
+    IFileSystem fileSystem)
     : BackgroundService
 {
     private readonly string filesCachePath = FileSystemHelpers.GetFileCacheDirectory(webHostEnvironment);
@@ -46,26 +46,30 @@ public class FolderCleanupBackgroundService(
 
     private void CleanUpFolder(string folderPath)
     {
-        if (!Directory.Exists(folderPath)) return;
+        if (!fileSystem.Directory.Exists(folderPath))
+        {
+            return;
+        }
 
-        var files = Directory.GetFiles(folderPath);
+        var files = fileSystem.Directory.GetFiles(folderPath);
+
         var now = DateTime.UtcNow;
 
         foreach (var file in files)
         {
-            var fileInfo = new FileInfo(file);
-            if (now - fileInfo.LastWriteTimeUtc > maxCacheDurationDays)
+            var fileLastWriteTime = fileSystem.File.GetLastWriteTimeUtc(file);
+
+            if (now - fileLastWriteTime <= maxCacheDurationDays)
             {
-                try
-                {
-                    fileInfo.Delete();
-                    logger.LogInformation("Deleting file: {FilePath}", file);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogWarning(ex, "Failed to delete file: {FilePath}", file);
-                }
+                continue;
             }
+
+            if (!fileSystem.File.Exists(file))
+            {
+                continue;
+            }
+
+            fileSystem.File.Delete(file);
         }
     }
 
