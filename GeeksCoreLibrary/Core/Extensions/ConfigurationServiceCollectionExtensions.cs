@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO.Abstractions;
 using System.Reflection;
 using GeeksCoreLibrary.Components.WebPage.Interfaces;
 using GeeksCoreLibrary.Components.WebPage.Middlewares;
@@ -278,9 +279,6 @@ public static class ConfigurationServiceCollectionExtensions
                 .AddHttpCompression();
         }
 
-        // Background services.
-        services.AddHostedService<FolderCleanupBackgroundService>();
-
         // Enable caching.
         services.AddLazyCache();
 
@@ -293,6 +291,9 @@ public static class ConfigurationServiceCollectionExtensions
         // Manual additions.
         services.AddHttpContextAccessor();
         services.AddSingleton<IActionContextAccessor, ActionContextAccessor>();
+
+        services.AddSingleton<IFileSystem, FileSystem>();
+        services.AddHostedService<FolderCleanupBackgroundService>();
 
         // Templates service.
         if (gclSettings.UseLegacyWiser1TemplateModule)
