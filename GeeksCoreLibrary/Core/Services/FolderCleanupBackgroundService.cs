@@ -15,7 +15,6 @@ namespace GeeksCoreLibrary.Core.Services;
 public class FolderCleanupBackgroundService(
     ILogger<FolderCleanupBackgroundService> logger,
     IWebHostEnvironment webHostEnvironment,
-    IConfiguration configuration,
     IOptions<GclSettings> gclSettings)
     : BackgroundService
 {
