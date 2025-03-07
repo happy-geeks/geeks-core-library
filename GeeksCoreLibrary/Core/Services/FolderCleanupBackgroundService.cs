@@ -3,33 +3,27 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Helpers;
+using GeeksCoreLibrary.Core.Models;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace GeeksCoreLibrary.Core.Services;
 
-public class FolderCleanupBackgroundService : BackgroundService
+public class FolderCleanupBackgroundService(
+    ILogger<FolderCleanupBackgroundService> logger,
+    IWebHostEnvironment webHostEnvironment,
+    IConfiguration configuration,
+    IOptions<GclSettings> gclSettings)
+    : BackgroundService
 {
-    private readonly ILogger<FolderCleanupBackgroundService> logger;
+    private readonly string filesCachePath = FileSystemHelpers.GetFileCacheDirectory(webHostEnvironment);
+    private readonly string outputCachePath = FileSystemHelpers.GetOutputCacheDirectory(webHostEnvironment);
 
-    private readonly TimeSpan cleanupInterval = TimeSpan.FromHours(1);
-    private readonly TimeSpan maxCacheDuration;
-
-    private readonly string filesCachePath;
-    private readonly string outputCachePath;
-
-    public FolderCleanupBackgroundService(ILogger<FolderCleanupBackgroundService> logger, IWebHostEnvironment webHostEnvironment, IConfiguration configuration)
-    {
-        this.logger = logger;
-
-        var maxCacheDurationHours = configuration.GetValue("CacheCleanup:MaxCacheDurationHours", 24);
-        maxCacheDuration = TimeSpan.FromHours(maxCacheDurationHours);
-
-        filesCachePath = FileSystemHelpers.GetFileCacheDirectory(webHostEnvironment);
-        outputCachePath = FileSystemHelpers.GetOutputCacheDirectory(webHostEnvironment);
-    }
+    private readonly TimeSpan cleanUpIntervalDays = TimeSpan.FromDays(gclSettings.Value.CacheCleanUpOptions.CleanUpIntervalDays > 0 ? gclSettings.Value.CacheCleanUpOptions.CleanUpIntervalDays : 1);
+    private readonly TimeSpan maxCacheDurationDays = TimeSpan.FromDays(gclSettings.Value.CacheCleanUpOptions.MaxCacheDurationDays > 0 ? gclSettings.Value.CacheCleanUpOptions.MaxCacheDurationDays : 30);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -47,7 +41,7 @@ public class FolderCleanupBackgroundService : BackgroundService
                 logger.LogError(ex, "Error occurred during cache cleanup.");
             }
 
-            await Task.Delay(cleanupInterval, stoppingToken);
+            await Task.Delay(cleanUpIntervalDays, stoppingToken);
         }
     }
 
@@ -61,7 +55,7 @@ public class FolderCleanupBackgroundService : BackgroundService
         foreach (var file in files)
         {
             var fileInfo = new FileInfo(file);
-            if (now - fileInfo.LastWriteTimeUtc > maxCacheDuration)
+            if (now - fileInfo.LastWriteTimeUtc > maxCacheDurationDays)
             {
                 try
                 {
