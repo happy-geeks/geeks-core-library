@@ -144,11 +144,4 @@ public class AmazonS3Service(ILogger<AmazonS3Service> logger, IOptions<GclSettin
             ? new AmazonS3Client(RegionEndpoint.GetBySystemName(region))
             : new AmazonS3Client();
     }
-
-    private byte[] ResponseStreamToBytes(Stream responseStream)
-    {
-        using var memoryStream = new MemoryStream();
-        responseStream.CopyTo(memoryStream);
-        return memoryStream.ToArray();
-    }
 }
