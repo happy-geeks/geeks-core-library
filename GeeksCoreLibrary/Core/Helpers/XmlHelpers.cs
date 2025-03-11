@@ -12,9 +12,10 @@ public static class XmlHelpers
     /// Deserialize an XML string to an object.
     /// </summary>
     /// <param name="xml">The XML string to deserialize.</param>
+    /// <param name="enableDtdProcessing">Whether to allow DTD processing. Defaults to off because DTDs can potentially be exploited by attackers.</param>
     /// <typeparam name="T">The class to deserialize to.</typeparam>
     /// <returns>The deserialized value of <see cref="T"/>.</returns>
-    public static T DeserializeXml<T>(string xml)
+    public static T DeserializeXml<T>(string xml, bool enableDtdProcessing = false)
     {
         if (String.IsNullOrWhiteSpace(xml))
         {
@@ -25,7 +26,11 @@ public static class XmlHelpers
         using var stringReader = new StringReader(xml);
 
         // Prevents the XmlSerializer from resolving external resources, to mitigate XML External Entity (XXE) vulnerabilities.
-        using var xmlReader = XmlReader.Create(stringReader, new XmlReaderSettings { XmlResolver = null });
+        using var xmlReader = XmlReader.Create(stringReader, new XmlReaderSettings
+        {
+            XmlResolver = null,
+            DtdProcessing = enableDtdProcessing ? DtdProcessing.Parse : DtdProcessing.Ignore
+        });
         return (T) serializer.Deserialize(xmlReader);
     }
 
