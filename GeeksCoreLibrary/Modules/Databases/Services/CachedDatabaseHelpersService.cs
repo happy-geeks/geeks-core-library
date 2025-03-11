@@ -203,7 +203,7 @@ public class CachedDatabaseHelpersService(IDatabaseHelpersService databaseHelper
             databaseName = databaseConnection.ConnectedDatabase;
         }
 
-        cache.Remove($"CachedDatabaseHelpersService_GetLastTableUpdates_{databaseName}");
+        cache.Remove($"CachedDatabaseHelpersService_GetLastTableUpdates_{databaseName}_{branchesService.GetDatabaseNameFromCookie()}");
 
         return true;
     }
