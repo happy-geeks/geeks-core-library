@@ -35,8 +35,8 @@ public class FileCacheService : IFileCacheService, ISingletonService
 
         try
         {
-            var (content, cachable) = await generateContentAsync();
-            if (cachable)
+            var (content, cacheable) = await generateContentAsync();
+            if (cacheable)
             {
                 await WriteFileInternalAsync(filePath, content, cachingTime);
             }

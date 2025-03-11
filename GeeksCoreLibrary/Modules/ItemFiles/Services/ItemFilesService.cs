@@ -395,6 +395,9 @@ public class ItemFilesService(
             return result;
         }
 
+        result.FileBytes = file.Content;
+        result.LastModified = file.AddedOn;
+
         if (result.FileBytes == null || result.FileBytes.Length == 0)
         {
             // Data row didn't contain a file directly, but might contain a content URL.
