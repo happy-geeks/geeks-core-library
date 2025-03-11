@@ -86,6 +86,7 @@ public class WebPagesService(IDatabaseConnection databaseConnection, IOptions<Gc
                                        LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS webPageHtml ON webPageHtml.item_id = webPage.id AND webPageHtml.`key` = 'html' AND webPageHtml.language_code = ?languageCode
                                        LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS webPageTitle ON webPageTitle.item_id = webPage.id AND webPageTitle.`key` = 'title' AND webPageTitle.language_code = ?languageCode
                                        LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS webPageDescription ON webPageDescription.item_id = webPage.id AND webPageDescription.`key` = 'description' AND webPageDescription.language_code = ?languageCode
+                                       
                                        """);
 
         var pathMustContain = settings.PathMustContainName;
