@@ -80,13 +80,23 @@ public class WebPagesService(IDatabaseConnection databaseConnection, IOptions<Gc
                                            CONCAT_WS('', webPageHtml.`value`, webPageHtml.long_value) AS `html`,
                                            webPageHtml.language_code,
                                            webPageTitle.`value` AS `title`,
-                                           CONCAT_WS('', webPageDescription.`value`, webPageDescription.long_value) AS `metadescription`
+                                           CONCAT_WS('', webPageDescription.`value`, webPageDescription.long_value) AS `metadescription`,
+                                           CONCAT_WS('', keywords.`value`, keywords.long_value) AS `keywords`,
+                                           CONCAT_WS('', canonicalurl.`value`, canonicalurl.long_value) AS `canonicalurl`,
+                                           CONCAT_WS('', robots.`value`, robots.long_value) AS `robots`,
+                                           noindex.value = '1' AS `noindex`,
+                                           nofollow.value = '1' AS `nofollow`
                                        FROM `{WiserTableNames.WiserItem}` AS webPage
                                        LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS webPageSeoName ON webPageSeoName.item_id = webPage.id AND webPageSeoName.`key` = '{CoreConstants.SeoTitlePropertyName}'
                                        LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS webPageHtml ON webPageHtml.item_id = webPage.id AND webPageHtml.`key` = 'html' AND webPageHtml.language_code = ?languageCode
                                        LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS webPageTitle ON webPageTitle.item_id = webPage.id AND webPageTitle.`key` = 'title' AND webPageTitle.language_code = ?languageCode
                                        LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS webPageDescription ON webPageDescription.item_id = webPage.id AND webPageDescription.`key` = 'description' AND webPageDescription.language_code = ?languageCode
-                                       
+                                       LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS keywords ON keywords.item_id = webPage.id AND keywords.`key` = 'keywords' AND keywords.language_code = ?languageCode
+                                       LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS canonicalurl ON canonicalurl.item_id = webPage.id AND canonicalurl.`key` = 'canonicalurl' AND canonicalurl.language_code = ?languageCode
+                                       LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS robots ON robots.item_id = webPage.id AND robots.`key` = 'robots' AND robots.language_code = ?languageCode
+                                       LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS noindex ON noindex.item_id = webPage.id AND noindex.`key` = 'noindex' AND noindex.language_code = ?languageCode
+                                       LEFT JOIN `{WiserTableNames.WiserItemDetail}` AS nofollow ON nofollow.item_id = webPage.id AND nofollow.`key` = 'nofollow' AND nofollow.language_code = ?languageCode
+
                                        """);
 
         var pathMustContain = settings.PathMustContainName;

@@ -150,8 +150,8 @@ public class WebPage : CmsComponent<WebPageCmsSettingsModel, WebPage.ComponentMo
         var seoDescription = getWebPageResult.Rows[0].GetValueIfColumnExists<string>("metadescription");
         var seoKeyWords = getWebPageResult.Rows[0].GetValueIfColumnExists<string>("keywords");
         var seoCanonical = getWebPageResult.Rows[0].GetValueIfColumnExists<string>("canonicalurl");
-        var noIndex = Convert.ToBoolean(getWebPageResult.Rows[0].GetValueIfColumnExists("noindex"));
-        var noFollow = Convert.ToBoolean(getWebPageResult.Rows[0].GetValueIfColumnExists<string>("nofollow"));
+        var noIndex = getWebPageResult.Rows[0].ConvertValueIfColumnExists<bool>("noindex");
+        var noFollow = getWebPageResult.Rows[0].ConvertValueIfColumnExists<bool>("nofollow");
         var robots = getWebPageResult.Rows[0].GetValueIfColumnExists<string>("robots");
         pagesService.SetPageSeoData(seoTitle, seoDescription, seoKeyWords, seoCanonical, noIndex, noFollow, robots?.Split(",", StringSplitOptions.RemoveEmptyEntries));
 
