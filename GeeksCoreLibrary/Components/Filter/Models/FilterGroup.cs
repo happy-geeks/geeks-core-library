@@ -91,7 +91,7 @@ public class FilterGroup
             // Ja~JOIN wiser_item newfilter ON newfilter.id=package.id AND newfilter.added_on>DATE_ADD(CURDATE(), INTERVAL -14 DAY)
             // Nee~JOIN wiser_item newfilter On newfilter.id=package.id And newfilter.added_on<=DATE_ADD(CURDATE(), INTERVAL -14 DAY)
 
-            SortedList<string, string> output = new SortedList<string, string>();
+            var output = new SortedList<string, string>();
             foreach (var rule in AdvancedFilter.Replace(Environment.NewLine, "^").Split("^"))
             {
                 output.Add(rule.Split('~')[0], rule.Split('~')[1]);
@@ -147,9 +147,9 @@ public class FilterGroup
     /// </summary>
     /// <param name="value"></param>
     /// <param name="count"></param>
-    /// <param name="itemdetails"></param>
+    /// <param name="itemDetails"></param>
     /// <remarks></remarks>
-    public void AddItem(object value, int count, SortedList<string, string> itemdetails = null)
+    public void AddItem(object value, int count, SortedList<string, string> itemDetails = null)
     {
         if (FilterType == FilterGroupType.Slider)
         {
@@ -179,7 +179,7 @@ public class FilterGroup
             // value must be string
             if (!Items.Keys.Contains(valueString))
             {
-                Items.Add(valueString, new FilterItem(valueString, count, itemdetails));
+                Items.Add(valueString, new FilterItem(valueString, count, itemDetails));
             }
             else
             {

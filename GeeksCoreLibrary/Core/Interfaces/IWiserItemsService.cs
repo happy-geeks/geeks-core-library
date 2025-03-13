@@ -1,7 +1,6 @@
 ﻿using System;
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Models;
-using GeeksCoreLibrary.Core.Services;
 using System.Collections.Generic;
 using System.Data;
 using System.Threading.Tasks;
@@ -49,7 +48,7 @@ public interface IWiserItemsService
 
     /// <summary>
     /// Creates an item.
-    /// This will create an empty item, if you want to save item details as well, use the <see cref="WiserItemsService.SaveAsync"/> function instead, or call the <see cref="WiserItemsService.UpdateAsync"/> function after this.
+    /// This will create an empty item, if you want to save item details as well, use the "SaveAsync" function instead, or call the "UpdateAsync" function after this.
     /// </summary>
     /// <param name="wiserItem">An <see cref="WiserItemModel"/> with the values to save to the database.</param>
     /// <param name="parentId">Optional: The ID of the parent to link the new item to. If NULL, it will not be linked to any item. Use 0 if an item needs to be added to the root of a module. Default is NULL.</param>
@@ -67,7 +66,7 @@ public interface IWiserItemsService
 
     /// <summary>
     /// Creates an item.
-    /// This will create an empty item, if you want to save item details as well, use the <see cref="WiserItemsService.SaveAsync"/> function instead, or call the <see cref="WiserItemsService.UpdateAsync"/> function after this.
+    /// This will create an empty item, if you want to save item details as well, use the "SaveAsync" function instead, or call the "UpdateAsync" function after this.
     /// </summary>
     /// <param name="wiserItemsService">The <see cref="IWiserItemsService"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to other methods in this method.</param>
     /// <param name="wiserItem">An <see cref="WiserItemModel"/> with the values to save to the database.</param>
@@ -756,7 +755,7 @@ public interface IWiserItemsService
     /// Gets multiple files from the database.
     /// </summary>
     /// <param name="ids">The IDs of the files, or the IDs of the items the files belong to or the IDs of the links the files belong to.</param>
-    /// <param name="field">Optional: The field that contains the the ID from the <see cref="id"/> parameter. This can be either "id", "item_id" or "itemlink_id".</param>
+    /// <param name="field">Optional: The field that contains the ID from the <see cref="ids"/> parameter. This can be either "id", "item_id" or "itemlink_id".</param>
     /// <param name="propertyName">Optional: The property name from wiser_entityproperty of the field where this file was uploaded.</param>
     /// <param name="entityType">Optional: If you're adding a file to an item and that entity type has a dedicated table prefix, enter the entity type here so that we can use the same prefix for wiser_itemfile.</param>
     /// <param name="linkType">Optional: If you're adding a file to a link and that link has a dedicated table prefix, enter the link type here so that we can use the same prefix for wiser_itemfile.</param>
@@ -767,7 +766,7 @@ public interface IWiserItemsService
     /// </summary>
     /// <param name="wiserItemsService">The <see cref="IWiserItemsService"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to other methods in this method.</param>
     /// <param name="ids">The IDs of the files, or the IDs of the items the files belong to or the IDs of the links the files belong to.</param>
-    /// <param name="field">Optional: The field that contains the the ID from the <see cref="id"/> parameter. This can be either "id", "item_id" or "itemlink_id".</param>
+    /// <param name="field">Optional: The field that contains the ID from the <see cref="ids"/> parameter. This can be either "id", "item_id" or "itemlink_id".</param>
     /// <param name="propertyName">Optional: The property name from wiser_entityproperty of the field where this file was uploaded.</param>
     /// <param name="entityType">Optional: If you're adding a file to an item and that entity type has a dedicated table prefix, enter the entity type here so that we can use the same prefix for wiser_itemfile.</param>
     /// <param name="linkType">Optional: If you're adding a file to a link and that link has a dedicated table prefix, enter the link type here so that we can use the same prefix for wiser_itemfile.</param>

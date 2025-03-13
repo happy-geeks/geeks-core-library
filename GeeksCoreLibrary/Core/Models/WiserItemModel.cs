@@ -429,7 +429,7 @@ public class WiserItemModel
         }
         else if (typeof(T) == typeof(decimal))
         {
-            result = String.IsNullOrWhiteSpace(stringValue) ? 0 : Convert.ToDecimal(stringValue.Replace(",", "."), new System.Globalization.CultureInfo("en-US"));
+            result = String.IsNullOrWhiteSpace(stringValue) ? 0 : Convert.ToDecimal(stringValue.Replace(",", "."), new CultureInfo("en-US"));
         }
         else if (typeof(T) == typeof(bool))
         {
@@ -481,12 +481,12 @@ public class WiserItemModel
     /// <param name="key">The key of the item detail to set.</param>
     /// <param name="value">The new value to set.</param>
     /// <param name="append">Optional: If set to true, this will append a newline and the new value, instead of overwriting the value. Default is false.</param>
-    /// <param name="readOnly">Optional: Make the new value read only. Default is false.</param>
+    /// <param name="enableReadOnly">Optional: Make the new value read only. Default is false.</param>
     /// <param name="groupName">Optional: The group name of the detail. Default is null.</param>
     /// <param name="languageCode">Optional: The language code of the detail. Default is null.</param>
     /// <param name="markChangedAsFalse">Optional: Whether or not to mark the Changed property to false, so that it won't be saved if you save this item without changing this value after calling this function.</param>
     /// <param name="format">Optional: Formatting for converting certain types (such as numbers and dates) to string. Default is null.</param>
-    public void SetDetail(string key, object value, bool append = false, bool readOnly = false, string groupName = null, string languageCode = null, bool markChangedAsFalse = false, string format = null)
+    public void SetDetail(string key, object value, bool append = false, bool enableReadOnly = false, string groupName = null, string languageCode = null, bool markChangedAsFalse = false, string format = null)
     {
         // TODO: Add a check for read only, so that we can't use this function to update read only values?
         var detail = Details.FirstOrDefault(d => String.Equals(d.Key, key, StringComparison.OrdinalIgnoreCase) && String.Equals(d.GroupName ?? "", groupName ?? "", StringComparison.OrdinalIgnoreCase) && String.Equals(d.LanguageCode ?? "", languageCode ?? "", StringComparison.OrdinalIgnoreCase));
@@ -503,7 +503,7 @@ public class WiserItemModel
             Details.Add(detail);
         }
 
-        detail.ReadOnly = readOnly;
+        detail.ReadOnly = enableReadOnly;
 
         switch (value)
         {
@@ -536,7 +536,7 @@ public class WiserItemModel
             default:
                 if (append && !String.IsNullOrWhiteSpace(detail.Value?.ToString()))
                 {
-                    detail.Value += Environment.NewLine + value?.ToString();
+                    detail.Value += Environment.NewLine + value;
                 }
                 else
                 {

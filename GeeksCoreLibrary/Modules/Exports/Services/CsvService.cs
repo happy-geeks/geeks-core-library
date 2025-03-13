@@ -37,11 +37,14 @@ public class CsvService : ICsvService, IScopedService
 
         csvWriter.NextRecord();
 
-        foreach (JObject row in data)
+        foreach (var jToken in data)
         {
-            foreach (var pair in row)
+            if (jToken is JObject jObject)
             {
-                csvWriter.WriteField(pair.Value.ToString());
+                foreach (var pair in jObject)
+                {
+                    csvWriter.WriteField(pair.Value.ToString());
+                }
             }
 
             csvWriter.NextRecord();

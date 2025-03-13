@@ -20,11 +20,9 @@ using GeeksCoreLibrary.Modules.Communication.Interfaces;
 using GeeksCoreLibrary.Modules.Databases.Helpers;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
-using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
 using Google.Authenticator;
-using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
@@ -43,7 +41,6 @@ namespace GeeksCoreLibrary.Components.Account;
 public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentModes>
 {
     private readonly GclSettings gclSettings;
-    private readonly IObjectsService objectsService;
     private readonly ICommunicationsService communicationsService;
 
     #region Enums
@@ -176,7 +173,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
         EmptyPassword = 5,
 
         /// <summary>
-        /// Indicates that the password does not match the regex from <see cref="PasswordValidationRegex"/>.
+        /// Indicates that the password does not match the regex from <see cref="AccountCmsSettingsModel.PasswordValidationRegex"/>.
         /// </summary>
         PasswordNotSecure = 6
     }
@@ -238,10 +235,9 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
 
     #region Constructor
 
-    public Account(IOptions<GclSettings> gclSettings, ILogger<Account> logger, IStringReplacementsService stringReplacementsService, IObjectsService objectsService, ICommunicationsService communicationsService, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IAccountsService accountsService, IAntiforgery antiForgery)
+    public Account(IOptions<GclSettings> gclSettings, ILogger<Account> logger, IStringReplacementsService stringReplacementsService, ICommunicationsService communicationsService, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IAccountsService accountsService)
     {
         this.gclSettings = gclSettings.Value;
-        this.objectsService = objectsService;
         this.communicationsService = communicationsService;
 
         Logger = logger;
@@ -370,8 +366,8 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
             return (template, stepNumber);
         }
 
-        var sessionUserId = HttpContext?.Session.GetString($"{Constants.UserIdSessionKey}_{ComponentId}");
-        var username = HttpContext?.Session.GetString($"{Constants.LoginValueSessionKey}_{ComponentId}");
+        var sessionUserId = HttpContext.Session.GetString($"{Constants.UserIdSessionKey}_{ComponentId}");
+        var username = HttpContext.Session.GetString($"{Constants.LoginValueSessionKey}_{ComponentId}");
         if (String.IsNullOrWhiteSpace(sessionUserId) || sessionUserId == "0" || String.IsNullOrWhiteSpace(username))
         {
             return (template, stepNumber);
@@ -379,16 +375,16 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
 
         var googleAuthenticationKey = await AccountsService.Get2FactorAuthenticationKeyAsync(Convert.ToUInt64(sessionUserId));
 
-        if (String.IsNullOrEmpty(googleAuthenticationKey))
+        if (!String.IsNullOrEmpty(googleAuthenticationKey))
         {
-            googleAuthenticationKey = Guid.NewGuid().ToString().Replace("-", "");
-            TwoFactorAuthenticator twoFactorAuthenticator = new TwoFactorAuthenticator();
-            SetupCode setupInfo = twoFactorAuthenticator.GenerateSetupCode(Settings.GoogleAuthenticatorSiteId, username, googleAuthenticationKey, false, 3);
-            await AccountsService.Save2FactorAuthenticationKeyAsync(Convert.ToUInt64(sessionUserId), googleAuthenticationKey);
-            return (template.Replace("{googleAuthenticationQrImageUrl}", setupInfo.QrCodeSetupImageUrl, StringComparison.OrdinalIgnoreCase), stepNumber);
+            return (template, stepNumber);
         }
 
-        return (template, stepNumber);
+        googleAuthenticationKey = Guid.NewGuid().ToString().Replace("-", "");
+        var twoFactorAuthenticator = new TwoFactorAuthenticator();
+        var setupInfo = twoFactorAuthenticator.GenerateSetupCode(Settings.GoogleAuthenticatorSiteId, username, googleAuthenticationKey, false);
+        await AccountsService.Save2FactorAuthenticationKeyAsync(Convert.ToUInt64(sessionUserId), googleAuthenticationKey);
+        return (template.Replace("{googleAuthenticationQrImageUrl}", setupInfo.QrCodeSetupImageUrl, StringComparison.OrdinalIgnoreCase), stepNumber);
     }
 
     #endregion
@@ -407,8 +403,8 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
         try
         {
             var httpContext = HttpContext;
-            var response = httpContext?.Response;
-            var request = httpContext?.Request;
+            var response = httpContext.Response;
+            var request = httpContext.Request;
 
             ulong userId = 0;
             _ = Int32.TryParse(HttpContextHelpers.GetRequestValue(httpContext, Constants.StepNumberFieldName), out var stepNumber);
@@ -488,7 +484,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
                     }
                 }
             }
-            else if (request == null || !request.HasFormContentType || request.Form.Count == 0 || request.Form[Constants.ComponentIdFormKey].ToString() != ComponentId.ToString())
+            else if (!request.HasFormContentType || request.Form.Count == 0 || request.Form[Constants.ComponentIdFormKey].ToString() != ComponentId.ToString())
             {
                 if (stepNumber <= 0)
                 {
@@ -497,7 +493,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
 
                 resultHtml = Settings.Template.Replace("{error}", "", StringComparison.OrdinalIgnoreCase);
 
-                if (String.Equals(request?.Query[$"{Constants.LogoutQueryStringKey}{ComponentId}"], "true", StringComparison.OrdinalIgnoreCase))
+                if (String.Equals(request.Query[$"{Constants.LogoutQueryStringKey}{ComponentId}"], "true", StringComparison.OrdinalIgnoreCase))
                 {
                     // User is logging out.
                     await AccountsService.LogoutUserAsync(Settings);
@@ -543,7 +539,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
                     case LoginResults.Success:
                     {
                         stepNumber += 1;
-                        var done = false;
+                        bool done;
 
                         switch (Settings.ComponentMode)
                         {
@@ -561,6 +557,11 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
                                 break;
                             }
 
+                            case ComponentModes.ResetPassword:
+                            case ComponentModes.CreateOrUpdateAccount:
+                            case ComponentModes.SubAccountsManagement:
+                            case ComponentModes.CXmlPunchOutLogin:
+                            case ComponentModes.CXmlPunchOutContinueSession:
                             default:
                             {
                                 throw new NotImplementedException($"Component mode '{Settings.ComponentMode}' has not been implemented in 'HandleLoginMode'.");
@@ -598,6 +599,13 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
                         break;
                     }
 
+                    case LoginResults.InvalidUsernameOrPassword:
+                    case LoginResults.UserDoesNotExist:
+                    case LoginResults.InvalidPassword:
+                    case LoginResults.TooManyAttempts:
+                    case LoginResults.InvalidTwoFactorAuthentication:
+                    case LoginResults.InvalidValidationToken:
+                    case LoginResults.InvalidUserId:
                     default:
                     {
                         // There was an error, show that error to the user.
@@ -653,10 +661,10 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
         try
         {
             var httpContext = HttpContext;
-            var response = httpContext?.Response;
-            var request = httpContext?.Request;
+            var response = httpContext.Response;
+            var request = httpContext.Request;
             ulong userIdFromQueryString = 0;
-            var encryptedUerId = request?.Query[Constants.UserIdQueryStringKey].ToString();
+            var encryptedUerId = request.Query[Constants.UserIdQueryStringKey].ToString();
 
             if (!String.IsNullOrWhiteSpace(encryptedUerId))
             {
@@ -675,7 +683,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
             var userLogin = "";
             if (userIdFromQueryString > 0)
             {
-                var query = AccountsService.SetupAccountQuery(Settings.ValidateResetPasswordTokenQuery, Settings, userIdFromQueryString, token: request?.Query[Constants.ResetPasswordTokenQueryStringKey]);
+                var query = AccountsService.SetupAccountQuery(Settings.ValidateResetPasswordTokenQuery, Settings, userIdFromQueryString, token: request.Query[Constants.ResetPasswordTokenQueryStringKey]);
                 var dataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
 
                 if (dataTable == null || dataTable.Rows.Count == 0)
@@ -699,7 +707,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
             }
 
             // If there are form post variables and the correct content ID has been posted with them, it means the user is trying reset their password.
-            if (request == null || !request.HasFormContentType || request.Form.Count == 0 || request.Form[Constants.ComponentIdFormKey].ToString() != ComponentId.ToString())
+            if (!request.HasFormContentType || request.Form.Count == 0 || request.Form[Constants.ComponentIdFormKey].ToString() != ComponentId.ToString())
             {
                 resultHtml = Settings.Template;
             }
@@ -824,7 +832,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
                 }
 
                 // Only update the user's account, if the password has been validated, or if the user is not changing their login name and password.
-                var createOrUpdateAccountResult = (Result: CreateOrUpdateAccountResults.InvalidPassword, ErrorTemplate: Settings.TemplateError, SuccessTemplate: "", UserId: userData.UserId, SubAccountId: 0UL, Role: "");
+                var createOrUpdateAccountResult = (Result: CreateOrUpdateAccountResults.InvalidPassword, ErrorTemplate: Settings.TemplateError, SuccessTemplate: "", userData.UserId, SubAccountId: 0UL, Role: "");
 
                 if (changePasswordResult == ResetOrChangePasswordResults.Success)
                 {
@@ -972,7 +980,6 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
         }
 
         var request = httpContext.Request;
-        ulong selectedSubAccount = 0;
 
         try
         {
@@ -990,7 +997,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
                 throw new Exception("User is not logged in!");
             }
 
-            _ = UInt64.TryParse(request.Query[$"{Constants.SelectedSubAccountQueryStringKey}{ComponentId}"], out selectedSubAccount);
+            _ = UInt64.TryParse(request.Query[$"{Constants.SelectedSubAccountQueryStringKey}{ComponentId}"], out var selectedSubAccount);
 
             // Add fields to the page.
             var query = AccountsService.SetupAccountQuery(Settings.GetSubAccountQuery, Settings, userData.MainUserId, subAccountId: selectedSubAccount);
@@ -1810,7 +1817,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
 
                 var twoFactorAuthenticator = new TwoFactorAuthenticator();
                 var googleAuthenticationKey = await AccountsService.Get2FactorAuthenticationKeyAsync(loggedInUserId);
-                bool result = twoFactorAuthenticator.ValidateTwoFactorPIN(googleAuthenticationKey, googleAuthenticatorPin);
+                var result = twoFactorAuthenticator.ValidateTwoFactorPIN(googleAuthenticationKey, googleAuthenticatorPin);
                 if (!result)
                 {
                     WriteToTrace("Authentication failed, codes do not match");
@@ -1950,11 +1957,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
 
         // Build the reset password URL.
         Uri baseUrl;
-        if (HttpContext == null)
-        {
-            baseUrl = new Uri(Settings.ResetPasswordUrl);
-        }
-        else if (String.IsNullOrWhiteSpace(Settings.ResetPasswordUrl))
+        if (String.IsNullOrWhiteSpace(Settings.ResetPasswordUrl))
         {
             baseUrl = Request.GetTypedHeaders().Referer ?? new Uri(Request.GetDisplayUrl());
         }
@@ -1971,7 +1974,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
         var queryString = HttpUtility.ParseQueryString(uriBuilder.Query);
         queryString[Constants.UserIdQueryStringKey] = userId.ToString().EncryptWithAes(gclSettings.AccountUserIdEncryptionKey);
         queryString[Constants.ResetPasswordTokenQueryStringKey] = token;
-        uriBuilder.Query = queryString.ToString();
+        uriBuilder.Query = queryString.ToString() ?? "";
 
         WriteToTrace("Sending reset password e-mail...");
         WriteToTrace($"senderName: {senderName}");
@@ -2018,7 +2021,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
         string query;
 
         // Then validate the old password, if the user is changing the password in their account.
-        if (Settings.ComponentMode != ComponentModes.ResetPassword && Settings.ComponentMode != ComponentModes.SubAccountsManagement && userId > 0 && !isMakingNewAccount && Settings.RequireCurrentPasswordForChangingPassword)
+        if (Settings.ComponentMode != ComponentModes.ResetPassword && Settings.ComponentMode != ComponentModes.SubAccountsManagement && !isMakingNewAccount && Settings.RequireCurrentPasswordForChangingPassword)
         {
             query = AccountsService.SetupAccountQuery(Settings.ValidatePasswordQuery, Settings, userId);
             var dataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
@@ -2055,12 +2058,14 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
         }
 
         // If everything is OK, save the new password.
-        if (userId > 0 && !String.IsNullOrWhiteSpace(newPassword))
+        if (String.IsNullOrWhiteSpace(newPassword))
         {
-            var newPasswordHash = newPassword.ToSha512ForPasswords();
-            query = AccountsService.SetupAccountQuery(Settings.ChangePasswordQuery, Settings, userId, passwordHash: newPasswordHash);
-            await RenderAndExecuteQueryAsync(query, skipCache: true);
+            return ResetOrChangePasswordResults.Success;
         }
+
+        var newPasswordHash = newPassword.ToSha512ForPasswords();
+        query = AccountsService.SetupAccountQuery(Settings.ChangePasswordQuery, Settings, userId, passwordHash: newPasswordHash);
+        await RenderAndExecuteQueryAsync(query, skipCache: true);
 
         return ResetOrChangePasswordResults.Success;
     }

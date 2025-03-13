@@ -317,9 +317,9 @@ public class Filter : CmsComponent<FilterCmsSettingsModel, Filter.ComponentModes
             var searchPart = new StringBuilder();
             if (!String.IsNullOrEmpty(Settings.SearchQuerystring) && !String.IsNullOrEmpty(Settings.SearchKeys) && !String.IsNullOrEmpty(HttpContext.Request.Query[Settings.SearchQuerystring].ToString()))
             {
-                if (Settings.SearchKeys.Contains(',')) // Multiple keys for search provided
+                if (!Settings.SearchKeys.Contains(',')) // Multiple keys for search provided
                 {
-                    foreach (var searchKey in Settings.SearchKeys.Split(','))
+                    foreach (var _ in Settings.SearchKeys.Split(','))
                     {
                         searchPart.AppendLine("");
                         // TODO: Verder uitwerken

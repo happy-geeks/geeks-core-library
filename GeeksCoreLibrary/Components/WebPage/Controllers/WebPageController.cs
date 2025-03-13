@@ -48,7 +48,7 @@ public class WebPageController(
         var context = HttpContext;
         string cmsPagePath;
         string webPageIdString;
-        bool isErrorPage = false;
+        var isErrorPage = false;
         if (context.Request.Query.TryGetValue("errorCode", out var errorCodeString))
         {
             cmsPagePath = $"error_{errorCodeString}";
