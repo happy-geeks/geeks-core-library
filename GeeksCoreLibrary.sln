@@ -7,6 +7,24 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GeeksCoreLibrary", "GeeksCo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GeeksCoreLibrary.Tests", "GeeksCoreLibrary.Tests\GeeksCoreLibrary.Tests.csproj", "{A9A2A16E-C80E-49F2-ADD7-56ED509CA770}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "GitHub", "GitHub", "{1648FF73-85D4-4FE9-90E3-7466B138DAC8}"
+	ProjectSection(SolutionItems) = preProject
+		.github\dependabot.yml = .github\dependabot.yml
+		.github\pull_request_template.md = .github\pull_request_template.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Workflows", "Workflows", "{4E27FF33-B3CF-4DF6-A42B-CE76A25AA52C}"
+	ProjectSection(SolutionItems) = preProject
+		.github\workflows\build-and-test.yml = .github\workflows\build-and-test.yml
+		.github\workflows\code_quality.yml = .github\workflows\code_quality.yml
+		.github\workflows\publish-to-nuget.yml = .github\workflows\publish-to-nuget.yml
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Configuration", "Configuration", "{280FDF6D-A85C-4F4F-B1FA-F1193D35CC17}"
+	ProjectSection(SolutionItems) = preProject
+		qodana.yaml = qodana.yaml
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,5 +45,8 @@ Global
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {2D3B2BB2-DEA8-4BDB-ADB3-B8FB976B6009}
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{4E27FF33-B3CF-4DF6-A42B-CE76A25AA52C} = {1648FF73-85D4-4FE9-90E3-7466B138DAC8}
 	EndGlobalSection
 EndGlobal
