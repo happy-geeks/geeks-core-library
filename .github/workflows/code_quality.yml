@@ -5,16 +5,22 @@ on:
   push:
     branches:
       - main
-      - develop
-      - 'releases/*'
-
 jobs:
   qodana:
-    timeout-minutes: 15
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      checks: write
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}  # to check out the actual pull request commit, not the merge commit
+          fetch-depth: 0  # a full history is required for pull request analysis
       - name: 'Qodana Scan'
-        uses: JetBrains/qodana-action@v2024.3.4
+      uses: JetBrains/qodana-action@v2024.3
+      with:
+      # args: --linter,jetbrains/qodana-dotnet:2024.3
+      # args: --linter,jetbrains/qodana-cdnet:2024.3-eap
+      env:
+        QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}
