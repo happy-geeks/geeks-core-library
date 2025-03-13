@@ -107,7 +107,6 @@ public class RewriteUrlToWebPageMiddleware(RequestDelegate next, ILogger<Rewrite
         }
 
         var queryString = new QueryString();
-        var webPagePath = new List<string>();
         ulong temporaryParentId = 0;
         string temporaryParameterName;
 
@@ -119,7 +118,6 @@ public class RewriteUrlToWebPageMiddleware(RequestDelegate next, ILogger<Rewrite
                 break;
             }
 
-            webPagePath.Add(webPage.Value.Path[i]);
             queryString = queryString.Add($"{new string('p', i + 1)}[PARAM]", webPage.Value.Path[i]);
         }
 
@@ -139,9 +137,6 @@ public class RewriteUrlToWebPageMiddleware(RequestDelegate next, ILogger<Rewrite
 
         if (temporaryTemplateString.Equals("M1", StringComparison.OrdinalIgnoreCase))
         {
-            // The path parts are added in a reverse order, so invert the list here.
-            webPagePath.Reverse();
-            webPagePath.Add(webPage.Value.Title);
             queryString = queryString.Add("name", webPage.Value.Title);
             rewriteTo = "/webpage.gcl";
             queryString = queryString.Add("id", webPage.Value.Id.ToString());

@@ -134,7 +134,7 @@ public class FilterGroup
 
     public string EntityName { get; set; } = "";
 
-    public bool UseAggregationTable { get; set; } = false;
+    public bool UseAggregationTable { get; set; }
 
     public string GroupTemplate { get; set; } = "";
 
