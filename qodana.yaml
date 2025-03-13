@@ -11,16 +11,14 @@ profile:
 exclude:
   - name: CollectionNeverQueried.Global
 
-#Enable inspections
-#include:
-#  - name: <SomeEnabledInspectionId>
-#Disable inspections
-#exclude:
-#  - name: <SomeDisabledInspectionId>
-#    paths:
-#      - <path/where/not/run/inspection>
-#Execute shell command before Qodana execution (Applied in CI/CD pipeline)
-#bootstrap: sh ./prepare-qodana.sh
-#Install IDE plugins before Qodana execution (Applied in CI/CD pipeline)
-#plugins:
-#  - id: <plugin.id> #(plugin id can be found at https://plugins.jetbrains.com)
+failureConditions:
+  severityThresholds:
+    any: 50 # Total number of problems in all severities
+    critical: 1 # Severities
+    high: 2
+    moderate: 3
+    low: 4
+    info: 5
+  testCoverageThresholds:
+    fresh: 6 # Fresh code coverage
+    total: 7 # Total percentage
