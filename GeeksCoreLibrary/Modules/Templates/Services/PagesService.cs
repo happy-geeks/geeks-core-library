@@ -80,7 +80,6 @@ public class PagesService(
                 stopWatch.Start();
             }
 
-
             // Execute the pre load query before any replacements are being done and before any dynamic components are handled.
             var hasResults = await templatesService.ExecutePreLoadQueryAndRememberResultsAsync(template);
             if (template.ReturnNotFoundWhenPreLoadQueryHasNoData && !hasResults)
