@@ -10,7 +10,7 @@ profile:
   name: qodana.starter
 exclude:
   - name: CollectionNeverQueried.Global
-
+raiseLicenseProblems: true
 failureConditions:
   severityThresholds:
     any: 50 # Total number of problems in all severities

@@ -23,6 +23,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Configuration", "Configuration", "{280FDF6D-A85C-4F4F-B1FA-F1193D35CC17}"
 	ProjectSection(SolutionItems) = preProject
 		qodana.yaml = qodana.yaml
+		qodana.sarif.json = qodana.sarif.json
 	EndProjectSection
 EndProject
 Global
