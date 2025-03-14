@@ -1,4 +1,5 @@
-﻿using GeeksCoreLibrary.Components.OrderProcess.Enums;
+﻿using System.Collections.Generic;
+using GeeksCoreLibrary.Components.OrderProcess.Enums;
 
 namespace GeeksCoreLibrary.Components.OrderProcess.Models;
 
@@ -46,4 +47,11 @@ public class PaymentMethodSettingsModel : OrderProcessBaseModel
     /// Gets or sets the amount for the maximum check. 
     /// </summary>
     public decimal MaximumAmountCheck { get; set; }
+
+    /// <summary>
+    /// Gets or sets the regular expression used determine whether the payment method should be visible on the current URL.
+    /// </summary>
+    public string PaymentMethodUrlRegex { get; set; }
+
+    public ICollection<string> PaymentMethodLanguageCodes { get; set; }
 }
