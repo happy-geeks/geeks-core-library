@@ -290,6 +290,11 @@ public class GclSettings
     public SameSiteMode CookieSameSiteMode { get; set; } = SameSiteMode.Lax;
 
     /// <summary>
+    /// Configuration options for the cache cleanup background service.
+    /// </summary>
+    public CacheCleanUpOptions CacheCleanUpOptions { get; set; } = new();
+
+    /// <summary>
     /// Settings for request logging.
     /// </summary>
     public RequestLoggingOptions RequestLoggingOptions { get; set; } = new();
