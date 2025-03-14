@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.IO.Abstractions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -51,7 +52,7 @@ public class FolderCleanupBackgroundService(
             return;
         }
 
-        var files = fileSystem.Directory.GetFiles(folderPath);
+        var files = fileSystem.Directory.GetFiles(folderPath, "*.*", SearchOption.AllDirectories);
 
         var now = DateTime.UtcNow;
 
