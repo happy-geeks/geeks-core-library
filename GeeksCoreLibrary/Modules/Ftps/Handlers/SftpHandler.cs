@@ -24,10 +24,7 @@ public class SftpHandler : IFtpHandler, IScopedService
         {
             authenticationMethods =
             [
-                new PrivateKeyAuthenticationMethod(ftpSettings.User, new PrivateKeyFile[]
-                {
-                    new(ftpSettings.SshPrivateKeyPath, ftpSettings.SshPrivateKeyPassphrase)
-                })
+                new PrivateKeyAuthenticationMethod(ftpSettings.User, new PrivateKeyFile(ftpSettings.SshPrivateKeyPath, ftpSettings.SshPrivateKeyPassphrase))
             ];
         }
         else

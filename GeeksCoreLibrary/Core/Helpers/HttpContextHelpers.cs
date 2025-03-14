@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Web;
 using GeeksCoreLibrary.Core.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Routing;
+using Newtonsoft.Json;
 using Constants = GeeksCoreLibrary.Modules.Templates.Models.Constants;
 
 namespace GeeksCoreLibrary.Core.Helpers;
@@ -274,19 +276,19 @@ public static class HttpContextHelpers
         }
 
         // Read current user consent in encoded JavaScript format
-        dynamic cookieConsent = Newtonsoft.Json.JsonConvert.DeserializeObject(System.Web.HttpUtility.UrlDecode(currentUserConsent));
-
-        switch (consentLevel)
+        dynamic cookieConsent = JsonConvert.DeserializeObject(HttpUtility.UrlDecode(currentUserConsent));
+        if (cookieConsent == null)
         {
-            case Enums.CookieConsentLevels.Preferences:
-                return Convert.ToBoolean(cookieConsent.preferences);
-            case Enums.CookieConsentLevels.Statistics:
-                return Convert.ToBoolean(cookieConsent.statistics);
-            case Enums.CookieConsentLevels.Marketing:
-                return Convert.ToBoolean(cookieConsent.preferences);
+            return false;
         }
 
-        return false;
+        return consentLevel switch
+        {
+            Enums.CookieConsentLevels.Preferences => Convert.ToBoolean(cookieConsent.preferences),
+            Enums.CookieConsentLevels.Statistics => Convert.ToBoolean(cookieConsent.statistics),
+            Enums.CookieConsentLevels.Marketing => Convert.ToBoolean(cookieConsent.preferences),
+            _ => false
+        };
     }
 
     /// <summary>

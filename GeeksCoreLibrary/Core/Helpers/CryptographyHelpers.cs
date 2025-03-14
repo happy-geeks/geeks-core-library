@@ -258,8 +258,7 @@ public static class CryptographyHelpers
             var blockSizeInBytes = cipher.BlockSize / 8;
             var tagSizeInBytes = tagGenerator.HashSize / 8;
             var headerSizeInBytes = 2;
-            var tagOffset = headerSizeInBytes;
-            var ivOffset = tagOffset + tagSizeInBytes;
+            var ivOffset = headerSizeInBytes + tagSizeInBytes;
             var cipherTextOffset = ivOffset + blockSizeInBytes;
             var cipherTextLength = cipherText.Length - cipherTextOffset;
             var minLen = cipherTextOffset + blockSizeInBytes;
@@ -279,16 +278,16 @@ public static class CryptographyHelpers
             // Don't include the tag in the calculation, though.
 
             // First, everything before the tag (the cipher and MAC algorithm ids)
-            tagGenerator.AppendData(cipherText, 0, tagOffset);
+            tagGenerator.AppendData(cipherText, 0, headerSizeInBytes);
 
             // Skip the data before the tag and the tag, then read everything that
             // remains.
             tagGenerator.AppendData(
                 cipherText,
-                tagOffset + tagSizeInBytes,
-                cipherText.Length - tagSizeInBytes - tagOffset);
+                headerSizeInBytes + tagSizeInBytes,
+                cipherText.Length - tagSizeInBytes - headerSizeInBytes);
 
-            byte[] generatedTag = tagGenerator.GetHashAndReset();
+            var generatedTag = tagGenerator.GetHashAndReset();
 
             // The time it took to get to this point has so far been a function only
             // of the length of the data, or of non-encrypted values (e.g. it could
@@ -305,7 +304,7 @@ public static class CryptographyHelpers
                     generatedTag,
                     0,
                     cipherText,
-                    tagOffset,
+                    headerSizeInBytes,
                     tagSizeInBytes))
             {
                 // Assuming every tampered message (of the same length) took the same

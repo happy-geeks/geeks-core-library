@@ -56,12 +56,13 @@ public class NeDistriService(IOptions<GclSettings> gclSettings, IWiserItemsServi
         };
         using var restClient = new RestClient(options);
 
+        var labelsList = labels.ToList();
         var results = new StringBuilder();
         foreach (var orderId in orderIds)
         {
             var orderItem = await wiserItemsService.GetItemDetailsAsync(orderId, entityType: OrderProcessConstants.OrderEntityType, skipPermissionsCheck: true);
 
-            var createOrderResponse = await CreateOrderAsync(orderItem, userCode, labels, orderType, restClient);
+            var createOrderResponse = await CreateOrderAsync(orderItem, userCode, labelsList, orderType, restClient);
 
             if (createOrderResponse.Response is null)
             {
@@ -128,7 +129,7 @@ public class NeDistriService(IOptions<GclSettings> gclSettings, IWiserItemsServi
 
         var barcodeResponse = await restClient.ExecuteAsync(restRequest);
 
-        if (!barcodeResponse.IsSuccessful)
+        if (!barcodeResponse.IsSuccessful || String.IsNullOrWhiteSpace(barcodeResponse.Content))
         {
             logger.LogError($"Request to get order failed for order {wiserOrderId}. This is order {distriOrderId} in NE DistriService. Response: {barcodeResponse.Content}");
             return (null, $"Het ophalen van de label ging mis voor order {wiserOrderId}. Hiervoor is wel order {distriOrderId} aangemaakt in NE DistriService");
@@ -174,7 +175,7 @@ public class NeDistriService(IOptions<GclSettings> gclSettings, IWiserItemsServi
     /// <param name="orderType">The order type, this is either a shipment or return Shipment</param>
     /// <param name="restClient">The restclient instance to use for the </param>
     /// <returns>Tuple containing the response to creating the order or an error message.</returns>
-    private async Task<(CreateOrderResponse Response, string Message)> CreateOrderAsync(WiserItemModel orderItem, int? userCode, IEnumerable<LabelRule> labels, OrderType orderType, IRestClient restClient)
+    private async Task<(CreateOrderResponse Response, string Message)> CreateOrderAsync(WiserItemModel orderItem, int? userCode, List<LabelRule> labels, OrderType orderType, IRestClient restClient)
     {
         var ruleModelList = new List<RuleModel>();
 
@@ -233,7 +234,7 @@ public class NeDistriService(IOptions<GclSettings> gclSettings, IWiserItemsServi
         // To authenticate we need create a signature
         // To do this we create a SHA515 hash of the body
         string signature;
-        using (RSA rsa = RSA.Create())
+        using (var rsa = RSA.Create())
         {
             rsa.ImportFromPem(key);
             var authenticationBodyBytes = Encoding.UTF8.GetBytes(authenticationBody);

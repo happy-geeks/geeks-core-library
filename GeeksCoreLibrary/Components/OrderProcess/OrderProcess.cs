@@ -201,8 +201,8 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
     {
         // Gather some data.
         var httpContext = HttpContext;
-        var response = httpContext?.Response;
-        var request = httpContext?.Request;
+        var response = httpContext.Response;
+        var request = httpContext.Request;
         var isPostBack = request is {HasFormContentType: true, Form.Count: > 0} && request.Form[Constants.ComponentIdFormKey].ToString() == ComponentId.ToString();
         var fieldErrorsOccurred = false;
         string resultHtml = null;
@@ -612,9 +612,9 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
                 field.SaveTo.Any(x => String.Equals($"{x.EntityType}.{x.PropertyName}", $"{ShoppingBasket.Models.Constants.BasketEntityType}.{basketDetail.Key}", StringComparison.OrdinalIgnoreCase)
                                       || String.Equals($"{x.EntityType}.{x.PropertyName}", $"{Constants.OrderEntityType}.{basketDetail.Key}", StringComparison.OrdinalIgnoreCase))
                 || String.Equals(field.FieldId, basketDetail.Key, StringComparison.OrdinalIgnoreCase)))).FirstOrDefault();
-            if (field?.Values != null && field.Values.ContainsKey(value))
+            if (field?.Values != null && value != null && field.Values.TryGetValue(value, out var fieldValue))
             {
-                value = field.Values[value];
+                value = fieldValue;
             }
 
             replaceData.Add($"{ShoppingBasket.Models.Constants.BasketEntityType}.{basketDetail.Key}", value);
@@ -644,9 +644,9 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
                 var field = allSteps.SelectMany(s => s.Groups.SelectMany(group => group.Fields.Where(field =>
                     field.SaveTo.Any(x => (String.Equals($"{x.EntityType}.{x.PropertyName}", $"{item.EntityType}.{itemDetail.Key}", StringComparison.OrdinalIgnoreCase) || String.Equals(field.FieldId, itemDetail.Key, StringComparison.OrdinalIgnoreCase))
                                           && x.LinkType == linkSettings.Type)))).FirstOrDefault();
-                if (field?.Values != null && field.Values.ContainsKey(value))
+                if (field?.Values != null && value != null && field.Values.TryGetValue(value, out var fieldValue))
                 {
-                    value = field.Values[value];
+                    value = fieldValue;
                 }
 
                 replaceData.Add($"{item.EntityType}.{itemDetail.Key}_{linkSettings.Type}", value);

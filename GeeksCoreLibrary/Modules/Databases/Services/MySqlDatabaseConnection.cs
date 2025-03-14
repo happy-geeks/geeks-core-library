@@ -46,7 +46,6 @@ public class MySqlDatabaseConnection : IDatabaseConnection, IScopedService
     private readonly IHttpContextAccessor httpContextAccessor;
     private readonly IWebHostEnvironment webHostEnvironment;
     private readonly ILogger<MySqlDatabaseConnection> logger;
-    private readonly IBranchesService branchesService;
     private readonly IAmazonSecretsManagerService amazonSecretsManagerService;
 
     private MySqlConnectionStringBuilder connectionStringForReading;
@@ -90,7 +89,6 @@ public class MySqlDatabaseConnection : IDatabaseConnection, IScopedService
         this.httpContextAccessor = httpContextAccessor;
         this.webHostEnvironment = webHostEnvironment;
         this.logger = logger;
-        this.branchesService = branchesService;
         this.amazonSecretsManagerService = amazonSecretsManagerService;
         this.gclSettings = gclSettings.Value;
 
@@ -642,7 +640,7 @@ public class MySqlDatabaseConnection : IDatabaseConnection, IScopedService
     }
 
     /// <inheritdoc />
-    public async Task ChangeConnectionStringsAsync(string newConnectionStringForReading, string newConnectionStringForWriting = null, SshSettings sshSettingsForReading = null, SshSettings sshSettingsForWriting = null)
+    public async Task ChangeConnectionStringsAsync(string newConnectionStringForReading, string newConnectionStringForWriting = null, SshSettings newSshSettingsForReading = null, SshSettings newSshSettingsForWriting = null)
     {
         connectionStringForReading ??= new MySqlConnectionStringBuilder();
         connectionStringForWriting ??= new MySqlConnectionStringBuilder();
@@ -651,8 +649,8 @@ public class MySqlDatabaseConnection : IDatabaseConnection, IScopedService
         connectionStringForWriting.ConnectionString = String.IsNullOrWhiteSpace(newConnectionStringForWriting) ? newConnectionStringForReading : newConnectionStringForWriting;
         connectionStringForReading.IgnoreCommandTransaction = true;
         connectionStringForWriting.IgnoreCommandTransaction = true;
-        this.sshSettingsForReading = sshSettingsForReading;
-        this.sshSettingsForWriting = sshSettingsForWriting;
+        sshSettingsForReading = newSshSettingsForReading;
+        sshSettingsForWriting = newSshSettingsForWriting;
 
         await CleanUpAsync();
         if (ConnectionForReading != null)
@@ -1122,7 +1120,7 @@ public class MySqlDatabaseConnection : IDatabaseConnection, IScopedService
         // Validate the finger print, if we know which finger print the host is supposed to have.
         if (!String.IsNullOrWhiteSpace(sshSettings.ExpectedFingerPrint))
         {
-            sshClient.HostKeyReceived += (sender, hostKeyEventArgs) => { hostKeyEventArgs.CanTrust = sshSettings.ExpectedFingerPrint.Equals(hostKeyEventArgs.FingerPrintSHA256); };
+            sshClient.HostKeyReceived += (_, hostKeyEventArgs) => { hostKeyEventArgs.CanTrust = sshSettings.ExpectedFingerPrint.Equals(hostKeyEventArgs.FingerPrintSHA256); };
         }
         else
         {

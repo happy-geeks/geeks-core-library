@@ -806,7 +806,7 @@ public class DataSelectorsService(IOptions<GclSettings> gclSettings, IDatabaseCo
         if (!String.IsNullOrWhiteSpace(itemsRequest.Selector?.Limit) && itemsRequest.Selector.Limit != "0")
         {
             // Split limit, convert values to int and then join again, to make it safe against SQL injection.
-            queryBuilder.AppendLine($"LIMIT {String.Join(",", itemsRequest.Selector.Limit.Split(",", StringSplitOptions.RemoveEmptyEntries & StringSplitOptions.TrimEntries).Select(Int32.Parse))}");
+            queryBuilder.AppendLine($"LIMIT {String.Join(",", itemsRequest.Selector.Limit.Split(",", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(Int32.Parse))}");
         }
         else if (Int32.TryParse(itemsRequest.NumberOfItems, out var numberOfItems))
         {

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.IO;
 using System.Threading.Tasks;
 using Amazon;
 using Amazon.Runtime;
@@ -35,9 +34,9 @@ public class AmazonS3Service(ILogger<AmazonS3Service> logger, IOptions<GclSettin
             var response = await client.PutBucketAsync(request);
             return response.HttpStatusCode == System.Net.HttpStatusCode.OK;
         }
-        catch (AmazonS3Exception ex)
+        catch (AmazonS3Exception amazonS3Exception)
         {
-            logger.LogError(ex, "Error creating bucket: '{Message}'", ex.Message);
+            logger.LogError(amazonS3Exception, "Error creating bucket");
             return false;
         }
     }
@@ -84,10 +83,9 @@ public class AmazonS3Service(ILogger<AmazonS3Service> logger, IOptions<GclSettin
             await fileCacheService.WriteFileIfNotExistsOrExpiredAsync($"{saveDirectory}\\{objectName}", response.ResponseStream, gclSettings.DefaultItemFileCacheDuration);
             return response.HttpStatusCode == System.Net.HttpStatusCode.OK;
         }
-        catch (AmazonS3Exception ex)
+        catch (AmazonS3Exception amazonS3Exception)
         {
-            logger.LogError(ex, "Error saving {ObjectName}: {Message}", objectName, ex.Message);
-            Console.WriteLine($"Error saving {objectName}: {ex.Message}");
+            logger.LogError(amazonS3Exception, "Error saving '{ObjectName}'.", objectName);
             return false;
         }
     }

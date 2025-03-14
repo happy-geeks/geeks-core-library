@@ -365,7 +365,7 @@ public class WebForm : CmsComponent<WebFormCmsSettingsModel, WebForm.ComponentMo
         restRequest.AddParameter("response", response, ParameterType.GetOrPost);
 
         var restResult = await restClient.ExecuteAsync(restRequest);
-        if (!restResult.IsSuccessful)
+        if (!restResult.IsSuccessful || String.IsNullOrWhiteSpace(restResult.Content))
         {
             return false;
         }

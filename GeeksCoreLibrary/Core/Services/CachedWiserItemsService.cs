@@ -366,7 +366,7 @@ public class CachedWiserItemsService(IOptions<GclSettings> gclSettings, IAppCach
     {
         return await wiserItemsService.AddItemFileAsync(service, wiserItemFile, username, userId, saveHistory, skipPermissionsCheck, entityType, linkType, overWriteByFileName);
     }
-    
+
     /// <inheritdoc />
     public async Task<bool> RemoveItemFileAsync(ulong itemFileId, string username = "GCL", ulong userId = 0, bool saveHistory = true, bool skipPermissionsCheck = false, string entityType = null, int linkType = 0)
     {
@@ -463,16 +463,10 @@ public class CachedWiserItemsService(IOptions<GclSettings> gclSettings, IAppCach
     /// <inheritdoc />
     public async Task<LinkSettingsModel> GetLinkTypeSettingsByIdAsync(int linkId)
     {
-        return await GetLinkTypeSettingsByIdAsync(this, linkId);
-    }
-
-    /// <inheritdoc />
-    public async Task<LinkSettingsModel> GetLinkTypeSettingsByIdAsync(IWiserItemsService service, int linkId)
-    {
-        IEnumerable<LinkSettingsModel> result = await GetAllLinkTypeSettingsAsync();
+        var result = await GetAllLinkTypeSettingsAsync();
         if (linkId > 0)
         {
-            result = result.Where(t => t.Id == linkId);
+            result = result.Where(t => t.Id == linkId).ToList();
         }
 
         return result.FirstOrDefault() ?? new LinkSettingsModel();

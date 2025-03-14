@@ -165,7 +165,7 @@ public class RewriteUrlToTemplateMiddleware(RequestDelegate next, ILogger<Rewrit
             }
         }
 
-        var alsoMatchWithQueryString = String.Equals(await objectsService.FindSystemObjectByDomainNameAsync("url_syntax_alsomatchquerystring", "false", String.Empty, true), "true", StringComparison.OrdinalIgnoreCase);
+        var alsoMatchWithQueryString = String.Equals(await objectsService.FindSystemObjectByDomainNameAsync("url_syntax_alsomatchquerystring", "false", String.Empty), "true", StringComparison.OrdinalIgnoreCase);
 
         foreach (var urlRewrite in urlRewrites)
         {
@@ -201,7 +201,7 @@ public class RewriteUrlToTemplateMiddleware(RequestDelegate next, ILogger<Rewrit
                 for (var i = 0; i <= 5; i++)
                 {
                     var groupName = $"{new string('p', 5 - i)}name";
-                    var value = matchResult.Groups[groupName]?.Value;
+                    var value = matchResult.Groups[groupName].Value;
                     if (String.IsNullOrWhiteSpace(value))
                     {
                         continue;
@@ -270,9 +270,10 @@ public class RewriteUrlToTemplateMiddleware(RequestDelegate next, ILogger<Rewrit
     /// <summary>
     /// Gets a list of values from a system object.
     /// </summary>
-    /// <param name="objectName">The name / key of the system object to retreive.</param>
+    /// <param name="objectName">The name / key of the system object to retrieve.</param>
+    /// <param name="objectsService">The <see cref="IObjectsService"/> to use to find the setting.</param>
     /// <returns>A list of string values.</returns>
-    private async Task<IEnumerable<string>> GetValues(string objectName, IObjectsService objectsService)
+    private static async Task<IEnumerable<string>> GetValues(string objectName, IObjectsService objectsService)
     {
         var value = await objectsService.FindSystemObjectByDomainNameAsync(objectName);
         var urlRewrites = value.Split(["\r", "\n", "\r\n"], StringSplitOptions.RemoveEmptyEntries)

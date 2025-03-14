@@ -27,7 +27,7 @@ public class GeoLocationService(IObjectsService objectsService, ILogger<GeoLocat
         // Create client and request.
         var restClient = new RestClient("https://api.pro6pp.nl", configureSerialization: serializerConfig => serializerConfig.UseNewtonsoftJson());
 
-        var restRequest = new RestRequest("/v1/autocomplete", Method.Get);
+        var restRequest = new RestRequest("/v1/autocomplete");
         restRequest.AddQueryParameter("auth_key", authKey);
 
         // It's possible to send a zip-code in "6PP" or "4PP" format. A different query string is used for both variants.

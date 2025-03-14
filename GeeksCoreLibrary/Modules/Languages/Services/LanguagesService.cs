@@ -4,7 +4,6 @@ using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -23,7 +22,6 @@ public class LanguagesService : ILanguagesService, IScopedService
     private readonly IDatabaseConnection databaseConnection;
     private readonly IObjectsService objectsService;
     private readonly IHttpContextAccessor httpContextAccessor;
-    private readonly GclSettings gclSettings;
 
     public string CurrentLanguageCode { get; set; }
 
@@ -33,14 +31,12 @@ public class LanguagesService : ILanguagesService, IScopedService
     public LanguagesService(ILogger<LanguagesService> logger,
         IDatabaseConnection databaseConnection,
         IObjectsService objectsService,
-        IOptions<GclSettings> gclSettings,
         IHttpContextAccessor httpContextAccessor = null)
     {
         this.logger = logger;
         this.databaseConnection = databaseConnection;
         this.objectsService = objectsService;
         this.httpContextAccessor = httpContextAccessor;
-        this.gclSettings = gclSettings.Value;
     }
 
     /// <inheritdoc />

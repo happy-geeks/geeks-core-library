@@ -40,7 +40,7 @@ public class CmsSettings
         GroupName = CmsAttributes.CmsGroupName.Common,
         DisplayOrder = 10
     )]
-    public bool UserNeedsToBeLoggedIn { get; set; } = false;
+    public bool UserNeedsToBeLoggedIn { get; set; }
 
     /// <summary>
     /// If set to true, the templates of this component replaces request variables. For example {requestvariablename} is replaced by the value of the parameter named 'requestvariablename' in the querystring or form variables.
@@ -53,7 +53,7 @@ public class CmsSettings
         GroupName = CmsAttributes.CmsGroupName.Handling,
         DisplayOrder = 10
     )]
-    public bool HandleRequest { get; set; } = false;
+    public bool HandleRequest { get; set; }
 
     /// <summary>
     /// Set this property to 'false' to indicate [if] statements should not be parsed, this is a speed improvement

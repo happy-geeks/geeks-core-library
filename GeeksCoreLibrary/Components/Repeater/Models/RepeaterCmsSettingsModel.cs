@@ -232,7 +232,7 @@ public class RepeaterCmsSettingsModel : CmsSettings
         HideInCms = false,
         ReadOnlyInCms = false
     )]
-    public bool Return404OnNoData { get; set; } = false;
+    public bool Return404OnNoData { get; set; }
 
     /// <summary>
     /// Use the SEO Fields of the first item to set the Page SEO fields.

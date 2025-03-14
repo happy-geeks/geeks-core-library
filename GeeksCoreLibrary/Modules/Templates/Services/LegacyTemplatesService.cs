@@ -1166,7 +1166,7 @@ public class LegacyTemplatesService : ITemplatesService
     /// <inheritdoc />
     public async Task<object> GenerateDynamicContentHtmlAsync(DynamicContent dynamicContent, int? forcedComponentMode = null, string callMethod = null, Dictionary<string, string> extraData = null)
     {
-        if (String.IsNullOrWhiteSpace(dynamicContent?.Name) || String.IsNullOrWhiteSpace(dynamicContent?.SettingsJson))
+        if (String.IsNullOrWhiteSpace(dynamicContent?.Name) || String.IsNullOrWhiteSpace(dynamicContent.SettingsJson))
         {
             return "";
         }
@@ -1299,7 +1299,7 @@ public class LegacyTemplatesService : ITemplatesService
 
             try
             {
-                var extraData = match.Groups["data"].Value?.ToDictionary("&", "=");
+                var extraData = match.Groups["data"].Value.ToDictionary("&", "=");
                 var html = await templatesService.GenerateDynamicContentHtmlAsync(contentId, extraData: extraData);
                 template = template.Replace(match.Value, (string) html);
             }

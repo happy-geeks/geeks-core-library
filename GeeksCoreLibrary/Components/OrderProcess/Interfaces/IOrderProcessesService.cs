@@ -141,8 +141,11 @@ public interface IOrderProcessesService
     Task<WiserItemFileModel> GetInvoicePdfAsync(ulong orderId);
 
     /// <summary>
-    /// This function can be used to add custom code snippets in your project. This will be executed just before the user gets send to the PSP.
-    /// If you return false here, then the concept orders will be deleted the the user will be sent back to the checkout.
+    /// This function can be used to add custom code snippets in your project.
+    /// This will be executed just before the user gets sent to the PSP, after the concept order has been created.
+    /// If you return a <see cref="PaymentRequestResult"/> with <see cref="PaymentRequestResult.Successful"/> set to <c>false</c> here,
+    /// then the concept order(s) will be deleted and the user will be sent back to the checkout page with the error that you returned in the <see cref="PaymentRequestResult.ErrorMessage"/> property.
+    /// This can be used if you need to do custom validations before allowing users to pay for an order.
     /// </summary>
     /// <param name="conceptOrders">The list of concept orders that were created for the user from their baskets. It's allowed to add custom values to these orders and also to change existing values.</param>
     /// <param name="orderProcessSettings">The settings of the current order process.</param>
@@ -152,8 +155,10 @@ public interface IOrderProcessesService
     Task<PaymentRequestResult> PaymentRequestBeforeOutAsync(List<(WiserItemModel Main, List<WiserItemModel> Lines)> conceptOrders, OrderProcessSettingsModel orderProcessSettings, PaymentMethodSettingsModel paymentMethodSettings);
 
     /// <summary>
-    /// This function can be used to add custom code snippets in your project. This will be executed after a status update of the PSP has been handled, but before the order confirmation is being sent to the user..
+    /// This function can be used to add custom code snippets in your project.
+    /// This will be executed after a status update of the PSP has been handled, but before the order confirmation is being sent to the user.
     /// If the user paid for multiple orders at once, this function will be called once for each order.
+    /// This can be used when you need to send order updates to external systems, to do some custom calculations in the order(s), etc.
     /// </summary>
     /// <param name="main">The <see cref="WiserItemModel"/> of the order.</param>
     /// <param name="lines">A list of <see cref="WiserItemModel"/> with the order lines.</param>

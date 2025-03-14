@@ -193,7 +193,7 @@ public class AccountsService(
                 }
             }
 
-            logger.LogTrace($"Gotten user information in Account and saved it to lifecycle cache: {Newtonsoft.Json.JsonConvert.SerializeObject(output)}");
+            logger.LogTrace($"Gotten user information in Account and saved it to lifecycle cache: {JsonConvert.SerializeObject(output)}");
 
             // Save to http context (caching during lifecycle).
             httpContext.Items.Add(Constants.UserDataCachingKey + cookieName, output);

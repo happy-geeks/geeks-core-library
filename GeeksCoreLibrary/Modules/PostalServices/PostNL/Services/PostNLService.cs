@@ -1,5 +1,4 @@
 ﻿using GeeksCoreLibrary.Modules.Databases.Interfaces;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using RestSharp;
@@ -28,8 +27,7 @@ public class PostNLService : IPostNLService, IScopedService
 
     private const string PostNlLogTableName = "postnl_log";
 
-    public PostNLService(ILogger<PostNLService> logger,
-        IDatabaseConnection databaseConnection,
+    public PostNLService(IDatabaseConnection databaseConnection,
         IOptions<GclSettings> gclSettings,
         IObjectsService objectService,
         IWiserItemsService wiserItemsService)
@@ -40,7 +38,7 @@ public class PostNLService : IPostNLService, IScopedService
         this.wiserItemsService = wiserItemsService;
     }
 
-    private static readonly List<string> europeanCountries = ["AT", "IT", "BE", "LV", "BG", "LT", "HR", "LU", "CY", "CZ", "DK", "EE", "PL", "FI", "PT", "FR", "RO", "DE", "SK", "SI", "GR", "ES", "HU", "SE", "IE"];
+    private static readonly List<string> EuropeanCountries = ["AT", "IT", "BE", "LV", "BG", "LT", "HR", "LU", "CY", "CZ", "DK", "EE", "PL", "FI", "PT", "FR", "RO", "DE", "SK", "SI", "GR", "ES", "HU", "SE", "IE"];
 
     /// <summary>
     /// Cleans the PostNL log table
@@ -51,8 +49,7 @@ public class PostNLService : IPostNLService, IScopedService
     }
 
     /// <inheritdoc/>
-    public async Task<SettingsModel> GetSettingsAsync(ShippingLocations shippingLocation,
-        ParcelType parcelType = ParcelType.Standard)
+    public async Task<SettingsModel> GetSettingsAsync(ShippingLocations shippingLocation, ParcelType parcelType = ParcelType.Standard)
     {
         var result = new SettingsModel();
         switch (shippingLocation)
@@ -124,7 +121,7 @@ public class PostNLService : IPostNLService, IScopedService
 
         foreach (var encryptedId in encryptedOrderIds.Split([','], StringSplitOptions.RemoveEmptyEntries))
         {
-            var postNlDetailsItemId = UInt64.Parse(await this.objectService.FindSystemObjectByDomainNameAsync("postnl_details_item_id"));
+            var postNlDetailsItemId = UInt64.Parse(await objectService.FindSystemObjectByDomainNameAsync("postnl_details_item_id"));
             var orderId = encryptedId.DecryptWithAesWithSalt(withDateTime: true, minutesValidOverride: 30);
             var postNlDetails = await wiserItemsService.GetItemDetailsAsync(postNlDetailsItemId, skipPermissionsCheck: true);
             var orderDetails = await wiserItemsService.GetItemDetailsAsync(UInt64.Parse(orderId), skipPermissionsCheck: true);
@@ -135,7 +132,6 @@ public class PostNLService : IPostNLService, IScopedService
                 continue;
             }
 
-            var barcode = orderDetails.GetDetailValue("postnl_barcode");
             var shippingAddress = new AddressModel
             {
                 City = orderDetails.GetDetailValue("shipping_city"),
@@ -163,7 +159,7 @@ public class PostNLService : IPostNLService, IScopedService
             {
                 shippingLocation = ShippingLocations.Netherlands;
             }
-            else if (europeanCountries.Any(c => c.Equals(shippingAddress.Countrycode, StringComparison.OrdinalIgnoreCase)))
+            else if (EuropeanCountries.Any(c => c.Equals(shippingAddress.Countrycode, StringComparison.OrdinalIgnoreCase)))
             {
                 shippingLocation = ShippingLocations.Europe;
             }
@@ -172,8 +168,7 @@ public class PostNLService : IPostNLService, IScopedService
                 shippingLocation = ShippingLocations.Global;
             }
 
-            barcode = (await CreateNewBarcodeAsync(orderId, shippingLocation, modelParcelType))?.Barcode;
-
+            var barcode = (await CreateNewBarcodeAsync(orderId, shippingLocation, modelParcelType))?.Barcode;
             var settings = await GetSettingsAsync(shippingLocation, modelParcelType);
             var postNlRequest = new ShipmentRequestModel
             {
@@ -230,8 +225,8 @@ public class PostNLService : IPostNLService, IScopedService
                     InvoiceNumber = orderId,
                     ShipmentType = "Commercial Goods"
                 };
-                var orderLines = await wiserItemsService.GetLinkedItemDetailsAsync(UInt64.Parse(orderId), Components.ShoppingBasket.Models.Constants.BasketLineToBasketLinkType, Components.OrderProcess.Models.Constants.OrderLineEntityType, skipPermissionsCheck: true);
-                foreach (WiserItemModel orderLine in orderLines)
+                var orderLines = await wiserItemsService.GetLinkedItemDetailsAsync(UInt64.Parse(orderId), Components.ShoppingBasket.Models.Constants.BasketLineToBasketLinkType, Constants.OrderLineEntityType, skipPermissionsCheck: true);
+                foreach (var orderLine in orderLines)
                 {
                     postNlRequest.Shipments.First()
                         .Customs.Content.Add(new CustomsContentModel

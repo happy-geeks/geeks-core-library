@@ -153,6 +153,7 @@ public interface ICommunicationsService
     /// <param name="sender">Optional: The sender of the message. Leave empty or <see langword="null"/> to use the default sender. Default is <see langowrd="null" />.</param>
     /// <param name="senderName">Optional: The sender name of the message. Leave empty or <see langword="null"/> to use the default sender name. Default is <see langowrd="null" />.</param>
     /// <param name="sendDate">Optional: The date and time that this SMS should get sent. Leave null to send it right away.</param>
+    /// <param name="attachments">Any attachments to send with this message. This is a list of URLs.</param>
     Task<int> SendWhatsAppAsync(string receiver, string body, string sender = null, string senderName = null, DateTime? sendDate = null, List<string> attachments = null);
 
     /// <summary>
@@ -163,6 +164,7 @@ public interface ICommunicationsService
     /// <param name="sender">Optional: The sender of the message. Leave empty or <see langword="null"/> to use the default sender. Default is <see langowrd="null" />.</param>
     /// <param name="senderName">Optional: The sender name of the message. Leave empty or <see langword="null"/> to use the default sender name. Default is <see langowrd="null" />.</param>
     /// <param name="sendDate">Optional: The date and time that this SMS should get sent. Leave null to send it right away.</param>
+    /// <param name="attachments">Any attachments to send with this message. This is a list of URLs.</param>
     Task<int> SendWhatsAppAsync(IEnumerable<CommunicationReceiverModel> receivers, string body, string sender = null, string senderName = null, DateTime? sendDate = null, List<string> attachments = null);
 
     /// <summary>
@@ -176,6 +178,5 @@ public interface ICommunicationsService
     /// </summary>
     /// <param name="communication">The <see cref="SingleCommunicationModel"/> object to use as the basis to send the email.</param>
     /// <param name="smsSettings">The sms settings to use.</param>
-    /// <returns></returns>
     Task SendWhatsAppDirectlyAsync(SingleCommunicationModel communication, SmsSettings smsSettings);
 }

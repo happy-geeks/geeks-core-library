@@ -41,13 +41,16 @@ public class ExcelService : IExcelService, IScopedService
             // Add data.
             uint currentRow = 2;
 
-            foreach (JObject jsonObject in data)
+            foreach (var jsonToken in data)
             {
                 var rowColumnValues = new List<object>();
 
-                foreach (var jsonToken in jsonObject)
+                if (jsonToken is JObject jsonObject)
                 {
-                    rowColumnValues.Add(jsonToken.Value);
+                    foreach (var subToken in jsonObject)
+                    {
+                        rowColumnValues.Add(subToken.Value);
+                    }
                 }
 
                 AddRow(rowColumnValues, currentRow, spreadsheetDocumentReferences);

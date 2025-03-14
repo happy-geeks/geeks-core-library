@@ -160,7 +160,7 @@ public interface IShoppingBasketsService
     /// Overload the LoadAsync method and loads a basket from the database without the specific details.
     /// </summary>
     Task<(WiserItemModel ShoppingBasket, List<WiserItemModel> BasketLines)> LoadAsync(ShoppingBasketCmsSettingsModel settings, bool fillSpecificDetails, ulong itemId = 0UL, string encryptedItemId = "", bool connectToAccount = true, bool recursiveCall = false, int basketToUserLinkType = Constants.BasketToUserLinkType);
-    
+
     /// <summary>
     /// Saves the current basket to the database.
     /// </summary>
@@ -234,6 +234,7 @@ public interface IShoppingBasketsService
     /// <param name="type">The type of the item. Defaults to "product".</param>
     /// <param name="lineDetails">Additional properties for the basket line.</param>
     /// <param name="createNewTransaction">Whether the function should create a new database transaction.</param>
+    /// <param name="basketToUserLinkType">The type number for the link of the basket to the user.</param>
     Task AddLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string uniqueId = null, ulong itemId = 0UL, int quantity = 1, string type = OrderProcessConstants.OrderLineProductType, IDictionary<string, string> lineDetails = null, bool createNewTransaction = true, int basketToUserLinkType = Constants.BasketToUserLinkType);
 
     /// <summary>
@@ -244,7 +245,7 @@ public interface IShoppingBasketsService
     /// <param name="settings">The settings of the <see cref="ShoppingBasket"/> component that called this function.</param>
     /// <param name="items">The data of the lines that will be added.</param>
     /// <param name="createNewTransaction">Whether the function should create a new database transaction.</param>
-    /// <returns></returns>
+    /// <param name="basketToUserLinkType">The type number for the link of the basket to the user.</param>
     Task AddLinesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, IList<AddToShoppingBasketModel> items, bool createNewTransaction = true, int basketToUserLinkType = Constants.BasketToUserLinkType);
 
     /// <summary>
@@ -254,7 +255,7 @@ public interface IShoppingBasketsService
     /// <param name="basketLines">The current basket lines.</param>
     /// <param name="settings">The settings of the ShoppingBasket component that requested this update.</param>
     /// <param name="item">The data of the line that will be replaced. The <see cref="UpdateItemModel.LineId"/> property of this object will determine which line will be replaced.</param>
-    /// <returns></returns>
+    /// <param name="basketToUserLinkType">The type number for the link of the basket to the user.</param>
     Task UpdateLineAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, UpdateItemModel item, int basketToUserLinkType = Constants.BasketToUserLinkType);
 
     /// <summary>
@@ -263,9 +264,9 @@ public interface IShoppingBasketsService
     /// <param name="shoppingBasket">The current basket.</param>
     /// <param name="basketLines">The current basket lines.</param>
     /// <param name="settings">The settings of the ShoppingBasket component that requested this update.</param>
-    /// <param name="itemIdOrUniqueId"></param>
-    /// <param name="quantity"></param>
-    /// <returns></returns>
+    /// <param name="itemIdOrUniqueId">The ID of unique_uuid value of wiser_item.</param>
+    /// <param name="quantity">The new quantity.</param>
+    /// <param name="basketToUserLinkType">The type number for the link of the basket to the user.</param>
     Task UpdateBasketLineQuantityAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string itemIdOrUniqueId, decimal quantity, int basketToUserLinkType = Constants.BasketToUserLinkType);
 
     /// <summary>
@@ -276,7 +277,7 @@ public interface IShoppingBasketsService
     /// <param name="settings">The settings of the ShoppingBasket component that requested this update.</param>
     /// <param name="couponCode">The coupon code to check and process.</param>
     /// <param name="createNewTransaction">Will be passed to the SaveAsync call.</param>
-    /// <returns></returns>
+    /// <param name="basketToUserLinkType">The type number for the link of the basket to the user.</param>
     Task<HandleCouponResultModel> AddCouponToBasketAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, string couponCode = "", bool createNewTransaction = true, int basketToUserLinkType = Constants.BasketToUserLinkType);
 
     /// <summary>
@@ -294,6 +295,7 @@ public interface IShoppingBasketsService
     /// <param name="basketLines">The current basket lines.</param>
     /// <param name="settings">The settings of the ShoppingBasket component that requested this update.</param>
     /// <param name="createNewTransaction">Whether the function should create a new database transaction.</param>
+    /// <param name="basketToUserLinkType">The type number for the link of the basket to the user.</param>
     Task CheckForFreeProductAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, bool createNewTransaction = true, int basketToUserLinkType = Constants.BasketToUserLinkType);
 
     /// <summary>

@@ -594,7 +594,7 @@ public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel, Shopp
     /// <returns></returns>
     private async Task<(string Html, ulong ContentItemId, string PdfDocumentOptions)> GetDocumentTemplateHtmlAsync(string overrideTemplate = null)
     {
-        var html = "";
+        string html;
         var contentItemId = 0UL;
         var pdfDocumentOptions = "";
         var template = String.IsNullOrWhiteSpace(overrideTemplate) ? Settings.TemplatePrint : overrideTemplate;

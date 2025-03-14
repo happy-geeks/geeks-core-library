@@ -24,7 +24,6 @@ using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Enums;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Constants = GeeksCoreLibrary.Components.ShoppingBasket.Models.Constants;
@@ -42,12 +41,10 @@ public class ShoppingBasketsService(
     ITemplatesService templatesService,
     IStringReplacementsService stringReplacementsService,
     ILanguagesService languagesService,
-    IHttpContextAccessor httpContextAccessor = null,
-    ITempDataDictionaryFactory tempDataDictionaryFactory = null)
+    IHttpContextAccessor httpContextAccessor = null)
     : IShoppingBasketsService, IScopedService
 {
     private readonly GclSettings gclSettings = gclSettings.Value;
-    private readonly ITempDataDictionaryFactory tempDataDictionaryFactory = tempDataDictionaryFactory;
 
     private SortedList<int, decimal> vatFactorsByRate;
 
@@ -471,7 +468,7 @@ public class ShoppingBasketsService(
 
         return (shoppingBasket, basketLines, basketLineValidityMessage, basketLineStockActionMessage);
     }
-    
+
     /// <inheritdoc />
     public async Task<(WiserItemModel ShoppingBasket, List<WiserItemModel> BasketLines)> LoadAsync(ShoppingBasketCmsSettingsModel settings, bool fillSpecificDetails, ulong itemId = 0UL, string encryptedItemId = "", bool connectToAccount = true, bool recursiveCall = false, int basketToUserLinkType = Constants.BasketToUserLinkType)
     {
@@ -493,7 +490,7 @@ public class ShoppingBasketsService(
                 }
             }
         }
-            
+
         var user = await accountsService.GetUserDataFromCookieAsync();
 
         var loadBasketFromUser = false;
@@ -556,7 +553,7 @@ public class ShoppingBasketsService(
                 await LinkBasketToUserAsync(settings, userId, shoppingBasket, basketToUserLinkType: basketToUserLinkType);
             }
         }
-            
+
         if (loadBasketFromUser)
         {
             // Check if the user is logged in and has basket from account.
@@ -573,7 +570,7 @@ public class ShoppingBasketsService(
         }
 
         logger.LogTrace("GCL ShoppingBasket: Finished loading basket");
-            
+
         return (shoppingBasket, basketLines);
     }
 
@@ -1071,13 +1068,13 @@ public class ShoppingBasketsService(
                     }
 
                     var replaceData = line.GetSortedList(true);
-                    
+
                     // Remove the variables that are handled by this method so they aren't handled by stringReplacementsService.DoReplacements
                     replaceData.Remove("price");
                     replaceData.Remove("singleprice");
                     replaceData.Remove("pricewithoutfactor");
                     replaceData.Remove("singlepricewithoutfactor");
-                    
+
                     replaceData["rowindex"] = index.ToString(CultureInfo.InvariantCulture);
 
                     var lineTemplate = subTemplate;
@@ -2694,7 +2691,7 @@ public class ShoppingBasketsService(
         {
             return vatFactor;
         }
-        
+
         vatFactor = (await GetVatRuleByRateAsync(shoppingBasket, settings, vatRate)).Percentage / 100;
         vatFactorsByRate.Add(vatRate, vatFactor);
 
@@ -2932,7 +2929,7 @@ public class ShoppingBasketsService(
                 var key = dataRow.Field<string>("key");
                 var value = dataRow.Field<string>("value");
 
-                line.SetDetail(key, value, readOnly: !containsReadOnlyColumn || Convert.ToBoolean(dataRow["readonly"]), markChangedAsFalse: true);
+                line.SetDetail(key, value, enableReadOnly: !containsReadOnlyColumn || Convert.ToBoolean(dataRow["readonly"]), markChangedAsFalse: true);
             }
             else
             {
@@ -2949,7 +2946,7 @@ public class ShoppingBasketsService(
                     }
                     else
                     {
-                        line.SetDetail(dataColumn.ColumnName, Convert.ToString(dataRow[dataColumn]), readOnly: true, markChangedAsFalse: true);
+                        line.SetDetail(dataColumn.ColumnName, Convert.ToString(dataRow[dataColumn]), enableReadOnly: true, markChangedAsFalse: true);
                     }
                 }
             }
@@ -2995,7 +2992,7 @@ public class ShoppingBasketsService(
                 var key = dataRow.Field<string>("key");
                 var value = dataRow.Field<string>("value");
 
-                shoppingBasket.SetDetail(key, value, readOnly: !containsReadOnlyColumn || Convert.ToBoolean(dataRow["readonly"]), markChangedAsFalse: true);
+                shoppingBasket.SetDetail(key, value, enableReadOnly: !containsReadOnlyColumn || Convert.ToBoolean(dataRow["readonly"]), markChangedAsFalse: true);
                 saveBasket = true;
             }
             else
@@ -3014,7 +3011,7 @@ public class ShoppingBasketsService(
                     }
                     else
                     {
-                        shoppingBasket.SetDetail(dataColumn.ColumnName, Convert.ToString(dataRow[dataColumn]), readOnly: true, markChangedAsFalse: true);
+                        shoppingBasket.SetDetail(dataColumn.ColumnName, Convert.ToString(dataRow[dataColumn]), enableReadOnly: true, markChangedAsFalse: true);
                     }
                 }
             }

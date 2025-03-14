@@ -1430,7 +1430,7 @@ public class TemplatesService(
 
             try
             {
-                var extraData = match.Groups["data"].Value?.ToDictionary("&", "=");
+                var extraData = match.Groups["data"].Value.ToDictionary("&", "=");
                 var dynamicContentData = componentOverrides?.FirstOrDefault(d => d.Id == contentId);
                 var html = dynamicContentData == null ? await templatesService.GenerateDynamicContentHtmlAsync(contentId, extraData: extraData) : await templatesService.GenerateDynamicContentHtmlAsync(dynamicContentData, extraData: extraData);
                 template = template.Replace(match.Value, $"<!-- Start component {contentId} -->{(string) html}<!-- End component {contentId} -->");

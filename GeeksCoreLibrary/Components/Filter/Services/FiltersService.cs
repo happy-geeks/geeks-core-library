@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Filter.Interfaces;
 using GeeksCoreLibrary.Components.Filter.Models;
@@ -575,7 +576,7 @@ public class FiltersService(
         // LEFT JOIN to filterstoitem because category id is always present for getting filter items from aggregation table
         // filterstoitem.id is checked in code below. If this column has a value for one or more filters, then the filters where filterstoitem.id IS NULL are ignored
         // The aggregation table ensures that only filters that apply to the relevant category are shown
-
+        var originalRequestUrl = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext).ToString();
         foreach (DataRow row in dataTable.Rows)
         {
             // Skip filter which is not connected to category (check in code above)
@@ -585,7 +586,8 @@ public class FiltersService(
             }
 
             // If URL not matches with regex, then skip this filter
-            if (dataTable.Columns.Contains("urlregex") && !String.IsNullOrEmpty(row["urlregex"].ToString()) && !System.Text.RegularExpressions.Regex.IsMatch(HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext).ToString(), row["urlregex"].ToString()))
+            var urlRegex = row.GetValueIfColumnExists<string>("urlregex");
+            if (!String.IsNullOrEmpty(urlRegex) && !Regex.IsMatch(originalRequestUrl, urlRegex))
             {
                 continue;
             }
@@ -595,8 +597,10 @@ public class FiltersService(
             var filterGroupNameSeo = !dataTable.Columns.Contains("filtergroupnameseo") ? "" : row.Field<string>("filtergroupnameseo");
             if (!String.IsNullOrWhiteSpace(filterGroupNameSeo))
             {
-                filterGroup = new FilterGroup(filterName, filterGroupNameSeo);
-                filterGroup.IsGroupFilter = true;
+                filterGroup = new FilterGroup(filterName, filterGroupNameSeo)
+                {
+                    IsGroupFilter = true
+                };
             }
             else
             {
@@ -609,9 +613,13 @@ public class FiltersService(
             {
                 filterGroup.FilterType = (FilterGroup.FilterGroupType) filterTypeAsNumber;
             }
+            else if (!String.IsNullOrWhiteSpace(filterType))
+            {
+                filterGroup.FilterType = Enum.Parse<FilterGroup.FilterGroupType>(filterType);
+            }
             else
             {
-                filterGroup.FilterType = (FilterGroup.FilterGroupType) Enum.Parse(typeof(FilterGroup.FilterGroupType), filterType);
+                filterGroup.FilterType = FilterGroup.FilterGroupType.MultiSelect;
             }
 
             filterGroup.ShowCount = !row.IsNull("showcount") && Convert.ToBoolean(row["showcount"]);
