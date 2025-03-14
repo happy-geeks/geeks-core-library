@@ -131,7 +131,7 @@ public class CachedPagesService(
             await languagesService.GetLanguageCodeAsync();
         }
 
-        template = await pagesService.GetRenderedTemplateAsync(id, name, type, parentId, parentName, skipPermissions, content);
+        template = await pagesService.GetRenderedTemplateAsync(id, name, type, parentId, parentName, skipPermissions, content, useAbsoluteImageUrls, removeSvgUrlsFromIcons);
 
         if (content != null)
         {
