@@ -15,12 +15,12 @@ namespace GeeksCoreLibrary.Tests.Core.Services;
 [TestFixture]
 public class FolderCleanupBackgroundServiceTests
 {
-    private Mock<ILogger<FolderCleanupBackgroundService>> mockLogger;
-    private Mock<IWebHostEnvironment> mockWebHostEnvironment;
-    private Mock<IOptions<GclSettings>> mockGclSettings;
-    private MockFileSystem mockFileSystem;
+    private Mock<ILogger<FolderCleanupBackgroundService>> mockLogger = null!;
+    private Mock<IWebHostEnvironment> mockWebHostEnvironment = null!;
+    private Mock<IOptions<GclSettings>> mockGclSettings = null!;
+    private MockFileSystem mockFileSystem = null!;
 
-    private FolderCleanupBackgroundService service;
+    private FolderCleanupBackgroundService service = null!;
 
     [SetUp]
     public void SetUp()
