@@ -156,6 +156,10 @@ public class Constants
     public const string PaymentMethodUseMinimalAmountProperty = "paymentmethoduseminimalamount";
 
     public const string PaymentMethodUseMaximumAmountProperty = "paymentmethodusemaximumamount";
+    
+    public const string PaymentMethodUrlRegexProperty = "paymentmethodurlregex";
+    
+    public const string PaymentMethodLanguageCodesProperty = "paymentmethodlanguagecodes";
 
     public const string OrderProcessBasketToConceptOrderMethodProperty = "baskettoconceptordermethod";
 
