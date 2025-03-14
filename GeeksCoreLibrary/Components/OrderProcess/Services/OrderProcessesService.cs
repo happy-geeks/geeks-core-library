@@ -521,8 +521,8 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
                      LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodMaximumAmount ON paymentMethodMaximumAmount.item_id = paymentMethod.id AND paymentMethodMaximumAmount.`key` = '{Constants.PaymentMethodMaximumAmountProperty}'
                      LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodUseMinimalAmount ON paymentMethodUseMinimalAmount.item_id = paymentMethod.id AND paymentMethodUseMinimalAmount.`key` = '{Constants.PaymentMethodUseMinimalAmountProperty}'
                      LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodUseMaximumAmount ON paymentMethodUseMaximumAmount.item_id = paymentMethod.id AND paymentMethodUseMaximumAmount.`key` = '{Constants.PaymentMethodUseMaximumAmountProperty}'
-                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodUrlRegex ON paymentMethodUrlRegex.item_id = paymentMethodUrlRegex.id AND paymentMethodUrlRegex.`key` = '{Constants.PaymentMethodUrlRegexProperty}'
-                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodLanguageCodes ON paymentMethodLanguageCodes.item_id = paymentMethodLanguageCodes.id AND paymentMethodLanguageCodes.`key` = '{Constants.PaymentMethodLanguageCodesProperty}'
+                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodUrlRegex ON paymentMethodUrlRegex.item_id = paymentMethod.id AND paymentMethodUrlRegex.`key` = '{Constants.PaymentMethodUrlRegexProperty}'
+                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodLanguageCodes ON paymentMethodLanguageCodes.item_id = paymentMethod.id AND paymentMethodLanguageCodes.`key` = '{Constants.PaymentMethodLanguageCodesProperty}'
                      
                      # PSP
                      JOIN {WiserTableNames.WiserItemDetail} AS linkedProvider ON linkedProvider.item_id = paymentMethod.id AND linkedProvider.`key` = '{Constants.PaymentMethodServiceProviderProperty}'
@@ -545,7 +545,8 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
             return results;
         }
         
-        // get total amount of order
+        // Get total amount of order.
+        // This is needed to account for minimum and maximum prices.
         var shoppingBaskets = await shoppingBasketsService.GetShoppingBasketsAsync();
         var basketSettings = await shoppingBasketsService.GetSettingsAsync();
         var totalPrice = 0M;
@@ -714,8 +715,8 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
                      LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodMaximumAmount ON paymentMethodMaximumAmount.item_id = paymentMethod.id AND paymentMethodMaximumAmount.`key` = '{Constants.PaymentMethodMaximumAmountProperty}'
                      LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodUseMinimalAmount ON paymentMethodUseMinimalAmount.item_id = paymentMethod.id AND paymentMethodUseMinimalAmount.`key` = '{Constants.PaymentMethodUseMinimalAmountProperty}'
                      LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodUseMaximumAmount ON paymentMethodUseMaximumAmount.item_id = paymentMethod.id AND paymentMethodUseMaximumAmount.`key` = '{Constants.PaymentMethodUseMaximumAmountProperty}'
-                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodUrlRegex ON paymentMethodUrlRegex.item_id = paymentMethodUrlRegex.id AND paymentMethodUrlRegex.`key` = '{Constants.PaymentMethodUrlRegexProperty}'
-                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodLanguageCodes ON paymentMethodLanguageCodes.item_id = paymentMethodLanguageCodes.id AND paymentMethodLanguageCodes.`key` = '{Constants.PaymentMethodLanguageCodesProperty}'
+                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodUrlRegex ON paymentMethodUrlRegex.item_id = paymentMethod.id AND paymentMethodUrlRegex.`key` = '{Constants.PaymentMethodUrlRegexProperty}'
+                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodLanguageCodes ON paymentMethodLanguageCodes.item_id = paymentMethod.id AND paymentMethodLanguageCodes.`key` = '{Constants.PaymentMethodLanguageCodesProperty}'
                      
                      # PSP
                      JOIN {WiserTableNames.WiserItemDetail} AS linkedProvider ON linkedProvider.item_id = paymentMethod.id AND linkedProvider.`key` = '{Constants.PaymentMethodServiceProviderProperty}'
