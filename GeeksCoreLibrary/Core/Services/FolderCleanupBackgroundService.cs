@@ -22,8 +22,8 @@ public class FolderCleanupBackgroundService(
     private readonly string filesCachePath = FileSystemHelpers.GetFileCacheDirectory(webHostEnvironment);
     private readonly string outputCachePath = FileSystemHelpers.GetOutputCacheDirectory(webHostEnvironment);
 
-    private readonly TimeSpan cleanUpIntervalDays = TimeSpan.FromDays(gclSettings.Value.CacheCleanUpOptions.CleanUpIntervalDays > 0 ? gclSettings.Value.CacheCleanUpOptions.CleanUpIntervalDays : 1);
-    private readonly TimeSpan maxCacheDurationDays = TimeSpan.FromDays(gclSettings.Value.CacheCleanUpOptions.MaxCacheDurationDays > 0 ? gclSettings.Value.CacheCleanUpOptions.MaxCacheDurationDays : 30);
+    private readonly TimeSpan cleanUpInterval = gclSettings.Value.CacheCleanUpOptions.CleanUpInterval > TimeSpan.Zero ? gclSettings.Value.CacheCleanUpOptions.CleanUpInterval : TimeSpan.FromDays(1);
+    private readonly TimeSpan maxCacheDuration = gclSettings.Value.CacheCleanUpOptions.MaxCacheDuration > TimeSpan.Zero ? gclSettings.Value.CacheCleanUpOptions.MaxCacheDuration : TimeSpan.FromDays(30);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -41,7 +41,7 @@ public class FolderCleanupBackgroundService(
                 logger.LogError(ex, "Error occurred during cache cleanup.");
             }
 
-            await Task.Delay(cleanUpIntervalDays, stoppingToken);
+            await Task.Delay(cleanUpInterval, stoppingToken);
         }
     }
 
@@ -60,7 +60,7 @@ public class FolderCleanupBackgroundService(
         {
             var fileLastWriteTime = fileSystem.File.GetLastWriteTimeUtc(file);
 
-            if (now - fileLastWriteTime <= maxCacheDurationDays)
+            if (now - fileLastWriteTime <= maxCacheDuration)
             {
                 continue;
             }

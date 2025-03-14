@@ -34,8 +34,8 @@ public class FolderCleanupBackgroundServiceTests
         {
             CacheCleanUpOptions = new CacheCleanUpOptions
             {
-                CleanUpIntervalDays = 1,
-                MaxCacheDurationDays = 30
+                CleanUpInterval = TimeSpan.FromDays(1),
+                MaxCacheDuration = TimeSpan.FromDays(30)
             }
         };
 

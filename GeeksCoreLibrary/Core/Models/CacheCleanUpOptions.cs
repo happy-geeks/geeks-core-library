@@ -1,14 +1,16 @@
-﻿namespace GeeksCoreLibrary.Core.Models;
+﻿using System;
+
+namespace GeeksCoreLibrary.Core.Models;
 
 public class CacheCleanUpOptions
 {
     /// <summary>
-    /// The interval, in days, at which the cleanup process should run.
+    /// The interval at which the cleanup process should run.
     /// </summary>
-    public int CleanUpIntervalDays { get; set; }
+    public TimeSpan CleanUpInterval { get; set; }
 
     /// <summary>
-    /// The maximum age, in days, a cached item can be before it is deleted.
+    /// The maximum duration a cached item can exist before it is deleted.
     /// </summary>
-    public int MaxCacheDurationDays { get; set; }
+    public TimeSpan MaxCacheDuration { get; set; }
 }
