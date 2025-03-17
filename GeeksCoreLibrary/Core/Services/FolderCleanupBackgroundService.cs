@@ -14,9 +14,9 @@ namespace GeeksCoreLibrary.Core.Services;
 
 public class FolderCleanupBackgroundService(
     ILogger<FolderCleanupBackgroundService> logger,
-    IWebHostEnvironment webHostEnvironment,
     IOptions<GclSettings> gclSettings,
-    IFileSystem fileSystem)
+    IFileSystem fileSystem,
+    IWebHostEnvironment webHostEnvironment = null)
     : BackgroundService
 {
     private readonly string filesCachePath = FileSystemHelpers.GetFileCacheDirectory(webHostEnvironment);
@@ -27,7 +27,7 @@ public class FolderCleanupBackgroundService(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        logger.LogInformation("FolderCleanupBackgroundService started.");
+        logger.LogInformation($"{nameof(FolderCleanupBackgroundService)} started.");
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -36,9 +36,9 @@ public class FolderCleanupBackgroundService(
                 CleanUpFolder(filesCachePath);
                 CleanUpFolder(outputCachePath);
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                logger.LogError(ex, "Error occurred during cache cleanup.");
+                logger.LogError(exception, "Error occurred during cache cleanup.");
             }
 
             await Task.Delay(cleanUpInterval, stoppingToken);
@@ -47,7 +47,7 @@ public class FolderCleanupBackgroundService(
 
     private void CleanUpFolder(string folderPath)
     {
-        if (!fileSystem.Directory.Exists(folderPath))
+        if (String.IsNullOrEmpty(folderPath) || !fileSystem.Directory.Exists(folderPath))
         {
             return;
         }
@@ -76,7 +76,7 @@ public class FolderCleanupBackgroundService(
 
     public override async Task StopAsync(CancellationToken stoppingToken)
     {
-        logger.LogInformation("FolderCleanupBackgroundService stopped.");
+        logger.LogInformation($"{nameof(FolderCleanupBackgroundService)} stopped.");
         await base.StopAsync(stoppingToken);
     }
 }
