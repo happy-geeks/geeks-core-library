@@ -670,13 +670,14 @@ public class WiserTableDefinitions
         new()
         {
             Name = WiserTableNames.WiserIdMappings,
-            LastUpdate = new DateTime(2022, 5, 19),
+            LastUpdate = new DateTime(2025, 3, 17),
             Columns =
             [
                 new ColumnSettingsModel("id", MySqlDbType.UInt64, notNull: true, isPrimaryKey: true, autoIncrement: true),
                 new ColumnSettingsModel("table_name", MySqlDbType.VarChar, 255, notNull: true),
                 new ColumnSettingsModel("our_id", MySqlDbType.UInt64, notNull: true),
-                new ColumnSettingsModel("production_id", MySqlDbType.UInt64, notNull: true)
+                new ColumnSettingsModel("production_id", MySqlDbType.UInt64, notNull: true),
+                new ColumnSettingsModel("added_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP")
             ],
             Indexes = [new IndexSettingsModel(WiserTableNames.WiserIdMappings, "idx_unique", IndexTypes.Unique, ["table_name", "our_id"])]
         },
