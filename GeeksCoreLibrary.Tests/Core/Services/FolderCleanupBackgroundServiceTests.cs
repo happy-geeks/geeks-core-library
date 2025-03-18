@@ -59,9 +59,9 @@ public class FolderCleanupBackgroundServiceTests
 
         service = new FolderCleanupBackgroundService(
             mockLogger.Object,
-            mockWebHostEnvironment.Object,
             mockGclSettings.Object,
-            mockFileSystem
+            mockFileSystem,
+            mockWebHostEnvironment.Object
         );
     }
 
