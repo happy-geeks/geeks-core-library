@@ -99,7 +99,7 @@ public interface IAccountsService
     Task SaveGoogleClientIdAsync(ulong userIdForGoogleCid, AccountCmsSettingsModel settings);
 
     /// <summary>
-    /// Saves a login attempt in the details of the user. This will use the query in <see cref="JsonFormatter.Settings.SaveLoginAttemptQuery"/>.
+    /// Saves a login attempt in the details of the user. This will use the query in <see cref="AccountCmsSettingsModel.SaveLoginAttemptQuery"/>.
     /// </summary>
     /// <param name="success">Whether the login attempt was successful or not.</param>
     /// <param name="userId">The ID of the user that is attempting to login.</param>

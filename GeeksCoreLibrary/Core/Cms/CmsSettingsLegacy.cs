@@ -12,17 +12,17 @@ public class CmsSettingsLegacy
     /// <summary>
     /// If the user needs to be logged in for this to work
     /// </summary>
-    public bool UserNeedsToBeLoggedIn { get; set; } = false;
+    public bool UserNeedsToBeLoggedIn { get; set; }
 
     /// <summary>
     /// If set to true, the templates of this component replaces request variables. For example {requestvariablename} is replaced by the value of the parameter named 'requestvariablename' in the querystring or form variables.
     /// </summary>
-    public bool HandleRequest { get; set; } = false;
+    public bool HandleRequest { get; set; }
 
     /// <summary>
     /// Set this property to 'false' to indicate [if] statements should not be parsed, this is a speed improvement
     /// </summary>
-    public bool EvaluateIfElseInTemplates { get; set; } = false;
+    public bool EvaluateIfElseInTemplates { get; set; }
 
     /// <summary>
     /// If this is set to true, all left over variables after all replacements will be removed from the string.

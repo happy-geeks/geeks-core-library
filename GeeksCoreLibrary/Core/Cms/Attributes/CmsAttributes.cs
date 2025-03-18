@@ -226,12 +226,12 @@ public class CmsPropertyAttribute : Attribute
     /// <summary>
     /// Gets or sets whether this item is hidden from Wiser.
     /// </summary>
-    public bool HideInCms { get; set; } = false;
+    public bool HideInCms { get; set; }
 
     /// <summary>
     /// Gets or sets whether this property is read-only in Wiser.
     /// </summary>
-    public bool ReadOnlyInCms { get; set; } = false;
+    public bool ReadOnlyInCms { get; set; }
 
     /// <summary>
     /// Gets or sets the old (deprecated) JSON key this property used to use. If set, it will check that JSON property's value first.
@@ -251,5 +251,5 @@ public class CmsEnumAttribute : Attribute
     /// <summary>
     /// Gets or sets whether this item is hidden from Wiser.
     /// </summary>
-    public bool HideInCms { get; set; } = false;
+    public bool HideInCms { get; set; }
 }

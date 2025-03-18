@@ -46,7 +46,7 @@ public class RewriteUrlToWebPageMiddleware(RequestDelegate next, ILogger<Rewrite
             context.Items.Add(Constants.OriginalPathAndQueryStringKey, $"{path}{queryString.Value}");
         }
 
-        await HandleRewritesAsync(context, path, queryString, objectsService, webPagesService);
+        await HandleRewritesAsync(context, path, objectsService, webPagesService);
 
         await next.Invoke(context);
     }
@@ -57,10 +57,9 @@ public class RewriteUrlToWebPageMiddleware(RequestDelegate next, ILogger<Rewrite
     /// </summary>
     /// <param name="context">The current <see cref="HttpContext"/>.</param>
     /// <param name="path">The path of the current URI.</param>
-    /// <param name="queryStringFromUrl">The query string from the URI.</param>
     /// <param name="objectsService">The objectService used to get the system settings.</param>
     /// <param name="webPagesService">The webpagesService used to find the webpage based on the url.</param>
-    private async Task HandleRewritesAsync(HttpContext context, string path, QueryString queryStringFromUrl, IObjectsService objectsService, IWebPagesService webPagesService)
+    private async Task HandleRewritesAsync(HttpContext context, string path, IObjectsService objectsService, IWebPagesService webPagesService)
     {
         // Only handle the redirecting to webpages on normal URLs, not on images, css, js, etc.
         var regEx = new Regex(Core.Models.CoreConstants.UrlsToSkipForMiddlewaresRegex, RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
@@ -82,7 +81,7 @@ public class RewriteUrlToWebPageMiddleware(RequestDelegate next, ILogger<Rewrite
             return;
         }
 
-        var rewriteTo = "";
+        string rewriteTo;
         var fixedUrlParentIds = (await objectsService.FindSystemObjectByDomainNameAsync("cms_fixedurl_parentids", "0")).Split(',', StringSplitOptions.RemoveEmptyEntries).Select(UInt64.Parse).ToList();
         var fixedUrlPageMethod = new Dictionary<ulong, string>();
         var fixedUrlPageParamName = new Dictionary<ulong, string>();
@@ -90,7 +89,7 @@ public class RewriteUrlToWebPageMiddleware(RequestDelegate next, ILogger<Rewrite
         foreach (var entry in (await objectsService.FindSystemObjectByDomainNameAsync("cms_fixedurl_page_method", "0")).Split(';', StringSplitOptions.RemoveEmptyEntries))
         {
             var regex = new Regex(@"^\d+\|", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-            if (!entry.Contains("|", StringComparison.Ordinal) || !regex.IsMatch(entry))
+            if (!entry.Contains('|', StringComparison.Ordinal) || !regex.IsMatch(entry))
             {
                 continue;
             }
@@ -108,9 +107,7 @@ public class RewriteUrlToWebPageMiddleware(RequestDelegate next, ILogger<Rewrite
         }
 
         var queryString = new QueryString();
-        var webPagePath = new List<string>();
         ulong temporaryParentId = 0;
-        string temporaryTemplateString;
         string temporaryParameterName;
 
         for (var i = 0; i < webPage.Value.Path.Count; i++)
@@ -121,18 +118,15 @@ public class RewriteUrlToWebPageMiddleware(RequestDelegate next, ILogger<Rewrite
                 break;
             }
 
-            webPagePath.Add(webPage.Value.Path[i]);
             queryString = queryString.Add($"{new string('p', i + 1)}[PARAM]", webPage.Value.Path[i]);
         }
 
-        if (fixedUrlPageMethod.ContainsKey(temporaryParentId))
+        if (fixedUrlPageMethod.TryGetValue(temporaryParentId, out var temporaryTemplateString))
         {
-            temporaryTemplateString = fixedUrlPageMethod[temporaryParentId];
             temporaryParameterName = fixedUrlPageParamName[temporaryParentId];
         }
-        else if (fixedUrlPageMethod.ContainsKey(0))
+        else if (fixedUrlPageMethod.TryGetValue(0, out temporaryTemplateString))
         {
-            temporaryTemplateString = fixedUrlPageMethod[0];
             temporaryParameterName = fixedUrlPageParamName[0];
         }
         else
@@ -143,9 +137,6 @@ public class RewriteUrlToWebPageMiddleware(RequestDelegate next, ILogger<Rewrite
 
         if (temporaryTemplateString.Equals("M1", StringComparison.OrdinalIgnoreCase))
         {
-            // The path parts are added in a reverse order, so invert the list here.
-            webPagePath.Reverse();
-            webPagePath.Add(webPage.Value.Title);
             queryString = queryString.Add("name", webPage.Value.Title);
             rewriteTo = "/webpage.gcl";
             queryString = queryString.Add("id", webPage.Value.Id.ToString());

@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http.Json;
+using System.Net.Mail;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -21,7 +22,6 @@ using GeeksCoreLibrary.Modules.Communication.Interfaces;
 using GeeksCoreLibrary.Modules.Communication.Models;
 using GeeksCoreLibrary.Modules.Communication.Models.SmtPeter;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
-using MailKit.Net.Smtp;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
@@ -29,11 +29,12 @@ using RestSharp;
 using Newtonsoft.Json;
 using Twilio;
 using Twilio.Rest.Api.V2010.Account;
+using SmtpClient = MailKit.Net.Smtp.SmtpClient;
 
 namespace GeeksCoreLibrary.Modules.Communication.Services;
 
 /// <inheritdoc cref="ICommunicationsService" />
-public class CommunicationsService : ICommunicationsService, IScopedService
+public partial class CommunicationsService : ICommunicationsService, IScopedService
 {
     private readonly GclSettings gclSettings;
     private readonly ILogger<CommunicationsService> logger;
@@ -342,14 +343,14 @@ public class CommunicationsService : ICommunicationsService, IScopedService
         // This is done to validate the e-mail address(es). If an e-mail address is not valid, this will throw an exception, which we want so that we don't add invalid communications to the table.
         foreach (var receiverModel in communication.Receivers)
         {
-            var mailAddress = new System.Net.Mail.MailAddress(receiverModel.Address, receiverModel.DisplayName);
+            _ = new MailAddress(receiverModel.Address, receiverModel.DisplayName);
         }
 
         if (communication.Cc != null)
         {
             foreach (var cc in communication.Cc)
             {
-                var mailAddress = new System.Net.Mail.MailAddress(cc);
+                _ = new MailAddress(cc);
             }
         }
 
@@ -357,7 +358,7 @@ public class CommunicationsService : ICommunicationsService, IScopedService
         {
             foreach (var bcc in communication.Bcc)
             {
-                var mailAddress = new System.Net.Mail.MailAddress(bcc);
+                _ = new MailAddress(bcc);
             }
         }
 
@@ -908,16 +909,7 @@ public class CommunicationsService : ICommunicationsService, IScopedService
         }
 
         // Now "sanitize" the phone number by removing all non-digit characters.
-        receiverPhoneNumber = Regex.Replace(receiverPhoneNumber, @"\D+", "");
-        var senderName = communication.SenderName ?? smsSettings.SenderName;
-        if (Regex.IsMatch(senderName, "^\\d+$") && senderName.Length > 17)
-        {
-            senderName = senderName.Substring(0, 17);
-        }
-        else if (senderName.Length > 11)
-        {
-            senderName = senderName.Split(' ')[0].Substring(0, Math.Min(11, senderName.Split(' ')[0].Length));
-        }
+        receiverPhoneNumber = NumbersOnlyRegex().Replace(receiverPhoneNumber, "");
 
         if (String.IsNullOrEmpty(communication.Content))
         {
@@ -948,27 +940,27 @@ public class CommunicationsService : ICommunicationsService, IScopedService
             var typeUrl = "";
             switch (url)
             {
-                case string a when a.Contains(".jpeg"):
-                case string b when b.Contains(".png"):
-                case string c when c.Contains(".jpg"):
+                case not null when url.Contains(".jpeg"):
+                case not null when url.Contains(".png"):
+                case not null when url.Contains(".jpg"):
                     typeUrl = "image";
                     break;
-                case string d when d.Contains(".pdf"):
-                case string e when e.Contains(".csv"):
-                case string f when f.Contains(".txt"):
-                case string g when g.Contains(".xls"):
-                case string h when h.Contains(".xlsx"):
-                case string i when i.Contains(".doc"):
-                case string j when j.Contains(".docx"):
-                case string k when k.Contains(".pptx"):
-                case string l when l.Contains(".ppt"):
-                case string m when m.Contains(".xml"):
+                case not null when url.Contains(".pdf"):
+                case not null when url.Contains(".csv"):
+                case not null when url.Contains(".txt"):
+                case not null when url.Contains(".xls"):
+                case not null when url.Contains(".xlsx"):
+                case not null when url.Contains(".doc"):
+                case not null when url.Contains(".docx"):
+                case not null when url.Contains(".pptx"):
+                case not null when url.Contains(".ppt"):
+                case not null when url.Contains(".xml"):
                     typeUrl = "document";
                     break;
-                case string n when n.Contains(".mp3"):
+                case not null when url.Contains(".mp3"):
                     typeUrl = "audio";
                     break;
-                case string o when o.Contains(".mp4"):
+                case not null when url.Contains(".mp4"):
                     typeUrl = "video";
                     break;
             }
@@ -1062,14 +1054,14 @@ public class CommunicationsService : ICommunicationsService, IScopedService
         result.ChangedBy = dataRow.Field<string>("changed_by");
         result.ChangedOn = dataRow.Field<DateTime?>("changed_on");
 
-        if (Enum.TryParse(typeof(TriggerPeriodTypes), dataRow.Field<string>("trigger_period_type"), true, out var triggerPeriodType) && triggerPeriodType != null)
+        if (Enum.TryParse(dataRow.Field<string>("trigger_period_type"), true, out TriggerPeriodTypes triggerPeriodType))
         {
-            result.TriggerPeriodType = (TriggerPeriodTypes) triggerPeriodType;
+            result.TriggerPeriodType = triggerPeriodType;
         }
 
-        if (Enum.TryParse(typeof(SendTriggerTypes), dataRow.Field<string>("send_trigger_type"), true, out var sendTriggerType) && sendTriggerType != null)
+        if (Enum.TryParse(dataRow.Field<string>("send_trigger_type"), true, out SendTriggerTypes sendTriggerType))
         {
-            result.SendTriggerType = (SendTriggerTypes) sendTriggerType;
+            result.SendTriggerType = sendTriggerType;
         }
 
         // Settings are saved as JSON in database, so deserialize them here.
@@ -1109,4 +1101,7 @@ public class CommunicationsService : ICommunicationsService, IScopedService
 
         return result;
     }
+
+    [GeneratedRegex(@"\D+")]
+    private static partial Regex NumbersOnlyRegex();
 }

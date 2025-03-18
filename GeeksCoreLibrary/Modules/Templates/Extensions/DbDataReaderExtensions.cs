@@ -15,15 +15,17 @@ public static class DbDataReaderExtensions
 {
     public static async Task<Template> ToTemplateModelAsync(this DbDataReader reader, TemplateTypes? type = null, bool legacy = false)
     {
-        if (!Enum.TryParse(typeof(TemplateTypes), legacy ? reader.GetStringHandleNull("template_type") : Convert.ToString(await reader.GetFieldValueAsync<int>("template_type")), true, out var templateType))
+        var templateTypeString = legacy ? reader.GetStringHandleNull("template_type") : Convert.ToString(await reader.GetFieldValueAsync<int>("template_type"));
+
+        if (!Enum.TryParse(templateTypeString, true, out TemplateTypes templateType))
         {
-            if (!Enum.TryParse(typeof(TemplateTypes), reader.GetStringHandleNull("root_name"), true, out templateType))
+            if (!Enum.TryParse(reader.GetStringHandleNull("root_name"), true, out templateType))
             {
                 templateType = TemplateTypes.Unknown;
             }
         }
 
-        if (!Enum.TryParse(typeof(ResourceInsertModes), Convert.ToString(reader.GetFieldValueAsync<int>("insert_mode")), true, out var insertMode))
+        if (!Enum.TryParse(Convert.ToString(reader.GetFieldValueAsync<int>("insert_mode")), true, out ResourceInsertModes insertMode))
         {
             insertMode = ResourceInsertModes.Standard;
         }
@@ -37,8 +39,8 @@ public static class DbDataReaderExtensions
         template.RootName = reader.GetStringHandleNull("root_name");
         template.ParentName = reader.GetStringHandleNull("parent_name");
         template.Name = reader.GetStringHandleNull("template_name");
-        template.Type = (TemplateTypes) (templateType ?? TemplateTypes.Unknown);
-        template.InsertMode = (ResourceInsertModes) (insertMode ?? ResourceInsertModes.Standard);
+        template.Type = templateType;
+        template.InsertMode = insertMode;
         template.SortOrder = await reader.IsDBNullAsync("ordering") ? 0 : await reader.GetFieldValueAsync<int>("ordering");
         template.ParentSortOrder = await reader.IsDBNullAsync("parent_ordering") ? 0 : await reader.GetFieldValueAsync<int>("parent_ordering");
         template.LoadAlways = Convert.ToBoolean(reader.GetValue("load_always"));

@@ -76,7 +76,7 @@ public class WiserItemsServiceTests
     public async Task CheckIfEntityActionIsPossibleAsync_ItemAndPermissions_ReturnsSuccess(EntityActions action, AccessRights expectedFlag)
     {
         // Act
-        var actual = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(1, action, 2, null, true, null);
+        var actual = await wiserItemsService.CheckIfEntityActionIsPossibleAsync(1, action, 2, null, true);
 
         // Assert
         actual.ok.Should().BeTrue();

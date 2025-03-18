@@ -119,7 +119,7 @@ public class Repeater : CmsComponent<RepeaterCmsSettingsModel, Repeater.LegacyCo
             _ => throw new ArgumentOutOfRangeException(nameof(LegacyMode), LegacyMode, null)
         };
 
-        if (forcedComponentMode.HasValue)
+        if (Settings != null && forcedComponentMode.HasValue)
         {
             Settings.ComponentMode = (ComponentModes) forcedComponentMode.Value;
         }

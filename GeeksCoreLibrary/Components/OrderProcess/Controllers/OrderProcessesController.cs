@@ -20,7 +20,6 @@ using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
-using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Constants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
 
@@ -28,7 +27,6 @@ namespace GeeksCoreLibrary.Components.OrderProcess.Controllers;
 
 [Area("Templates")]
 public class OrderProcessesController(
-    ILogger<OrderProcessesController> logger,
     ITemplatesService templatesService,
     IPagesService pagesService,
     IDataSelectorsService dataSelectorsService,
@@ -40,8 +38,6 @@ public class OrderProcessesController(
     ITempDataProvider tempDataProvider = null)
     : Controller
 {
-    private readonly ILogger<OrderProcessesController> logger = logger;
-
     [Route(Constants.CheckoutPage)]
     public async Task<IActionResult> OrderProcessAsync()
     {

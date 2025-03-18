@@ -161,7 +161,7 @@ public class SeoService(IDatabaseConnection databaseConnection, IObjectsService 
                 urlElement.Add(new XElement(ns + "priority", dataRow["priority"].ToString()));
             }
 
-            sitemap.Root.Add(urlElement);
+            sitemap.Root!.Add(urlElement);
         }
 
         return sitemap;
@@ -241,7 +241,7 @@ public class SeoService(IDatabaseConnection databaseConnection, IObjectsService 
                 urlElement.Add(imageElement);
             }
 
-            sitemap.Root.Add(urlElement);
+            sitemap.Root!.Add(urlElement);
         }
 
         return sitemap;
