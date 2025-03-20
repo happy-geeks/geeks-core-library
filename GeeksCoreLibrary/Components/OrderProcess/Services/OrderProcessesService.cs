@@ -491,57 +491,62 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
 
         var query = $"""
                      SELECT
-                                                     paymentMethod.id AS paymentMethodId,
-                                                     paymentMethod.title AS paymentMethodTitle,
-                                                     paymentServiceProvider.id AS paymentServiceProviderId,
-                                                     paymentServiceProvider.title AS paymentServiceProviderTitle,
-                                                     paymentServiceProviderType.`value` AS paymentServiceProviderType,
-                                                     CAST(paymentMethodFee.value AS DECIMAL(65,30)) AS paymentMethodFee,
-                                                     paymentMethodVisibility.`value` AS paymentMethodVisibility,
-                                                     paymentMethodExternalName.`value` AS paymentMethodExternalName,
-                                                     CAST(paymentMethodMinimalAmount.value AS DECIMAL(65,30)) AS paymentMethodMinimalAmount,
-                                                     CAST(paymentMethodMaximumAmount.value AS DECIMAL(65,30)) AS paymentMethodMaximumAmount,
-                                                     IF(paymentMethodUseMinimalAmount.`value` = 1, TRUE, FALSE) AS paymentMethodUseMinimalAmount,
-                                                     IF(paymentMethodUseMaximumAmount.`value` = 1, TRUE, FALSE) AS paymentMethodUseMaximumAmount,
+                         paymentMethod.id AS paymentMethodId,
+                         paymentMethod.title AS paymentMethodTitle,
+                         paymentServiceProvider.id AS paymentServiceProviderId,
+                         paymentServiceProvider.title AS paymentServiceProviderTitle,
+                         paymentServiceProviderType.`value` AS paymentServiceProviderType,
+                         CAST(paymentMethodFee.value AS DECIMAL(65,30)) AS paymentMethodFee,
+                         paymentMethodVisibility.`value` AS paymentMethodVisibility,
+                         paymentMethodExternalName.`value` AS paymentMethodExternalName,
+                         CAST(paymentMethodMinimalAmount.value AS DECIMAL(65,30)) AS paymentMethodMinimalAmount,
+                         CAST(paymentMethodMaximumAmount.value AS DECIMAL(65,30)) AS paymentMethodMaximumAmount,
+                         IF(paymentMethodUseMinimalAmount.`value` = 1, TRUE, FALSE) AS paymentMethodUseMinimalAmount,
+                         IF(paymentMethodUseMaximumAmount.`value` = 1, TRUE, FALSE) AS paymentMethodUseMaximumAmount,
+                         paymentMethodUrlRegex.`value` AS paymentMethodUrlRegex,
+                         paymentMethodLanguageCodes.`value` AS paymentMethodLanguageCodes,
+                         
+                         paymentServiceProviderLogAllRequests.`value` AS paymentServiceProviderLogAllRequests,
+                         paymentServiceProviderSetOrdersDirectlyToFinished.`value` AS paymentServiceProviderSetOrdersDirectlyToFinished,
+                         paymentServiceProviderSkipWhenOrderAmountEqualsZero.`value` AS paymentServiceProviderSkipWhenOrderAmountEqualsZero
+                     FROM {WiserTableNames.WiserItem} AS orderProcess
                      
-                                                     paymentServiceProviderLogAllRequests.`value` AS paymentServiceProviderLogAllRequests,
-                                                     paymentServiceProviderSetOrdersDirectlyToFinished.`value` AS paymentServiceProviderSetOrdersDirectlyToFinished,
-                                                     paymentServiceProviderSkipWhenOrderAmountEqualsZero.`value` AS paymentServiceProviderSkipWhenOrderAmountEqualsZero
-                                                 FROM {WiserTableNames.WiserItem} AS orderProcess
+                     # Payment method
+                     JOIN {WiserTableNames.WiserItemLink} AS paymentMethodLink ON paymentMethodLink.destination_item_id = orderProcess.id AND paymentMethodLink.type = {Constants.PaymentMethodToOrderProcessLinkType}
+                     JOIN {WiserTableNames.WiserItem} AS paymentMethod ON paymentMethod.id = paymentMethodLink.item_id AND paymentMethod.entity_type = '{Constants.PaymentMethodEntityType}' AND paymentMethod.published_environment & ?environment != 0
+                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodFee ON paymentMethodFee.item_id = paymentMethod.id AND paymentMethodFee.`key` = '{Constants.PaymentMethodFeeProperty}'
+                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodVisibility ON paymentMethodVisibility.item_id = paymentMethod.id AND paymentMethodVisibility.`key` = '{Constants.PaymentMethodVisibilityProperty}'
+                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodExternalName ON paymentMethodExternalName.item_id = paymentMethod.id AND paymentMethodExternalName.`key` = '{Constants.PaymentMethodExternalNameProperty}'
+                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodMinimalAmount ON paymentMethodMinimalAmount.item_id = paymentMethod.id AND paymentMethodMinimalAmount.`key` = '{Constants.PaymentMethodMinimalAmountProperty}'
+                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodMaximumAmount ON paymentMethodMaximumAmount.item_id = paymentMethod.id AND paymentMethodMaximumAmount.`key` = '{Constants.PaymentMethodMaximumAmountProperty}'
+                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodUseMinimalAmount ON paymentMethodUseMinimalAmount.item_id = paymentMethod.id AND paymentMethodUseMinimalAmount.`key` = '{Constants.PaymentMethodUseMinimalAmountProperty}'
+                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodUseMaximumAmount ON paymentMethodUseMaximumAmount.item_id = paymentMethod.id AND paymentMethodUseMaximumAmount.`key` = '{Constants.PaymentMethodUseMaximumAmountProperty}'
+                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodUrlRegex ON paymentMethodUrlRegex.item_id = paymentMethod.id AND paymentMethodUrlRegex.`key` = '{Constants.PaymentMethodUrlRegexProperty}'
+                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodLanguageCodes ON paymentMethodLanguageCodes.item_id = paymentMethod.id AND paymentMethodLanguageCodes.`key` = '{Constants.PaymentMethodLanguageCodesProperty}'
                      
-                                                 # Payment method
-                                                 JOIN {WiserTableNames.WiserItemLink} AS paymentMethodLink ON paymentMethodLink.destination_item_id = orderProcess.id AND paymentMethodLink.type = {Constants.PaymentMethodToOrderProcessLinkType}
-                                                 JOIN {WiserTableNames.WiserItem} AS paymentMethod ON paymentMethod.id = paymentMethodLink.item_id AND paymentMethod.entity_type = '{Constants.PaymentMethodEntityType}' AND paymentMethod.published_environment & ?environment != 0
-                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodFee ON paymentMethodFee.item_id = paymentMethod.id AND paymentMethodFee.`key` = '{Constants.PaymentMethodFeeProperty}'
-                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodVisibility ON paymentMethodVisibility.item_id = paymentMethod.id AND paymentMethodVisibility.`key` = '{Constants.PaymentMethodVisibilityProperty}'
-                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodExternalName ON paymentMethodExternalName.item_id = paymentMethod.id AND paymentMethodExternalName.`key` = '{Constants.PaymentMethodExternalNameProperty}'
-                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodMinimalAmount ON paymentMethodMinimalAmount.item_id = paymentMethod.id AND paymentMethodMinimalAmount.`key` = '{Constants.PaymentMethodMinimalAmountProperty}'
-                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodMaximumAmount ON paymentMethodMaximumAmount.item_id = paymentMethod.id AND paymentMethodMaximumAmount.`key` = '{Constants.PaymentMethodMaximumAmountProperty}'
-                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodUseMinimalAmount ON paymentMethodUseMinimalAmount.item_id = paymentMethod.id AND paymentMethodUseMinimalAmount.`key` = '{Constants.PaymentMethodUseMinimalAmountProperty}'
-                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodUseMaximumAmount ON paymentMethodUseMaximumAmount.item_id = paymentMethod.id AND paymentMethodUseMaximumAmount.`key` = '{Constants.PaymentMethodUseMaximumAmountProperty}'
+                     # PSP
+                     JOIN {WiserTableNames.WiserItemDetail} AS linkedProvider ON linkedProvider.item_id = paymentMethod.id AND linkedProvider.`key` = '{Constants.PaymentMethodServiceProviderProperty}'
+                     JOIN {WiserTableNames.WiserItem} AS paymentServiceProvider ON paymentServiceProvider.id = linkedProvider.`value` AND paymentServiceProvider.entity_type = '{Constants.PaymentServiceProviderEntityType}'
+                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderType ON paymentServiceProviderType.item_id = paymentServiceProvider.id AND paymentServiceProviderType.`key` = '{Constants.PaymentServiceProviderTypeProperty}'
+                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderLogAllRequests ON paymentServiceProviderLogAllRequests.item_id = paymentServiceProvider.id AND paymentServiceProviderLogAllRequests.`key` = '{Constants.PaymentServiceProviderLogAllRequestsProperty}'
+                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSetOrdersDirectlyToFinished ON paymentServiceProviderSetOrdersDirectlyToFinished.item_id = paymentServiceProvider.id AND paymentServiceProviderSetOrdersDirectlyToFinished.`key` = '{Constants.PaymentServiceProviderOrdersCanBeSetDirectoryToFinishedProperty}'
+                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSkipWhenOrderAmountEqualsZero ON paymentServiceProviderSkipWhenOrderAmountEqualsZero.item_id = paymentServiceProvider.id AND paymentServiceProviderSkipWhenOrderAmountEqualsZero.`key` = '{Constants.PaymentServiceProviderSkipWhenOrderAmountEqualsZeroProperty}'
                      
-                                                 # PSP
-                                                 JOIN {WiserTableNames.WiserItemDetail} AS linkedProvider ON linkedProvider.item_id = paymentMethod.id AND linkedProvider.`key` = '{Constants.PaymentMethodServiceProviderProperty}'
-                                                 JOIN {WiserTableNames.WiserItem} AS paymentServiceProvider ON paymentServiceProvider.id = linkedProvider.`value` AND paymentServiceProvider.entity_type = '{Constants.PaymentServiceProviderEntityType}'
-                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderType ON paymentServiceProviderType.item_id = paymentServiceProvider.id AND paymentServiceProviderType.`key` = '{Constants.PaymentServiceProviderTypeProperty}'
-                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderLogAllRequests ON paymentServiceProviderLogAllRequests.item_id = paymentServiceProvider.id AND paymentServiceProviderLogAllRequests.`key` = '{Constants.PaymentServiceProviderLogAllRequestsProperty}'
-                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSetOrdersDirectlyToFinished ON paymentServiceProviderSetOrdersDirectlyToFinished.item_id = paymentServiceProvider.id AND paymentServiceProviderSetOrdersDirectlyToFinished.`key` = '{Constants.PaymentServiceProviderOrdersCanBeSetDirectoryToFinishedProperty}'
-                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSkipWhenOrderAmountEqualsZero ON paymentServiceProviderSkipWhenOrderAmountEqualsZero.item_id = paymentServiceProvider.id AND paymentServiceProviderSkipWhenOrderAmountEqualsZero.`key` = '{Constants.PaymentServiceProviderSkipWhenOrderAmountEqualsZeroProperty}'
-                     
-                                                 WHERE orderProcess.id = ?id
-                                                 AND orderProcess.entity_type = '{Constants.OrderProcessEntityType}'
+                     WHERE orderProcess.id = ?id
+                     AND orderProcess.entity_type = '{Constants.OrderProcessEntityType}'
                      """;
 
         databaseConnection.AddParameter("id", orderProcessId);
         databaseConnection.AddParameter("environment", (int) gclSettings.Environment);
         var dataTable = await databaseConnection.GetAsync(query);
         var results = new List<PaymentMethodSettingsModel>();
-        foreach (DataRow dataRow in dataTable.Rows)
+        if (dataTable.Rows.Count == 0)
         {
-            results.Add(await DataRowToPaymentMethodSettingsModelAsync(dataRow));
+            return results;
         }
-
-        // get total amount of order
+        
+        // Get total amount of order.
+        // This is needed to account for minimum and maximum prices.
         var shoppingBaskets = await shoppingBasketsService.GetShoppingBasketsAsync();
         var basketSettings = await shoppingBasketsService.GetSettingsAsync();
         var totalPrice = 0M;
@@ -549,43 +554,55 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
         {
             totalPrice += await shoppingBasketsService.GetPriceAsync(main, lines, basketSettings);
         }
-
-        // check if paymentmethods are allowed for the price that the costumer should pay
-        results = results.Where(paymentMethod =>
+        
+        var languageCode = await languagesService.GetLanguageCodeAsync();
+        var originalPath = httpContextAccessor.HttpContext?.Items[Modules.Templates.Models.Constants.OriginalPathAndQueryStringKey]?.ToString();
+        
+        foreach (DataRow dataRow in dataTable.Rows)
         {
+            var paymentMethod = await DataRowToPaymentMethodSettingsModelAsync(dataRow);
+            
             // check if total price is below the minimal
             if (paymentMethod.UseMinimalAmountCheck && totalPrice < paymentMethod.MinimalAmountCheck)
             {
-                return false;
+                continue;
             }
 
             // check if total price is above the maximum
             if (paymentMethod.UseMaximumAmountCheck && totalPrice > paymentMethod.MaximumAmountCheck)
             {
-                return false;
+                continue;
+            }
+            
+            if (loggedInUser != null && paymentMethod.Visibility switch
+                {
+                    OrderProcessFieldVisibilityTypes.Always => false,
+                    OrderProcessFieldVisibilityTypes.WhenNotLoggedIn => loggedInUser.UserId != 0,
+                    OrderProcessFieldVisibilityTypes.WhenLoggedIn => loggedInUser.UserId == 0,
+                    _ => throw new ArgumentOutOfRangeException(nameof(paymentMethod.Visibility), paymentMethod.Visibility.ToString(), null)
+                })
+            {
+                continue;
+            }
+            
+            if (paymentMethod.PaymentMethodLanguageCodes.Count != 0)
+            {
+                if (!paymentMethod.PaymentMethodLanguageCodes.Contains(languageCode, StringComparer.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+            }
+            if (!String.IsNullOrEmpty(originalPath) && !String.IsNullOrEmpty(paymentMethod.PaymentMethodUrlRegex))
+            {
+                var regex = new Regex(paymentMethod.PaymentMethodUrlRegex, RegexOptions.IgnoreCase, TimeSpan.FromSeconds(2));
+                if (!regex.IsMatch(originalPath))
+                {
+                    continue;
+                }
             }
 
-            // amount is within range or checks are disabled
-            return true;
-        }).ToList();
-
-        if (loggedInUser == null)
-        {
-            return results;
+            results.Add(paymentMethod);
         }
-
-        // Only get the payment methods that the user can see.
-        results = results.Where(paymentMethod =>
-        {
-            // Check if we need to skip this field.
-            return paymentMethod.Visibility switch
-            {
-                OrderProcessFieldVisibilityTypes.Always => true,
-                OrderProcessFieldVisibilityTypes.WhenNotLoggedIn => loggedInUser.UserId == 0,
-                OrderProcessFieldVisibilityTypes.WhenLoggedIn => loggedInUser.UserId > 0,
-                _ => throw new ArgumentOutOfRangeException(nameof(paymentMethod.Visibility), paymentMethod.Visibility.ToString(), null)
-            };
-        }).ToList();
 
         return results;
     }
@@ -672,41 +689,45 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
 
         var query = $"""
                      SELECT 
-                                                     paymentMethod.id AS paymentMethodId,
-                                                     paymentMethod.title AS paymentMethodTitle,
-                                                     paymentServiceProvider.id AS paymentServiceProviderId,
-                                                     paymentServiceProvider.title AS paymentServiceProviderTitle,
-                                                     paymentServiceProviderType.`value` AS paymentServiceProviderType,
-                                                     CAST(paymentMethodFee.value AS decimal(65,30)) AS paymentMethodFee,
-                                                     paymentMethodVisibility.`value` AS paymentMethodVisibility,
-                                                     paymentMethodExternalName.`value` AS paymentMethodExternalName,
-                                                     CAST(paymentMethodMinimalAmount.value AS decimal(65,30)) AS paymentMethodMinimalAmount,
-                                                     CAST(paymentMethodMaximumAmount.value AS decimal(65,30)) AS paymentMethodMaximumAmount,
-                                                     CAST(IFNULL(paymentMethodUseMinimalAmount.`value`, 0) AS SIGNED) AS paymentMethodUseMinimalAmount,
-                                                     CAST(IFNULL(paymentMethodUseMaximumAmount.`value`, 0) AS SIGNED) AS paymentMethodUseMaximumAmount,
+                         paymentMethod.id AS paymentMethodId,
+                         paymentMethod.title AS paymentMethodTitle,
+                         paymentServiceProvider.id AS paymentServiceProviderId,
+                         paymentServiceProvider.title AS paymentServiceProviderTitle,
+                         paymentServiceProviderType.`value` AS paymentServiceProviderType,
+                         CAST(paymentMethodFee.value AS decimal(65,30)) AS paymentMethodFee,
+                         paymentMethodVisibility.`value` AS paymentMethodVisibility,
+                         paymentMethodExternalName.`value` AS paymentMethodExternalName,
+                         CAST(paymentMethodMinimalAmount.value AS decimal(65,30)) AS paymentMethodMinimalAmount,
+                         CAST(paymentMethodMaximumAmount.value AS decimal(65,30)) AS paymentMethodMaximumAmount,
+                         CAST(IFNULL(paymentMethodUseMinimalAmount.`value`, 0) AS SIGNED) AS paymentMethodUseMinimalAmount,
+                         CAST(IFNULL(paymentMethodUseMaximumAmount.`value`, 0) AS SIGNED) AS paymentMethodUseMaximumAmount,
+                         paymentMethodUrlRegex.`value` AS paymentMethodUrlRegex,
+                         paymentMethodLanguageCodes.`value` AS paymentMethodLanguageCodes,
+                         
+                         paymentServiceProviderLogAllRequests.`value` AS paymentServiceProviderLogAllRequests,
+                         paymentServiceProviderSetOrdersDirectlyToFinished.`value` AS paymentServiceProviderSetOrdersDirectlyToFinished,
+                         paymentServiceProviderSkipWhenOrderAmountEqualsZero.`value` AS paymentServiceProviderSkipWhenOrderAmountEqualsZero
+                     FROM {WiserTableNames.WiserItem} AS paymentMethod
+                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodFee ON paymentMethodFee.item_id = paymentMethod.id AND paymentMethodFee.`key` = '{Constants.PaymentMethodFeeProperty}'
+                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodVisibility ON paymentMethodVisibility.item_id = paymentMethod.id AND paymentMethodVisibility.`key` = '{Constants.PaymentMethodVisibilityProperty}'
+                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodExternalName ON paymentMethodExternalName.item_id = paymentMethod.id AND paymentMethodExternalName.`key` = '{Constants.PaymentMethodExternalNameProperty}'
+                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodMinimalAmount ON paymentMethodMinimalAmount.item_id = paymentMethod.id AND paymentMethodMinimalAmount.`key` = '{Constants.PaymentMethodMinimalAmountProperty}'
+                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodMaximumAmount ON paymentMethodMaximumAmount.item_id = paymentMethod.id AND paymentMethodMaximumAmount.`key` = '{Constants.PaymentMethodMaximumAmountProperty}'
+                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodUseMinimalAmount ON paymentMethodUseMinimalAmount.item_id = paymentMethod.id AND paymentMethodUseMinimalAmount.`key` = '{Constants.PaymentMethodUseMinimalAmountProperty}'
+                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodUseMaximumAmount ON paymentMethodUseMaximumAmount.item_id = paymentMethod.id AND paymentMethodUseMaximumAmount.`key` = '{Constants.PaymentMethodUseMaximumAmountProperty}'
+                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodUrlRegex ON paymentMethodUrlRegex.item_id = paymentMethod.id AND paymentMethodUrlRegex.`key` = '{Constants.PaymentMethodUrlRegexProperty}'
+                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodLanguageCodes ON paymentMethodLanguageCodes.item_id = paymentMethod.id AND paymentMethodLanguageCodes.`key` = '{Constants.PaymentMethodLanguageCodesProperty}'
                      
-                                                     paymentServiceProviderLogAllRequests.`value` AS paymentServiceProviderLogAllRequests,
-                                                     paymentServiceProviderSetOrdersDirectlyToFinished.`value` AS paymentServiceProviderSetOrdersDirectlyToFinished,
-                                                     paymentServiceProviderSkipWhenOrderAmountEqualsZero.`value` AS paymentServiceProviderSkipWhenOrderAmountEqualsZero
-                                                 FROM {WiserTableNames.WiserItem} AS paymentMethod
-                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodFee ON paymentMethodFee.item_id = paymentMethod.id AND paymentMethodFee.`key` = '{Constants.PaymentMethodFeeProperty}'
-                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodVisibility ON paymentMethodVisibility.item_id = paymentMethod.id AND paymentMethodVisibility.`key` = '{Constants.PaymentMethodVisibilityProperty}'
-                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodExternalName ON paymentMethodExternalName.item_id = paymentMethod.id AND paymentMethodExternalName.`key` = '{Constants.PaymentMethodExternalNameProperty}'
-                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodMinimalAmount ON paymentMethodMinimalAmount.item_id = paymentMethod.id AND paymentMethodMinimalAmount.`key` = '{Constants.PaymentMethodMinimalAmountProperty}'
-                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodMaximumAmount ON paymentMethodMaximumAmount.item_id = paymentMethod.id AND paymentMethodMaximumAmount.`key` = '{Constants.PaymentMethodMaximumAmountProperty}'
-                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodUseMinimalAmount ON paymentMethodUseMinimalAmount.item_id = paymentMethod.id AND paymentMethodUseMinimalAmount.`key` = '{Constants.PaymentMethodUseMinimalAmountProperty}'
-                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodUseMaximumAmount ON paymentMethodUseMaximumAmount.item_id = paymentMethod.id AND paymentMethodUseMaximumAmount.`key` = '{Constants.PaymentMethodUseMaximumAmountProperty}'
+                     # PSP
+                     JOIN {WiserTableNames.WiserItemDetail} AS linkedProvider ON linkedProvider.item_id = paymentMethod.id AND linkedProvider.`key` = '{Constants.PaymentMethodServiceProviderProperty}'
+                     JOIN {WiserTableNames.WiserItem} AS paymentServiceProvider ON paymentServiceProvider.id = linkedProvider.`value` AND paymentServiceProvider.entity_type = '{Constants.PaymentServiceProviderEntityType}'
+                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderType ON paymentServiceProviderType.item_id = paymentServiceProvider.id AND paymentServiceProviderType.`key` = '{Constants.PaymentServiceProviderTypeProperty}'
+                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderLogAllRequests ON paymentServiceProviderLogAllRequests.item_id = paymentServiceProvider.id AND paymentServiceProviderLogAllRequests.`key` = '{Constants.PaymentServiceProviderLogAllRequestsProperty}'
+                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSetOrdersDirectlyToFinished ON paymentServiceProviderSetOrdersDirectlyToFinished.item_id = paymentServiceProvider.id AND paymentServiceProviderSetOrdersDirectlyToFinished.`key` = '{Constants.PaymentServiceProviderOrdersCanBeSetDirectoryToFinishedProperty}'
+                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSkipWhenOrderAmountEqualsZero ON paymentServiceProviderSkipWhenOrderAmountEqualsZero.item_id = paymentServiceProvider.id AND paymentServiceProviderSkipWhenOrderAmountEqualsZero.`key` = '{Constants.PaymentServiceProviderSkipWhenOrderAmountEqualsZeroProperty}'
                      
-                                                 # PSP
-                                                 JOIN {WiserTableNames.WiserItemDetail} AS linkedProvider ON linkedProvider.item_id = paymentMethod.id AND linkedProvider.`key` = '{Constants.PaymentMethodServiceProviderProperty}'
-                                                 JOIN {WiserTableNames.WiserItem} AS paymentServiceProvider ON paymentServiceProvider.id = linkedProvider.`value` AND paymentServiceProvider.entity_type = '{Constants.PaymentServiceProviderEntityType}'
-                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderType ON paymentServiceProviderType.item_id = paymentServiceProvider.id AND paymentServiceProviderType.`key` = '{Constants.PaymentServiceProviderTypeProperty}'
-                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderLogAllRequests ON paymentServiceProviderLogAllRequests.item_id = paymentServiceProvider.id AND paymentServiceProviderLogAllRequests.`key` = '{Constants.PaymentServiceProviderLogAllRequestsProperty}'
-                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSetOrdersDirectlyToFinished ON paymentServiceProviderSetOrdersDirectlyToFinished.item_id = paymentServiceProvider.id AND paymentServiceProviderSetOrdersDirectlyToFinished.`key` = '{Constants.PaymentServiceProviderOrdersCanBeSetDirectoryToFinishedProperty}'
-                                                 LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentServiceProviderSkipWhenOrderAmountEqualsZero ON paymentServiceProviderSkipWhenOrderAmountEqualsZero.item_id = paymentServiceProvider.id AND paymentServiceProviderSkipWhenOrderAmountEqualsZero.`key` = '{Constants.PaymentServiceProviderSkipWhenOrderAmountEqualsZeroProperty}'
-                     
-                                                 WHERE paymentMethod.id = ?id
-                                                 AND paymentMethod.entity_type = '{Constants.PaymentMethodEntityType}'
+                     WHERE paymentMethod.id = ?id
+                     AND paymentMethod.entity_type = '{Constants.PaymentMethodEntityType}'
                      """;
 
         databaseConnection.AddParameter("id", paymentMethodId);
@@ -1392,6 +1413,8 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
         var fee = dataRow.Field<decimal?>("paymentMethodFee") ?? 0;
         var minimalAmountProperty = dataRow.Field<decimal?>(Constants.PaymentMethodMinimalAmountProperty) ?? 0;
         var maximumAmountProperty = dataRow.Field<decimal?>(Constants.PaymentMethodMaximumAmountProperty) ?? 0;
+        
+        var paymentMethodLanguageCodes = dataRow.Field<string>(Constants.PaymentMethodLanguageCodesProperty) ?? String.Empty;
 
         var result = new PaymentMethodSettingsModel
         {
@@ -1404,7 +1427,9 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
             UseMaximumAmountCheck = Convert.ToBoolean(dataRow.Field<long>(Constants.PaymentMethodUseMaximumAmountProperty)),
             MinimalAmountCheck = minimalAmountProperty,
             MaximumAmountCheck = maximumAmountProperty,
-            PaymentServiceProvider = new PaymentServiceProviderSettingsModel
+            PaymentMethodUrlRegex = dataRow.Field<string>(Constants.PaymentMethodUrlRegexProperty),
+            PaymentMethodLanguageCodes = paymentMethodLanguageCodes.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries),
+            PaymentServiceProvider = new()
             {
                 // Settings that are the same for all PSPs.
                 Id = dataRow.Field<ulong>("paymentServiceProviderId"),
