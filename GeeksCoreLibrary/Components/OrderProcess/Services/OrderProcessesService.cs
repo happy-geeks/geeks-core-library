@@ -555,6 +555,9 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
             totalPrice += await shoppingBasketsService.GetPriceAsync(main, lines, basketSettings);
         }
         
+        var languageCode = await languagesService.GetLanguageCodeAsync();
+        var originalPath = httpContextAccessor.HttpContext?.Items[Modules.Templates.Models.Constants.OriginalPathAndQueryStringKey]?.ToString();
+        
         foreach (DataRow dataRow in dataTable.Rows)
         {
             var paymentMethod = await DataRowToPaymentMethodSettingsModelAsync(dataRow);
@@ -584,14 +587,11 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
             
             if (paymentMethod.PaymentMethodLanguageCodes.Count != 0)
             {
-                var languageCode = await languagesService.GetLanguageCodeAsync();
                 if (!paymentMethod.PaymentMethodLanguageCodes.Contains(languageCode, StringComparer.OrdinalIgnoreCase))
                 {
                     continue;
                 }
             }
-
-            var originalPath = httpContextAccessor.HttpContext?.Items[Modules.Templates.Models.Constants.OriginalPathAndQueryStringKey]?.ToString();
             if (!String.IsNullOrEmpty(originalPath) && !String.IsNullOrEmpty(paymentMethod.PaymentMethodUrlRegex))
             {
                 var regex = new Regex(paymentMethod.PaymentMethodUrlRegex, RegexOptions.IgnoreCase, TimeSpan.FromSeconds(2));
