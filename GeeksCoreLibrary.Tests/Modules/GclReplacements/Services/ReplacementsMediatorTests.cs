@@ -8,6 +8,7 @@ using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Services;
 using JetBrains.Annotations;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using Newtonsoft.Json.Linq;
@@ -63,6 +64,7 @@ public class ReplacementsMediatorTests
     [UsedImplicitly]
     private IOptions<GclSettings> gclSettingsMock;
     private IReplacementsMediator replacementsMediator;
+    private Mock<ILogger<ReplacementsMediator>> loggerMock;
     private Mock<IDatabaseConnection> databaseConnectionMock;
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
 
@@ -71,10 +73,11 @@ public class ReplacementsMediatorTests
     {
         // Create mocks.
         gclSettingsMock = Options.Create(new GclSettings());
-        databaseConnectionMock = new Mock<IDatabaseConnection>();
+        databaseConnectionMock = new();
+        loggerMock = new();
 
         // Create the service that we're testing.
-        replacementsMediator = new ReplacementsMediator(databaseConnectionMock.Object);
+        replacementsMediator = new ReplacementsMediator(databaseConnectionMock.Object, loggerMock.Object);
     }
 
     [Test]
@@ -354,7 +357,7 @@ public class ReplacementsMediatorTests
 
         // Assert
         actual.Should().NotBeNull("because we're testing specific strings that should always return a value");
-        actual.Should().Be(input, "because we're testing strings that don't contain any if statements");
+        actual.Should().Be(input);
     }
 
     [Test]
@@ -379,7 +382,7 @@ public class ReplacementsMediatorTests
 
         // Assert
         actual.Should().NotBeNull("because we're testing specific strings that should always return a value");
-        actual.Should().Be(expected, "because we're testing strings that don't contain any if statements");
+        actual.Should().Be(expected, "because we're testing strings with a single if statement");
     }
 
     [Test]
@@ -394,7 +397,7 @@ public class ReplacementsMediatorTests
 
         // Assert
         actual.Should().NotBeNull("because we're testing specific strings that should always return a value");
-        actual.Should().Be(expected, "because we're testing strings that don't contain any if statements");
+        actual.Should().Be(expected, "because we're testing strings with multiple if statements");
     }
 
     [Test]
@@ -419,7 +422,7 @@ public class ReplacementsMediatorTests
 
         // Assert
         actual.Should().NotBeNull("because we're testing specific strings that should always return a value");
-        actual.Should().Be(expected, "because we're testing strings that don't contain any if statements");
+        actual.Should().Be(expected);
     }
 
     [Test]
@@ -431,7 +434,7 @@ public class ReplacementsMediatorTests
 
         // Assert
         actual.Should().NotBeNull("because we're testing specific strings that should always return a value");
-        actual.Should().Be(expected, "because we're testing strings that don't contain any if statements");
+        actual.Should().Be(expected);
     }
 
     [Test]
@@ -443,7 +446,7 @@ public class ReplacementsMediatorTests
 
         // Assert
         actual.Should().NotBeNull("because we're testing specific strings that should always return a value");
-        actual.Should().Be(expected, "because we're testing strings that don't contain any if statements");
+        actual.Should().Be(expected);
     }
 
     [Test]
@@ -458,7 +461,7 @@ public class ReplacementsMediatorTests
         enumerable.Should().NotBeNull("because we're testing specific strings that should always return a value");
         enumerable.Should().HaveCount(1, "because we're testing a DataSet with only one table");
         enumerable.Single().Should().HaveCount(1, "because we're testing a DataSet with only one table and one row");
-        enumerable.First().First().Should().Be(expected, "because we're testing strings that don't contain any if statements");
+        enumerable.First().First().Should().Be(expected);
     }
 
     [Test]
@@ -497,7 +500,7 @@ public class ReplacementsMediatorTests
         // Assert
         var enumerable = actual.Select(x => x.ToList()).ToList();
         enumerable.Should().NotBeNull("because we're testing specific strings that should always return a value");
-        enumerable.Should().BeEquivalentTo(expected, "because we're testing strings that don't contain any if statements");
+        enumerable.Should().BeEquivalentTo(expected);
     }
 
     /// <summary>

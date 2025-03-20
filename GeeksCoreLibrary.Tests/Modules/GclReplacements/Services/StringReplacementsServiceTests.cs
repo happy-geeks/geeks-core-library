@@ -10,6 +10,7 @@ using GeeksCoreLibrary.Modules.GclReplacements.Services;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using NUnit.Framework;
@@ -25,6 +26,7 @@ public class StringReplacementsServiceTests
     private Mock<IAccountsService> accountsServiceMock;
     private Mock<IHttpContextAccessor> httpContextAccessorMock;
     private Mock<IDatabaseConnection> databaseConnectionMock;
+    private Mock<ILogger<ReplacementsMediator>> loggerMock;
 
     private IOptions<GclSettings> gclSettingsMock;
     private IReplacementsMediator replacementsMediator;
@@ -35,14 +37,15 @@ public class StringReplacementsServiceTests
     {
         // Create mocks.
         gclSettingsMock = Options.Create(new GclSettings());
-        objectsServiceMock = new Mock<IObjectsService>();
-        languagesServiceMock = new Mock<ILanguagesService>();
-        accountsServiceMock = new Mock<IAccountsService>();
-        httpContextAccessorMock = new Mock<IHttpContextAccessor>();
-        databaseConnectionMock = new Mock<IDatabaseConnection>();
+        objectsServiceMock = new();
+        languagesServiceMock = new();
+        accountsServiceMock = new();
+        httpContextAccessorMock = new();
+        databaseConnectionMock = new();
+        loggerMock = new();
 
         // Create the service that we're testing.
-        replacementsMediator = new ReplacementsMediator(databaseConnectionMock.Object);
+        replacementsMediator = new ReplacementsMediator(databaseConnectionMock.Object, loggerMock.Object);
         stringReplacementsService = new StringReplacementsService(gclSettingsMock, objectsServiceMock.Object, languagesServiceMock.Object, accountsServiceMock.Object, replacementsMediator, httpContextAccessorMock.Object);
 
         // Setup the mocks.
