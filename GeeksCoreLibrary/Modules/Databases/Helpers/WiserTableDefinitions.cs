@@ -322,7 +322,7 @@ public class WiserTableDefinitions
                 new ColumnSettingsModel("grouping_key", MySqlDbType.VarChar, 50),
                 new ColumnSettingsModel("grouping_key_column_name", MySqlDbType.VarChar, 50),
                 new ColumnSettingsModel("grouping_value_column_name", MySqlDbType.VarChar, 50),
-                new("query_used_for_redirect", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
+                new ColumnSettingsModel("query_used_for_redirect", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                 new ColumnSettingsModel("removed", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                 new ColumnSettingsModel("is_scss_include_template", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
                 new ColumnSettingsModel("use_in_wiser_html_editors", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
