@@ -1,32 +1,65 @@
-﻿using Microsoft.Extensions.Diagnostics.HealthChecks;
+﻿using System;
+using System.Diagnostics;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using GeeksCoreLibrary.Modules.HealthChecks.Services;
 
 namespace GeeksCoreLibrary.Modules.HealthChecks.Services
 {
     public class SystemServiceHealth : IHealthCheck
     {
+     
         public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
         {
-            // Voeg hier je logica toe om de gezondheid van je systeemservice te controleren.
-            // Bijvoorbeeld: controleer of de service draait, of een bepaalde resource beschikbaar is, enz.
+        
+            double cpuUsage = GetCpuUsage();
+            double memoryUsage = GetMemoryUsage();
+            var diskSpace = GetDiskSpace(); 
 
-            bool isHealthy = CheckIfServiceIsHealthy();  // Dit is jouw eigen logica.
+            // Extract de waarden uit DiskSpaceInfo
+            double totalSizeGB = diskSpace.TotalSizeGB;
+            double freeSpaceGB = diskSpace.FreeSpaceGB;
 
-            if (isHealthy)
+           
+            if (cpuUsage < 90 && memoryUsage < 90)  // Bijvoorbeeld, als CPU en geheugen onder de 90% blijven
             {
-                return HealthCheckResult.Healthy("The system service is running properly.");
+                return HealthCheckResult.Healthy($"CPU Usage: {cpuUsage}%, Memory Usage: {memoryUsage}MB, Disk Space: {totalSizeGB}GB total, {freeSpaceGB}GB free");
             }
             else
             {
-                return HealthCheckResult.Unhealthy("The system service is not running.");
+                return HealthCheckResult.Unhealthy($"CPU Usage: {cpuUsage}%, Memory Usage: {memoryUsage}MB, Disk Space: {totalSizeGB}GB total, {freeSpaceGB}GB free");
             }
         }
 
-        private bool CheckIfServiceIsHealthy()
+      
+        public double GetCpuUsage()
         {
-            // Voeg hier de eigen logica toe om te controleren of de service gezond is.
-            return true;  // Voor nu, stel dat de service altijd gezond is.
+            using (var process = Process.GetCurrentProcess())
+            {
+                return process.TotalProcessorTime.TotalMilliseconds / Environment.ProcessorCount;
+            }
+        }
+
+      
+        public double GetMemoryUsage()
+        {
+            using (var process = Process.GetCurrentProcess())
+            {
+                return process.WorkingSet64 / (1024.0 * 1024.0); // in MB
+            }
+        }
+
+        // Bepaal schijfruimte
+        public DiskSpaceInfo GetDiskSpace()
+        {
+            var drive = DriveInfo.GetDrives()[0]; 
+            return new DiskSpaceInfo
+            {
+                TotalSizeGB = drive.TotalSize / (1024.0 * 1024.0 * 1024.0), // GB
+                FreeSpaceGB = drive.TotalFreeSpace / (1024.0 * 1024.0 * 1024.0) // GB
+            };
         }
     }
 }
