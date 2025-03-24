@@ -1,29 +1,36 @@
 ﻿using System;
 using System.Diagnostics;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using GeeksCoreLibrary.Modules.HealthChecks.Services;
+using Microsoft.Extensions.Options;
+using GeeksCoreLibrary.Modules.HealthChecks.Services;  // Ensure this namespace is correct
 
 namespace GeeksCoreLibrary.Modules.HealthChecks.Services
 {
     public class SystemServiceHealth : IHealthCheck
     {
-     
+        private readonly HealthCheckSettings _healthCheckSettings;
+        private readonly DiskSpaceInfo _diskSpaceInfo;
+
+        public SystemServiceHealth(IOptions<HealthCheckSettings> healthCheckSettings, DiskSpaceInfo diskSpaceInfo)
+        {
+            _healthCheckSettings = healthCheckSettings.Value;
+            _diskSpaceInfo = diskSpaceInfo;
+        }
+
+        private static DateTime _lastSampleTime = DateTime.MinValue;
+        private static TimeSpan _lastProcessorTime = TimeSpan.Zero;
+
         public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
         {
-        
             double cpuUsage = GetCpuUsage();
             double memoryUsage = GetMemoryUsage();
-            var diskSpace = GetDiskSpace(); 
 
-            // Extract de waarden uit DiskSpaceInfo
-            double totalSizeGB = diskSpace.TotalSizeGB;
-            double freeSpaceGB = diskSpace.FreeSpaceGB;
+            double totalSizeGB = _diskSpaceInfo.TotalSizeGB;
+            double freeSpaceGB = _diskSpaceInfo.FreeSpaceGB;
 
-           
-            if (cpuUsage < 90 && memoryUsage < 90)  // Bijvoorbeeld, als CPU en geheugen onder de 90% blijven
+            if (cpuUsage < _healthCheckSettings.CpuUsageThreshold && memoryUsage < _healthCheckSettings.MemoryUsageThreshold)
             {
                 return HealthCheckResult.Healthy($"CPU Usage: {cpuUsage}%, Memory Usage: {memoryUsage}MB, Disk Space: {totalSizeGB}GB total, {freeSpaceGB}GB free");
             }
@@ -33,33 +40,38 @@ namespace GeeksCoreLibrary.Modules.HealthChecks.Services
             }
         }
 
-      
         public double GetCpuUsage()
         {
             using (var process = Process.GetCurrentProcess())
             {
-                return process.TotalProcessorTime.TotalMilliseconds / Environment.ProcessorCount;
+                DateTime currentTime = DateTime.UtcNow;
+
+                if (_lastSampleTime == DateTime.MinValue)
+                {
+                    _lastSampleTime = currentTime;
+                    _lastProcessorTime = process.TotalProcessorTime;
+                    return 0;
+                }
+
+                TimeSpan timeDifference = currentTime - _lastSampleTime;
+                TimeSpan processorTimeDifference = process.TotalProcessorTime - _lastProcessorTime;
+
+                double cpuUsage = (processorTimeDifference.TotalMilliseconds / timeDifference.TotalMilliseconds) * 100;
+                cpuUsage = Math.Min(cpuUsage, 100);
+
+                _lastSampleTime = currentTime;
+                _lastProcessorTime = process.TotalProcessorTime;
+
+                return cpuUsage;
             }
         }
 
-      
         public double GetMemoryUsage()
         {
             using (var process = Process.GetCurrentProcess())
             {
-                return process.WorkingSet64 / (1024.0 * 1024.0); // in MB
+                return process.WorkingSet64 / (1024.0 * 1024.0); // Convert to MB
             }
-        }
-
-        // Bepaal schijfruimte
-        public DiskSpaceInfo GetDiskSpace()
-        {
-            var drive = DriveInfo.GetDrives()[0]; 
-            return new DiskSpaceInfo
-            {
-                TotalSizeGB = drive.TotalSize / (1024.0 * 1024.0 * 1024.0), // GB
-                FreeSpaceGB = drive.TotalFreeSpace / (1024.0 * 1024.0 * 1024.0) // GB
-            };
         }
     }
 }

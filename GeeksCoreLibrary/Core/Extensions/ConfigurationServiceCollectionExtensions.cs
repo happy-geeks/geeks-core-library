@@ -231,7 +231,7 @@ public static class ConfigurationServiceCollectionExtensions
                 .AddMySql(gclSettings.ConnectionString, name: "MySqlRead", tags: ["Database"])
                 .AddCheck<WtsHealthService>("WTS Health Check", HealthStatus.Degraded, ["WTS", "Wiser Task Scheduler"])
                 .AddCheck<DatabaseHealthService>("Database Health Check", tags: ["Database"])
-                .AddCheck<SystemServiceHealth>("System Serivices Health CHeck", tags: ["server-stats, System"]);
+                .AddCheck<SystemServiceHealth>("System Serivices Health CHeck", tags: ["server-stats"]);
             if (!String.IsNullOrWhiteSpace(gclSettings.ConnectionStringForWriting))
             {
                 services.AddHealthChecks().AddMySql(gclSettings.ConnectionString, name: "MySqlWrite", tags: ["Database"]);
