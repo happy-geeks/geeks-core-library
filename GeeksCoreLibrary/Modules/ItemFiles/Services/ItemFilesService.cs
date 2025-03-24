@@ -461,6 +461,7 @@ public class ItemFilesService(
         switch (extension?.ToLowerInvariant())
         {
             case ".jpg":
+            case ".jfif":
             case ".jpeg":
                 imageFormat = MagickFormat.Jpg;
                 imageQuality = 75;
@@ -491,6 +492,9 @@ public class ItemFilesService(
             case ".avif":
             case ".avifs":
                 imageFormat = MagickFormat.Avif;
+                break;
+            case ".bmp":
+                imageFormat = MagickFormat.Bmp;
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(extension), extension, null);
