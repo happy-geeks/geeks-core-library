@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Data;
@@ -13,42 +14,32 @@ using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Enums;
 using GeeksCoreLibrary.Modules.GclReplacements.Extensions;
+using GeeksCoreLibrary.Modules.GclReplacements.Helpers;
 using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.GclReplacements.Models;
 using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json.Linq;
 
 namespace GeeksCoreLibrary.Modules.GclReplacements.Services;
 
 /// <inheritdoc cref="IReplacementsMediator" />
-public class ReplacementsMediator : IReplacementsMediator, IScopedService
+public class ReplacementsMediator(
+    IDatabaseConnection databaseConnection,
+    ILogger<ReplacementsMediator> logger,
+    IHttpContextAccessor httpContextAccessor = null)
+    : IReplacementsMediator, IScopedService
 {
-    private readonly IDatabaseConnection databaseConnection;
-    private readonly IHttpContextAccessor httpContextAccessor;
-    private readonly Regex logicSnippetRegex;
-    private readonly Regex formatterRegex;
-    private readonly MethodInfo[] formatters;
+    private static readonly FrozenDictionary<string, MethodInfo> Formatters = 
+        typeof(StringReplacementsExtensions).GetMethods(BindingFlags.Static | BindingFlags.Public)
+            .Select(m => new KeyValuePair<string, MethodInfo>(m.Name, m))
+            .ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
     private const string RawFormatterName = "Raw";
-
-    /// <summary>
-    /// Creates a new instance of <see cref="ReplacementsMediator"/>.
-    /// </summary>
-    public ReplacementsMediator(IDatabaseConnection databaseConnection, IHttpContextAccessor httpContextAccessor = null)
-    {
-        this.databaseConnection = databaseConnection;
-        this.httpContextAccessor = httpContextAccessor;
-
-        formatters = typeof(StringReplacementsExtensions).GetMethods(BindingFlags.Static | BindingFlags.Public);
-
-        // Create some regular expressions so they can be re-used instead of creating them each time the function is called.
-        formatterRegex = new Regex(@"(?<methodname>[^\(\)]+)(?:\((?<parameters>[^\)]+)\))?", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMinutes(2));
-        logicSnippetRegex = new Regex(@"\[if\((?<left>((?!\[if\().)*?)(?<op>=|!|<|>|&lt;|&gt;|%)(?<right>((?!\[if\().)*?)\)\](?<text>((?!\[if\().)*?)\[endif\]", RegexOptions.Singleline | RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMinutes(2));
-    }
 
     /// <inheritdoc />
     public IEnumerable<IEnumerable<string>> DoReplacements(string input, DataSet replaceData, bool forQuery = false, bool caseSensitive = false, string prefix = "{", string suffix = "}", string defaultFormatter = "HtmlEncode", UnsafeSources? unsafeSource = null)
@@ -389,80 +380,294 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
     /// <inheritdoc />
     public string EvaluateTemplate(string input)
     {
-        if (String.IsNullOrWhiteSpace(input) || !input.Contains("[if(", StringComparison.Ordinal))
+        // Some checks to short circuit the evaluation
+        if (String.IsNullOrWhiteSpace(input))
+        {
+            return input;
+        }
+        
+        // We already check for an if statement to short-circuit templates without if statements
+        // so we can pass in the found index into EvaluateTemplateInternal as an optimisation
+        var firstIfIndex = input.IndexOf("[if(", StringComparison.Ordinal);
+        if (firstIfIndex == -1)
         {
             return input;
         }
 
-        var result = input;
+        var templateBuilder = new StringBuilder(input.Length);
+        return EvaluateTemplateInternal(input, templateBuilder, firstIfIndex).ToString();
+    }
 
-        var leftAsDecimal = 0M;
-        var rightAsDecimal = 0M;
-
-        var matches = logicSnippetRegex.Matches(result);
-
-        var infiniteLoopProtection = 0;
-        while (matches.Count > 0)
+    private StringBuilder EvaluateTemplateInternal(ReadOnlySpan<char> input, StringBuilder templateBuilder, int ifIndexOverride = -1)
+    {
+        while (!input.IsEmpty)
         {
-            if (infiniteLoopProtection++ > 250)
+            int ifIndex;
+            if (ifIndexOverride != -1)
+            {
+                ifIndex = ifIndexOverride;
+                ifIndexOverride = -1;
+            }
+            else
+            {
+                ifIndex = input.IndexOf("[if(", StringComparison.Ordinal);
+            }
+
+            if (ifIndex == -1)
+            {
+                return templateBuilder.Append(input);
+            }
+
+            templateBuilder.Append(input[..ifIndex]);
+            input = input[ifIndex..];
+            
+            var parts = FindConditionalParts(input);
+
+            var conditionPasses = false;
+            decimal leftAsDecimal;
+            decimal rightAsDecimal = 0;
+            bool parseSuccessful;
+            switch (parts.Operator)
+            {
+                case "=":
+                    conditionPasses = parts.LeftOperand.SequenceEqual(parts.RightOperand);
+                    break;
+                case "!":
+                    conditionPasses = !parts.LeftOperand.SequenceEqual(parts.RightOperand);
+                    break;
+                case "<":
+                case "&lt;":
+                    parseSuccessful = Decimal.TryParse(parts.LeftOperand, out leftAsDecimal);
+                    parseSuccessful = parseSuccessful && Decimal.TryParse(parts.RightOperand, out rightAsDecimal);
+
+                    conditionPasses = parseSuccessful && leftAsDecimal < rightAsDecimal;
+                    break;
+                case ">":
+                case "&gt;":
+                    parseSuccessful = Decimal.TryParse(parts.LeftOperand, out leftAsDecimal);
+                    parseSuccessful = parseSuccessful && Decimal.TryParse(parts.RightOperand, out rightAsDecimal);
+
+                    conditionPasses = parseSuccessful && leftAsDecimal > rightAsDecimal;
+                    break;
+                case "%":
+                    conditionPasses = parts.LeftOperand.Contains(parts.RightOperand, StringComparison.Ordinal);
+                    break;
+                default:
+                    logger.LogWarning($"Invalid conditional operator: {parts.Operator}.");
+                    templateBuilder.Append(input[..parts.ScannedUntil]);
+                    break;
+            }
+
+            ReadOnlySpan<char> conditionalPart;
+            int nextFoundIndex;
+            if (conditionPasses)
+            {
+                conditionalPart = parts.TrueBranchValue;
+                nextFoundIndex = parts.NextFoundTrueBranchIfIndex;
+            }
+            else
+            {
+                conditionalPart = parts.FalseBranchValue;
+                nextFoundIndex = parts.NextFoundFalseBranchIfIndex;
+            }
+            
+            if (nextFoundIndex != -1)
+            {
+                templateBuilder = EvaluateTemplateInternal(conditionalPart, templateBuilder, nextFoundIndex);
+            }
+            else
+            {
+                templateBuilder.Append(conditionalPart);
+            }
+
+            input = input[parts.ScannedUntil..];
+        }
+        return templateBuilder;
+    }
+
+    private IfStatementParts FindConditionalParts(ReadOnlySpan<char> input)
+    {
+        var parts = new IfStatementParts();
+
+        // 1. Find the opening [if( ... )] tag.
+        var ifStart = input.IndexOf("[if(", StringComparison.Ordinal);
+        if (ifStart == -1)
+        {
+            return parts;
+        }
+
+        // 2. Find the end of the if condition (look for ")]" after "[if(").
+        var conditionEnd = input[ifStart..].IndexOf(")]", StringComparison.Ordinal);
+        if (conditionEnd == -1)
+        {
+            logger.LogWarning("Invalid conditional: missing closing token for if condition.");
+            parts.Operator = default;
+            parts.ScannedUntil = ifStart + "[if(".Length;
+            return parts;
+        }
+        // Adjust conditionEnd to be relative to the whole input.
+        conditionEnd += ifStart;
+
+        // 3. Extract the condition text inside the tag.
+        // For example, for "[if(1=1)]" this yields "1=1".
+        var conditionContent = input.Slice(
+            ifStart + "[if(".Length, 
+            conditionEnd - ifStart - "[if(".Length);
+
+        // 4. Parse the condition into left operand, operator, and right operand.
+        ParseCondition(conditionContent, out var leftOperand, out var op, out var rightOperand);
+        parts.LeftOperand = leftOperand;
+        parts.Operator = op;
+        parts.RightOperand = rightOperand;
+
+        // 5. Now scan for the true/false content.
+        // The content starts immediately after the [if(…)] tag.
+        var contentStart = conditionEnd + ")]".Length;
+        var depth = 1;
+        var elseIndex = -1;
+        var endifIndex = -1;
+
+        if (parts.Operator.IsEmpty)
+        {
+            parts.ScannedUntil = contentStart;
+            return parts;
+        }
+
+        var contentSpan = input[contentStart..];
+        foreach (var ifPartMatch in PrecompiledRegexes.ConditionalParts.EnumerateMatches(contentSpan))
+        {
+            var foundPart = contentSpan.Slice(ifPartMatch.Index, ifPartMatch.Length);
+            
+            switch (foundPart)
+            {
+                case "[if(":
+                {
+                    // A nested if: increase depth.
+                    depth++;
+                
+                    // We've encountered an if statement so save it for the next scan
+                    if (elseIndex == -1 && parts.NextFoundTrueBranchIfIndex == -1)
+                    {
+                        parts.NextFoundTrueBranchIfIndex = ifPartMatch.Index;
+                    } 
+                    else if (elseIndex != -1 && parts.NextFoundFalseBranchIfIndex == -1)
+                    {
+                        parts.NextFoundFalseBranchIfIndex = ifPartMatch.Index - (elseIndex + "[else]".Length);
+                    }
+                    break;
+                }
+                case "[else]":
+                {
+                    // Only treat an [else] at the outermost level.
+                    if (depth == 1 && elseIndex == -1)
+                    {
+                        elseIndex = ifPartMatch.Index;
+                    }
+                    break;
+                }
+                case "[endif]":
+                {
+                    // A closing token: decrease depth.
+                    depth--;
+                    if (depth == 0)
+                    {
+                        endifIndex = ifPartMatch.Index;
+                    }
+                    break;
+                }
+            }
+
+            // end index found so break out of the foreach
+            if (endifIndex != -1)
             {
                 break;
             }
-
-            foreach (Match regexMatch in matches)
-            {
-                var leftPart = regexMatch.Groups["left"].Value;
-                var rightPart = regexMatch.Groups["right"].Value;
-                var op = regexMatch.Groups["op"].Value;
-                var text = regexMatch.Groups["text"].Value;
-
-                var parseSuccessful = true;
-                if (op.InList("<", ">", "&lt;", "&gt;"))
-                {
-                    parseSuccessful = Decimal.TryParse(leftPart.Trim(), out leftAsDecimal);
-                    parseSuccessful = parseSuccessful && Decimal.TryParse(rightPart.Trim(), out rightAsDecimal);
-                }
-
-                var conditionPasses = false;
-                switch (op)
-                {
-                    case "=":
-                        conditionPasses = leftPart.Equals(rightPart);
-                        break;
-                    case "!":
-                        conditionPasses = !leftPart.Equals(rightPart);
-                        break;
-                    case "<":
-                    case "&lt;":
-                        conditionPasses = parseSuccessful && leftAsDecimal < rightAsDecimal;
-                        break;
-                    case ">":
-                    case "&gt;":
-                        conditionPasses = parseSuccessful && leftAsDecimal > rightAsDecimal;
-                        break;
-                    case "%":
-                        conditionPasses = leftPart.Contains(rightPart, StringComparison.Ordinal);
-                        break;
-                }
-
-                if (text.Contains("[else]", StringComparison.Ordinal))
-                {
-                    var index = text.IndexOf("[else]", StringComparison.Ordinal);
-                    var truePart = text.Substring(0, index);
-                    var falsePart = text[(index + 6)..];
-
-                    result = result.Replace(regexMatch.Value, conditionPasses ? truePart : falsePart);
-                }
-                else
-                {
-                    result = result.Replace(regexMatch.Value, conditionPasses ? text : "");
-                }
-            }
-
-            matches = logicSnippetRegex.Matches(result);
         }
 
-        return result;
+        // If no endIfEnd is found
+        if (endifIndex == -1)
+        {
+            logger.LogWarning("Invalid conditional: missing closing [endif].");
+            
+            parts.Operator = default;
+            
+            if (parts.NextFoundTrueBranchIfIndex > -1)
+            {
+                parts.ScannedUntil = parts.NextFoundTrueBranchIfIndex;
+            }
+            else if (parts.NextFoundFalseBranchIfIndex > -1)
+            {
+                parts.ScannedUntil = parts.NextFoundFalseBranchIfIndex + elseIndex + "[else]".Length;
+            }
+            else
+            {
+                parts.ScannedUntil = contentSpan.Length;
+            }
+            
+            parts.ScannedUntil += contentStart;
+            return parts;
+        }
+    
+        // 6. Slice out the true and false parts.
+        if (elseIndex != -1)
+        {
+            // Everything after the [if(…)] tag up to the [else] is the true branch.
+            parts.TrueBranchValue = contentSpan[..elseIndex];
+            // Everything after the [else] up to the matching [endif] is the false branch.
+            var falsePathStart = elseIndex + "[else]".Length;
+            parts.FalseBranchValue = contentSpan.Slice(falsePathStart, endifIndex - falsePathStart);
+        }
+        else
+        {
+            // No [else] token: the true branch extends all the way to the [endif].
+            parts.TrueBranchValue = contentSpan[..endifIndex];
+        }
+        
+        parts.ScannedUntil = contentStart + endifIndex + "[endif]".Length;
+    
+        return parts;
+    }
+
+    /// <summary>
+    /// Parses the condition inside the [if(…)] tag into left operand, operator, and right operand.
+    /// </summary>
+    private void ParseCondition(ReadOnlySpan<char> condition, 
+        out ReadOnlySpan<char> left, 
+        out ReadOnlySpan<char> @operator, 
+        out ReadOnlySpan<char> right)
+    {
+        // First, check for longer operators (HTML encoded)
+        var multiCharOps = new[] { "&lt;", "&gt;" };
+
+        foreach (var op in multiCharOps)
+        {
+            var index = condition.IndexOf(op, StringComparison.Ordinal);
+            if (index != -1)
+            {
+                left = condition[..index].Trim();
+                @operator = condition.Slice(index, op.Length);
+                right = condition[(index + op.Length)..].Trim();
+                return;
+            }
+        }
+
+        // Next, check for single-character operators.
+        ReadOnlySpan<char> singleOps = ['=', '!', '<', '>', '%'];
+        for (var i = 0; i < condition.Length; i++)
+        {
+            if (singleOps.Contains(condition[i]))
+            {
+                left = condition[..i].Trim();
+                @operator = condition.Slice(i, 1);
+                right = condition[(i + 1)..].Trim();
+                return;
+            }
+        }
+
+        logger.LogWarning("Invalid conditional: no operator found in the if condition.");
+        left = default;
+        @operator = default;
+        right = default;
     }
 
     /// <inheritdoc />
@@ -577,7 +782,7 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
     /// <inheritdoc />
     public StringReplacementMethod GetFormatterMethod(string formatterString)
     {
-        var match = formatterRegex.Match(formatterString);
+        var match = PrecompiledRegexes.Formatters.Match(formatterString);
 
         if (!match.Success)
         {
@@ -585,8 +790,7 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
         }
 
         var methodName = match.Groups["methodname"].Value;
-        var formatterMethod = formatters.FirstOrDefault(f => f.Name.Equals(methodName, StringComparison.OrdinalIgnoreCase));
-        if (formatterMethod == null)
+        if (!Formatters.TryGetValue(methodName, out var formatterMethod))
         {
             return null;
         }
@@ -601,7 +805,7 @@ public class ReplacementsMediator : IReplacementsMediator, IScopedService
         }
 
         string parametersString = null;
-        if (formatterString.Contains("(", StringComparison.Ordinal))
+        if (formatterString.Contains('(', StringComparison.Ordinal))
         {
             parametersString = match.Groups["parameters"].Value;
             if (parametersString.Length == 0)
