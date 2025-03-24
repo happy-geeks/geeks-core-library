@@ -115,7 +115,7 @@ public class CachedItemFilesService(
     /// <inheritdoc />
     public async Task<FileResultModel> GetWiserImageByFileNameAsync(ulong itemId, string propertyName, uint preferredWidth, uint preferredHeight, string fileName, ResizeModes resizeMode = ResizeModes.Normal, AnchorPositions anchorPosition = AnchorPositions.Center, string encryptedItemId = null, string entityType = null)
     {
-        return await GetResizedImageAsync(FileLookupTypes.ItemFileName, String.IsNullOrWhiteSpace(encryptedItemId) ? itemId : encryptedItemId, fileName: fileName, entityType: entityType, preferredWidth: preferredWidth, preferredHeight: preferredHeight, resizeMode: resizeMode, anchorPosition: anchorPosition);
+        return await GetResizedImageAsync(FileLookupTypes.ItemFileName, String.IsNullOrWhiteSpace(encryptedItemId) ? itemId : encryptedItemId, fileName: fileName, propertyName: propertyName, entityType: entityType, preferredWidth: preferredWidth, preferredHeight: preferredHeight, resizeMode: resizeMode, anchorPosition: anchorPosition);
     }
 
     /// <inheritdoc />
