@@ -80,7 +80,8 @@ public class CachedItemFilesService(
         fileNameParts.Add(preferredWidth.ToString());
         fileNameParts.Add(preferredHeight.ToString());
 
-        var fileLocation = Path.Combine(cacheDirectory, String.Join("_", fileNameParts));
+        var extension = Path.GetExtension(String.IsNullOrWhiteSpace(fileName) ? file.FileName : fileName);
+        var fileLocation = Path.Combine(cacheDirectory, String.Join("_", fileNameParts) + extension);
 
         var (fileBytes, lastModifiedDate) = await fileCacheService.GetOrAddAsync(fileLocation, async () =>
         {
@@ -155,8 +156,9 @@ public class CachedItemFilesService(
         }
         fileNameParts.Add(file.Id.ToString());
         fileNameParts.Add(fileNumber.ToString());
-
-        var fileLocation = Path.Combine(cacheDirectory, String.Join("_", fileNameParts));
+        
+        var extension = Path.GetExtension(String.IsNullOrWhiteSpace(fileName) ? file.FileName : fileName);
+        var fileLocation = Path.Combine(cacheDirectory, String.Join("_", fileNameParts) + extension);
 
         var (fileBytes, lastModifiedDate) = await fileCacheService.GetOrAddAsync(fileLocation, async () =>
         {
