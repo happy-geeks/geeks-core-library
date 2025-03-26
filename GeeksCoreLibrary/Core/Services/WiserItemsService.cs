@@ -3512,16 +3512,13 @@ public class WiserItemsService(
                 }
             }
         }
-
-        //Setting a standardized file name to avoid it breaking the system limit.
-        var fileName = $"{tablePrefix}{wiserItemFile.ItemId}";
-
+        
         databaseConnection.AddParameter("itemId", wiserItemFile.ItemId);
         databaseConnection.AddParameter("itemLinkId", wiserItemFile.ItemLinkId);
         databaseConnection.AddParameter("content", wiserItemFile.Content);
         databaseConnection.AddParameter("contentType", wiserItemFile.ContentType);
         databaseConnection.AddParameter("contentUrl", wiserItemFile.ContentUrl);
-        databaseConnection.AddParameter("fileName", fileName.ConvertToSeo() + Path.GetExtension(wiserItemFile.FileName)?.ToLowerInvariant());
+        databaseConnection.AddParameter("fileName", Path.GetFileNameWithoutExtension(wiserItemFile.FileName).ConvertToSeo() + Path.GetExtension(wiserItemFile.FileName)?.ToLowerInvariant());
         databaseConnection.AddParameter("extension", wiserItemFile.Extension);
         databaseConnection.AddParameter("title", wiserItemFile.Title);
         databaseConnection.AddParameter("propertyName", wiserItemFile.PropertyName);

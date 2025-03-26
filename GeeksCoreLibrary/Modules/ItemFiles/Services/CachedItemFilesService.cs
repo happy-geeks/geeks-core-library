@@ -70,13 +70,15 @@ public class CachedItemFilesService(
         {
             fileNameParts.Add(entityType);
         }
+        if (linkType > 0)
+        {
+            fileNameParts.Add(linkType.ToString());
+        }
         fileNameParts.Add(file.Id.ToString());
-        fileNameParts.Add(file.PropertyName);
         fileNameParts.Add(resizeMode.ToString("G"));
         fileNameParts.Add(anchorPosition.ToString("G"));
         fileNameParts.Add(preferredWidth.ToString());
         fileNameParts.Add(preferredHeight.ToString());
-        fileNameParts.Add(Path.GetFileName(String.IsNullOrWhiteSpace(fileName) ? file.FileName : fileName));
 
         var fileLocation = Path.Combine(cacheDirectory, String.Join("_", fileNameParts));
 
@@ -147,10 +149,12 @@ public class CachedItemFilesService(
         {
             fileNameParts.Add(entityType);
         }
+        if (linkType > 0)
+        {
+            fileNameParts.Add(linkType.ToString());
+        }
         fileNameParts.Add(file.Id.ToString());
-        fileNameParts.Add(file.PropertyName);
         fileNameParts.Add(fileNumber.ToString());
-        fileNameParts.Add(Path.GetFileName(String.IsNullOrWhiteSpace(fileName) ? file.FileName : fileName));
 
         var fileLocation = Path.Combine(cacheDirectory, String.Join("_", fileNameParts));
 
