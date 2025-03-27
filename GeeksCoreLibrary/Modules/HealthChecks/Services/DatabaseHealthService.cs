@@ -1,65 +1,186 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
+using MySqlConnector;
 
-namespace GeeksCoreLibrary.Modules.HealthChecks.Services;
-
-public class DatabaseHealthService(IDatabaseConnection databaseConnection, IOptions<GclSettings> gclSettings)
-    : IHealthCheck
+namespace GeeksCoreLibrary.Modules.HealthChecks.Services
 {
-    private readonly GclSettings gclSettings = gclSettings.Value;
-
-    /// <inheritdoc />
-    public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context,
-        CancellationToken cancellationToken = new CancellationToken())
+    public class DatabaseHealthService : IHealthCheck
     {
-        // A new query to check the max active connections from the DatabaseHealthCheck.
-        var query = "SELECT COUNT(*) AS active_connections FROM information_schema.PROCESSLIST;";
-        var datatable = await databaseConnection.GetAsync(query);
+        private readonly IDatabaseConnection databaseConnection;
+        private readonly GclSettings gclSettings;
 
-        var healthCheckConnections = gclSettings.HealthChecks.MaximumDatabaseConnections;
-        var healthCheckConnectionsTime = gclSettings.HealthChecks.MaximumConnectionsInTime;
-
-        // If no value is set, we are skipping this test.
-        if (healthCheckConnections > 0)
+        public DatabaseHealthService(IDatabaseConnection databaseConnection, IOptions<GclSettings> gclSettings)
         {
-            // Retrieve the count of active connections.
-            var activeConnections = Convert.ToInt32(datatable.Rows[0]["active_connections"]);
-
-            // Check if the number of active connections exceeds the limit.
-            if (activeConnections > healthCheckConnections)
-            {
-                return HealthCheckResult.Unhealthy($"Too many database connections. There are currently {activeConnections} connections active, which is more than the threshold {healthCheckConnections} that is set in the appSettings.");
-            }
+            this.databaseConnection = databaseConnection;
+            this.gclSettings = gclSettings.Value;
         }
 
-        // If no value is set, we are skipping this test.
-        if (healthCheckConnectionsTime > 0)
+        public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
         {
-            // Query to check the max open connections in time from the DatabaseHealthCheck.
-            query = "SELECT ID, USER, HOST, TIME AS connection_time_in_sec FROM information_schema.PROCESSLIST WHERE USER != 'repluser' AND HOST != 'localhost' ORDER BY connection_time_in_sec DESC";
-            datatable = await databaseConnection.GetAsync(query);
-            if (datatable.Rows.Count == 0)
+            var messages = new List<string>(); 
+            var isHealthy = true; 
+
+            try
             {
-                // If the query returns no results, it means that there are no open connections.
-                // But we can connect to the database, otherwise we would get an exception. So this means the database is healthy.
-                return HealthCheckResult.Healthy();
+                // ✅ Check if database service is available
+                if (databaseConnection == null)
+                {
+                    return HealthCheckResult.Unhealthy("Database connection service is not available.");
+                }
+
+                // ✅ Ensure health check is enabled
+                if (gclSettings.HealthChecks?.DatabaseHealthCheckEnabled != true)
+                {
+                    return HealthCheckResult.Unhealthy("Database health check settings are missing or misconfigured.");
+                }
+
+                //  Basic Database Connectivity Check
+                try
+                {
+                    var connectionTestQuery = "SELECT 1;";
+                    // Use MySqlConnector for the connection and execution
+                    using (var connection = new MySqlConnection(gclSettings.ConnectionString))
+                    {
+                        await connection.OpenAsync(cancellationToken);
+                        using (var command = new MySqlCommand(connectionTestQuery, connection))
+                        {
+                            var result = await command.ExecuteScalarAsync(cancellationToken);
+                            if (result == null || Convert.ToInt32(result) == 0)
+                            {
+                                isHealthy = false;
+                                messages.Add("⚠ Database is unreachable.");
+                            }
+                            else
+                            {
+                                messages.Add("✅ Database is reachable.");
+                                messages.Add("✅ Database is healthy and running.");
+                            }
+                        }
+                    }
+                }
+                catch (MySqlException ex)
+                {
+                    // If the query fails, handle the exception and return appropriate message
+                    isHealthy = false;
+                    messages.Add($"⚠ Database connectivity failed: {ex.Message}");
+                    return HealthCheckResult.Unhealthy($"Database connectivity failed: {ex.Message}");
+                }
+
+                // ✅ Database Version Check
+                try
+                {
+                    var versionQuery = "SELECT VERSION();";
+                    // Again using MySqlConnector for querying
+                    using (var connection = new MySqlConnection(gclSettings.ConnectionString))
+                    {
+                        await connection.OpenAsync(cancellationToken);
+                        using (var command = new MySqlCommand(versionQuery, connection))
+                        {
+                            var dbVersion = await command.ExecuteScalarAsync(cancellationToken);
+                            if (dbVersion == null)
+                            {
+                                isHealthy = false;
+                                messages.Add("⚠ Database version check failed.");
+                            }
+                            else
+                            {
+                                messages.Add($"✅ Database version: {dbVersion}");
+                            }
+                        }
+                    }
+                }
+                catch (MySqlException ex)
+                {
+                    messages.Add($"⚠ Database version check failed: {ex.Message}");
+                    isHealthy = false;
+                }
+
+                // ✅ Query to check active connections
+                try
+                {
+                    var query = "SELECT COUNT(*) AS active_connections FROM information_schema.PROCESSLIST;";
+                    // Use MySqlConnector for querying
+                    using (var connection = new MySqlConnection(gclSettings.ConnectionString))
+                    {
+                        await connection.OpenAsync(cancellationToken);
+                        using (var command = new MySqlCommand(query, connection))
+                        {
+                            var result = await command.ExecuteScalarAsync(cancellationToken);
+                            var activeConnections = Convert.ToInt32(result);
+
+                            var healthCheckConnections = gclSettings.HealthChecks.MaximumDatabaseConnections;
+                            if (healthCheckConnections > 0)
+                            {
+                                if (activeConnections > healthCheckConnections)
+                                {
+                                    isHealthy = false;
+                                    messages.Add($"⚠ Too many database connections: {activeConnections} (Threshold: {healthCheckConnections}).");
+                                }
+                                else
+                                {
+                                    messages.Add($"✅ Active connections: {activeConnections} (Threshold: {healthCheckConnections}).");
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (MySqlException ex)
+                {
+                    messages.Add($"⚠ Active connections check failed: {ex.Message}");
+                    isHealthy = false;
+                }
+
+                // ✅ Query to check long-running connections
+                try
+                {
+                    var healthCheckConnectionsTime = gclSettings.HealthChecks.MaximumConnectionsInTime;
+                    if (healthCheckConnectionsTime > 0)
+                    {
+                        var query = "SELECT TIME AS connection_time_in_sec FROM information_schema.PROCESSLIST WHERE USER != 'repluser' AND HOST != 'localhost' ORDER BY connection_time_in_sec DESC";
+                        // Use MySqlConnector for querying
+                        using (var connection = new MySqlConnection(gclSettings.ConnectionString))
+                        {
+                            await connection.OpenAsync(cancellationToken);
+                            using (var command = new MySqlCommand(query, connection))
+                            {
+                                var reader = await command.ExecuteReaderAsync(cancellationToken);
+                                if (await reader.ReadAsync(cancellationToken))
+                                {
+                                    var connectionTime = reader.GetInt32("connection_time_in_sec");
+                                    if (connectionTime > healthCheckConnectionsTime)
+                                    {
+                                        isHealthy = false;
+                                        messages.Add($"⚠ Long-running connection detected: {connectionTime} sec (Threshold: {healthCheckConnectionsTime} sec).");
+                                    }
+                                    else
+                                    {
+                                        messages.Add($"✅ Longest connection time: {connectionTime} sec (Threshold: {healthCheckConnectionsTime} sec).");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (MySqlException ex)
+                {
+                    messages.Add($"⚠ Long-running connections check failed: {ex.Message}");
+                    isHealthy = false;
+                }
+
+                return isHealthy
+                    ? HealthCheckResult.Healthy(string.Join(" | ", messages)) // Put all the messages together.
+                    : HealthCheckResult.Unhealthy(string.Join(" | ", messages));
             }
-
-            // Retrieve the count of open connections in time.
-            var connectionTime = Convert.ToInt32(datatable.Rows[0]["connection_time_in_sec"]);
-
-            // Check if the time from open connections exceeds the limit.
-            if (connectionTime > healthCheckConnectionsTime)
+            catch (Exception ex)
             {
-                return HealthCheckResult.Unhealthy($"There is at least one opened connection that has been open for more than {healthCheckConnectionsTime} seconds. There most likely is an issue with this connection.");
+                return HealthCheckResult.Unhealthy($"❌ Database health check failed: {ex.Message}", ex);
             }
         }
-
-        return HealthCheckResult.Healthy();
     }
 }
