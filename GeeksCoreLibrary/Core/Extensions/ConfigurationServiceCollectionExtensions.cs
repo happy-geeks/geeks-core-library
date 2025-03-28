@@ -231,7 +231,7 @@ public static class ConfigurationServiceCollectionExtensions
                 .AddMySql(gclSettings.ConnectionString, name: "MySqlRead", tags: ["Database"])
                 .AddCheck<WtsHealthService>("WTS Health Check", HealthStatus.Degraded, ["WTS", "Wiser Task Scheduler"])
                 .AddCheck<DatabaseHealthService>("Database Health Check", tags: ["Database"])
-                .AddCheck<SystemServiceHealth>("System Serivices Health Check", tags: ["server-stats"]);
+                .AddCheck<SystemServiceHealth>("System Services Health Check", tags: ["server-stats"]);
             if (!String.IsNullOrWhiteSpace(gclSettings.ConnectionStringForWriting))
             {
                 services.AddHealthChecks().AddMySql(gclSettings.ConnectionString, name: "MySqlWrite", tags: ["Database"]);
@@ -293,7 +293,6 @@ public static class ConfigurationServiceCollectionExtensions
         // Manual additions.
         services.AddHttpContextAccessor();
         services.AddSingleton<IActionContextAccessor, ActionContextAccessor>();
-      
 
         services.AddSingleton<IFileSystem, FileSystem>();
         services.AddHostedService<FolderCleanupBackgroundService>();
