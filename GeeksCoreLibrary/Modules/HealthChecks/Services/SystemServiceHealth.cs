@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 using System.Diagnostics;
 
 using GeeksCoreLibrary.Modules.HealthChecks.Services;
-
+ 
 namespace GeeksCoreLibrary.Modules.HealthChecks.Services
 {
     public class SystemServiceHealth : IHealthCheck
@@ -21,7 +21,7 @@ namespace GeeksCoreLibrary.Modules.HealthChecks.Services
             _healthCheckSettings = healthCheckSettings.Value;
             _cpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
         }
-
+        // Check the system's health by evaluating CPU, memory, and disk usage
         public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context,
             CancellationToken cancellationToken = default)
         {
@@ -49,14 +49,15 @@ namespace GeeksCoreLibrary.Modules.HealthChecks.Services
                     $"CPU Usage: {cpuUsage}%, Memory: {memoryUsageFormatted}, Disk Space: {diskSpaceFormatted}");
             }
         }
-
+        
+        // Get the CPU usage
         public double GetCpuUsage()
         {
             _cpuCounter.NextValue();
             Thread.Sleep(1000);
             return _cpuCounter.NextValue();
         }
-
+       // Get the disk space usage
         public DiskSpaceInfo GetDiskSpace()
         {
             var drive = DriveInfo.GetDrives()[0]; // Eerste beschikbare schijf
@@ -71,7 +72,7 @@ namespace GeeksCoreLibrary.Modules.HealthChecks.Services
                 UsedSpaceGB = usedSpaceGB
             };
         }
-
+       // Get the memory usage
         public (double CurrentMemoryUsage, double MaxMemory) GetMemoryUsage()
         {
             using (var process = Process.GetCurrentProcess())
