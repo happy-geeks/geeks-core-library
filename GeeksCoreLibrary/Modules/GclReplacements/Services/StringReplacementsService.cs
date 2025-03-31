@@ -486,7 +486,7 @@ public class StringReplacementsService(
                 {
                     if (jValue.Value != null)
                     {
-                        stringValue = Convert.ToString(jValue.Value);
+                        stringValue = jValue.Value<string>();
                     }
                 }
                 else
