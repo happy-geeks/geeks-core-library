@@ -160,10 +160,16 @@ public class ItemFilesService(
                 var file = WiserFileHelpers.DataRowToItemFile(dataRow);
 
                 // If the lookup type is by file name, we need to find the file with the correct name.
-                if (lookupType is FileLookupTypes.ItemFileName or FileLookupTypes.ItemLinkFileName && String.Equals(Path.GetFileNameWithoutExtension(file.FileName), Path.GetFileNameWithoutExtension(fileName), StringComparison.OrdinalIgnoreCase))
+                if (lookupType is FileLookupTypes.ItemFileName or FileLookupTypes.ItemLinkFileName)
                 {
-                    result = file;
-                    break;
+                    if (String.Equals(Path.GetFileNameWithoutExtension(file.FileName), Path.GetFileNameWithoutExtension(fileName), StringComparison.OrdinalIgnoreCase))
+                    {
+                        result = file;
+                        break;
+                    }
+
+                    // No match found yet, continue to the next file. Ignore the index, because we are looking for the first file with the correct name.
+                    continue;
                 }
 
                 // If the lookup type is by file number, we need to find the file with the correct number.
@@ -176,7 +182,6 @@ public class ItemFilesService(
                 break;
             }
         }
-
 
         // If the file is protected, but no encrypted ID was used, return null.
         return result == null || (result.Protected && !hasValidEncryptedId) ? null : result;
