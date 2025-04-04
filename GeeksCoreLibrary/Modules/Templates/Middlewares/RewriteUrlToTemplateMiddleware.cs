@@ -148,7 +148,9 @@ public class RewriteUrlToTemplateMiddleware(RequestDelegate next, ILogger<Rewrit
             }
 
             context.Request.QueryString = queryString;
-            break;
+
+            // We found a template that matches the URL, so we can exit the function here.
+            return;
         }
 
         // If we haven't found a matching URL yet, check the old legacy settings.
@@ -220,7 +222,9 @@ public class RewriteUrlToTemplateMiddleware(RequestDelegate next, ILogger<Rewrit
 
                 context.Request.Path = "/webpage.gcl";
                 context.Request.QueryString = QueryString.FromUriComponent(newQueryString);
-                break;
+
+                // We found a template that matches the URL, so we can exit the function here.
+                return;
             }
 
             // Payment service provider handling.
@@ -228,7 +232,9 @@ public class RewriteUrlToTemplateMiddleware(RequestDelegate next, ILogger<Rewrit
             {
                 context.Request.Path = Components.OrderProcess.Models.Constants.PaymentOutPage;
                 context.Request.QueryString = QueryString.FromUriComponent($"?{queryString.ToString().Substring(1)}{queryStringFromUrl.Value}");
-                break;
+
+                // We found a template that matches the URL, so we can exit the function here.
+                return;
             }
 
             // PDF files.
@@ -240,30 +246,38 @@ public class RewriteUrlToTemplateMiddleware(RequestDelegate next, ILogger<Rewrit
 
                 // This is a template or webpage that must be loaded because the value is url|templateid or url|-1*webpageid.
                 context.Request.Path = "/pdf.gcl";
-                if (Int32.TryParse(urlMatchLastPart.Substring(3), out number) && number > 0)
+                if (Int32.TryParse(urlMatchLastPart.AsSpan(3), out number) && number > 0)
                 {
                     // It is a template.
                     context.Request.QueryString = QueryString.FromUriComponent($"?templateid={urlMatchLastPart.Substring(3)}{urlMatchLastPart}{queryStringFromUrl.Value}");
-                    break;
+
+                    // We found a template that matches the URL, so we can exit the function here.
+                    return;
                 }
 
                 // It is a webpage.
                 context.Request.QueryString = QueryString.FromUriComponent($"?id={number * -1}{queryString}{queryStringFromUrl.Value}");
-                break;
+
+                // We found a template that matches the URL, so we can exit the function here.
+                return;
             }
 
-            //This is a template or webpage that must be loaded because the value is url|templateid or url|-1*webpageid
-            if (Int32.TryParse(urlMatchLastPart.Split('?', '&').First(), out number) && number > 0)
+            // This is a template or webpage that must be loaded because the value is url|templateid or url|-1*webpageid.
+            if (!Int32.TryParse(urlMatchLastPart.Split('?', '&').First(), out number) || number <= 0)
             {
-                // Extra query string in the template.
-                queryString = CombineQueryString(queryString, $"?templateid={urlMatchLastPart.Replace("?", "&")}");
-                queryString = CombineQueryString(queryString, queryStringFromUrl.Value);
-
-                // It is a template.
-                context.Request.Path = "/template.gcl";
-                context.Request.QueryString = queryString;
-                break;
+                continue;
             }
+
+            // Extra query string in the template.
+            queryString = CombineQueryString(queryString, $"?templateid={urlMatchLastPart.Replace("?", "&")}");
+            queryString = CombineQueryString(queryString, queryStringFromUrl.Value);
+
+            // It is a template.
+            context.Request.Path = "/template.gcl";
+            context.Request.QueryString = queryString;
+
+            // We found a template that matches the URL, so we can exit the function here.
+            return;
         }
     }
 
