@@ -861,7 +861,7 @@ public class WiserTableDefinitions
         new()
         {
             Name = WiserTableNames.WiserPermission,
-            LastUpdate = new DateTime(2023, 12, 19),
+            LastUpdate = new DateTime(2025, 4, 4),
             Columns =
             [
                 new ColumnSettingsModel("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
