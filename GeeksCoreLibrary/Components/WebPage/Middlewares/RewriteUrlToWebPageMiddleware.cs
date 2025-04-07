@@ -99,15 +99,15 @@ public class RewriteUrlToWebPageMiddleware(RequestDelegate next, ILogger<Rewrite
                 continue;
             }
 
-            var secondPipe = entry.AsSpan((pipeIndex+1)..).IndexOf('|');
-            if (secondPipe == -1)
+            var parts = entry.Split('|');
+            if (parts.Length != 3)
             {
                 logger.LogWarning($"Found invalid value in setting 'cms_fixedurl_page_method': '{entry}'");
                 continue;
             }
             
-            fixedUrlPageMethod.Add(id, entry[..secondPipe]);
-            fixedUrlPageParamName.Add(id, entry[(secondPipe + 1)..]);
+            fixedUrlPageMethod.Add(id, parts[1]);
+            fixedUrlPageParamName.Add(id, parts[2]);
         }
 
         var queryString = new QueryString();
