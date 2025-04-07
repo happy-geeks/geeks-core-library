@@ -468,7 +468,8 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
 
                     break;
                 case OrderProcessStepTypes.Summary:
-                    var summaryHtml = ReplaceEntityDataInTemplate(shoppingBasket, currentItems, step, steps, paymentMethods);
+                    //var summaryHtml = ReplaceEntityDataInTemplate(shoppingBasket, currentItems, step, steps, paymentMethods);
+                    var summaryHtml = step.Template;
                     groupsBuilder.AppendLine(summaryHtml);
                     break;
                 case OrderProcessStepTypes.OrderConfirmation:
@@ -503,7 +504,8 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
                         }
                     }
 
-                    var confirmationHtml = ReplaceEntityDataInTemplate(order, currentItems, step, steps, paymentMethods);
+                    //var confirmationHtml = ReplaceEntityDataInTemplate(order, currentItems, step, steps, paymentMethods);
+                    var confirmationHtml = step.Template;
                     confirmationHtml = confirmationHtml.Replace("{loadOrderError}", await languagesService.GetTranslationAsync(errorMessage));
                     groupsBuilder.AppendLine(confirmationHtml);
 
@@ -551,6 +553,15 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
             }
 
             resultHtml = resultHtml.Replace("{activeStep}", ActiveStep.ToString(), StringComparison.OrdinalIgnoreCase);
+
+
+            // Do all generic replacement last and then return the final HTML.
+            resultHtml = await TemplatesService.DoReplacesAsync(resultHtml, removeUnknownVariables: false);
+
+            if (step.Type is OrderProcessStepTypes.Summary or OrderProcessStepTypes.OrderConfirmation or OrderProcessStepTypes.OrderPending)
+            {
+                resultHtml = ReplaceEntityDataInTemplate(shoppingBasket, currentItems, resultHtml, steps, paymentMethods);
+            }
         }
         catch (ThreadAbortException)
         {
@@ -560,11 +571,11 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
         {
             await DatabaseConnection.RollbackTransactionAsync(false);
             resultHtml = AddStepErrorToResult(resultHtml, "Server");
+            resultHtml = await TemplatesService.DoReplacesAsync(resultHtml);
             Logger.LogError(exception.ToString());
         }
 
-        // Do all generic replacement last and then return the final HTML.
-        return AddComponentIdToForms(await TemplatesService.DoReplacesAsync(resultHtml), Constants.ComponentIdFormKey);
+        return AddComponentIdToForms(StringReplacementsService.RemoveTemplateVariables(resultHtml), Constants.ComponentIdFormKey);
     }
 
     /// <summary>
@@ -576,7 +587,7 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
     /// <param name="step">The data/settings of the current step.</param>
     /// <param name="allSteps">The date/settings of all steps.</param>
     /// <param name="paymentMethods">All available payment methods.</param>
-    private string ReplaceEntityDataInTemplate(WiserItemModel shoppingBasket, List<(LinkSettingsModel LinkSettings, WiserItemModel Item)> currentItems, OrderProcessStepModel step, List<OrderProcessStepModel> allSteps, List<PaymentMethodSettingsModel> paymentMethods)
+    private string ReplaceEntityDataInTemplate(WiserItemModel shoppingBasket, List<(LinkSettingsModel LinkSettings, WiserItemModel Item)> currentItems, string stepTemplateContent, List<OrderProcessStepModel> allSteps, List<PaymentMethodSettingsModel> paymentMethods)
     {
         // Replace basket data.
         var replaceData = new Dictionary<string, object>
@@ -654,7 +665,7 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
             }
         }
 
-        return StringReplacementsService.DoReplacements(step.Template, replaceData);
+        return StringReplacementsService.DoReplacements(stepTemplateContent, replaceData);
     }
 
     /// <summary>
