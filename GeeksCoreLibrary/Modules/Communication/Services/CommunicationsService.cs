@@ -18,6 +18,7 @@ using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Communication.Enums;
+using GeeksCoreLibrary.Modules.Communication.Helpers;
 using GeeksCoreLibrary.Modules.Communication.Interfaces;
 using GeeksCoreLibrary.Modules.Communication.Models;
 using GeeksCoreLibrary.Modules.Communication.Models.SmtPeter;
@@ -34,7 +35,7 @@ using SmtpClient = MailKit.Net.Smtp.SmtpClient;
 namespace GeeksCoreLibrary.Modules.Communication.Services;
 
 /// <inheritdoc cref="ICommunicationsService" />
-public partial class CommunicationsService : ICommunicationsService, IScopedService
+public class CommunicationsService : ICommunicationsService, IScopedService
 {
     private readonly GclSettings gclSettings;
     private readonly ILogger<CommunicationsService> logger;
@@ -909,7 +910,7 @@ public partial class CommunicationsService : ICommunicationsService, IScopedServ
         }
 
         // Now "sanitize" the phone number by removing all non-digit characters.
-        receiverPhoneNumber = NumbersOnlyRegex().Replace(receiverPhoneNumber, "");
+        receiverPhoneNumber = PrecompiledRegexes.NumbersOnlyRegex.Replace(receiverPhoneNumber, "");
 
         if (String.IsNullOrEmpty(communication.Content))
         {
@@ -1101,7 +1102,4 @@ public partial class CommunicationsService : ICommunicationsService, IScopedServ
 
         return result;
     }
-
-    [GeneratedRegex(@"\D+")]
-    private static partial Regex NumbersOnlyRegex();
 }
