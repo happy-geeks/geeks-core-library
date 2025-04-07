@@ -37,6 +37,7 @@ using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
 using Constants = GeeksCoreLibrary.Modules.Templates.Models.Constants;
 using Template = GeeksCoreLibrary.Modules.Templates.Models.Template;
+using PrecompiledRegexes = GeeksCoreLibrary.Modules.Templates.Helpers.PrecompiledRegexes;
 
 namespace GeeksCoreLibrary.Modules.Templates.Services;
 
@@ -983,9 +984,8 @@ public class TemplatesService(
         {
             return input;
         }
-
-        var imageTemplatingRegex = new Regex(@"\[image\[(.*?)\]\]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-        foreach (Match m in imageTemplatingRegex.Matches(input))
+        
+        foreach (Match m in PrecompiledRegexes.ImageTemplatingRegex.Matches(input))
         {
             var replacementParameters = m.Groups[1].Value.Split(":");
             var outputBuilder = new StringBuilder();
@@ -1074,9 +1074,8 @@ public class TemplatesService(
                                                                AND content_type LIKE 'image%'
                                                                ORDER BY id ASC
                                                                """);
-
-            var imageTemplatingSetsRegex = new Regex(@"\:(.*?)\)", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-            var items = imageTemplatingSetsRegex.Matches(m.Groups[1].Value);
+            
+            var items = PrecompiledRegexes.ImageTemplatingSetsRegex.Matches(m.Groups[1].Value);
             var totalItems = items.Count;
             var index = 1;
 
@@ -1175,15 +1174,14 @@ public class TemplatesService(
         const int max = 10;
         var counter = 0;
 
-        // We use a while loop here because it's possible to to include a template that has another include, so we might have to replace them multiple times.
+        // We use a while loop here because it's possible to include a template that has another include, so we might have to replace them multiple times.
         while (counter < max && (input.Contains("<[", StringComparison.Ordinal) || input.Contains("[include", StringComparison.Ordinal)))
         {
             counter += 1;
-            var inclusionsRegex = new Regex(@"<\[(.*?)\]>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-            foreach (Match m in inclusionsRegex.Matches(input))
+            foreach (Match m in PrecompiledRegexes.MinimalInclusionsRegex.Matches(input))
             {
                 var templateName = m.Groups[1].Value;
-                if (templateName.Contains("{"))
+                if (templateName.Contains('{'))
                 {
                     // Make sure replaces for the template name are done
                     templateName = await stringReplacementsService.DoAllReplacementsAsync(templateName, dataRow, handleRequest, forQuery: forQuery, handleVariableDefaults: handleVariableDefaults);
@@ -1192,7 +1190,7 @@ public class TemplatesService(
                 Template template;
 
                 // Replace templates (syntax is <[templateName]> or <[parentFolder\templateName]>
-                if (templateName.Contains("\\"))
+                if (templateName.Contains('\\'))
                 {
                     // Contains a parent
                     var split = templateName.Split('\\');
@@ -1211,13 +1209,12 @@ public class TemplatesService(
 
                 input = input.Replace(m.Groups[0].Value, templateContent, StringComparison.OrdinalIgnoreCase);
             }
-
-            inclusionsRegex = new Regex(@"\[include\[([^{?\]]*)(\?)?([^{?\]]*?)\]\]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-            foreach (Match m in inclusionsRegex.Matches(input))
+            
+            foreach (Match m in PrecompiledRegexes.InclusionsRegex.Matches(input))
             {
                 var templateName = m.Groups[1].Value;
                 var queryString = m.Groups[3].Value.Replace("&amp;", "&");
-                if (templateName.Contains("{"))
+                if (templateName.Contains('{'))
                 {
                     // Make sure replaces for the template name are done
                     templateName = await stringReplacementsService.DoAllReplacementsAsync(templateName, dataRow, handleRequest, forQuery: forQuery, handleVariableDefaults: handleVariableDefaults);
@@ -1226,7 +1223,7 @@ public class TemplatesService(
                 Template template;
 
                 // Replace templates (syntax is [include[templateName]] or [include[parentFolder\templateName]] or [include[templateName?x=y]]
-                if (templateName.Contains("\\"))
+                if (templateName.Contains('\\'))
                 {
                     // Contains a parent
                     var split = templateName.Split('\\');
@@ -1411,10 +1408,8 @@ public class TemplatesService(
             return template;
         }
 
-        // Timeout on the regular expression to prevent denial of service attacks.
-        var regEx = new Regex("""<div[^<>]*?(?:class=['"]dynamic-content['"][^<>]*?)?(?:data=['"](?<data>.*?)['"][^>]*?)?(component-id|content-id)=['"](?<contentId>\d+)['"][^>]*?>[^<>]*?<h2>[^<>]*?(?<title>[^<>]*?)<\/h2>[^<>]*?<\/div>""", RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.IgnoreCase, TimeSpan.FromMinutes(3));
-
-        var matches = regEx.Matches(template);
+        // Timeout on the regular expression to prevent denial-of-service attacks.
+        var matches = PrecompiledRegexes.DynamicContentRegex.Matches(template);
         foreach (Match match in matches)
         {
             if (!match.Success)
@@ -1466,9 +1461,8 @@ public class TemplatesService(
         {
             query = query.Replace("{filters}", (await filtersService.GetFilterQueryPartAsync()).JoinPart.ToString(), StringComparison.OrdinalIgnoreCase);
         }
-
-        var pusherRegex = new Regex(@"PUSHER<channel\((.*?)\),event\((.*?)\),message\(((?s:.)*?)\)>", RegexOptions.Compiled, TimeSpan.FromMilliseconds(2000));
-        var pusherMatches = pusherRegex.Matches(query);
+        
+        var pusherMatches = PrecompiledRegexes.PusherRegex.Matches(query);
         foreach (Match match in pusherMatches)
         {
             query = query.Replace(match.Value, "");
@@ -1615,7 +1609,7 @@ public class TemplatesService(
 
             try
             {
-                var regex = new Regex(contentTemplate.CachingRegex, RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromMilliseconds(2000));
+                var regex = new Regex(contentTemplate.CachingRegex, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
                 var match = regex.Match(regexInput.ToString());
                 if (!match.Success)
                 {

@@ -22,6 +22,7 @@ using Microsoft.AspNetCore.Html;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using ReplacementRegexes = GeeksCoreLibrary.Modules.GclReplacements.Helpers.PrecompiledRegexes;
 
 namespace GeeksCoreLibrary.Core.Cms;
 
@@ -249,8 +250,7 @@ public abstract class CmsComponent<T, T2> : ViewComponent
         queryToUse = await TemplatesService.DoReplacesAsync(queryToUse, handleDynamicContent: false, dataRow: dataRowForReplacements, forQuery: true);
         if (doVariablesCheck)
         {
-            var expression = new Regex("{.*?}", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-            if (expression.IsMatch(queryToUse))
+            if (ReplacementRegexes.VariableNonCaptureRegex.IsMatch(queryToUse))
             {
                 // Don't proceed, query from data selector contains variables, this gives syntax errors.
                 return new DataTable();

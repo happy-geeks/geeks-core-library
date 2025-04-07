@@ -1300,8 +1300,7 @@ public class ShoppingBasketsService(
         // Strip variables from template if not replaced.
         if (stripNotExistingVariables)
         {
-            var regex = new Regex(@"{[^\]}\s]*}", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-            template = regex.Replace(template, "");
+            template = PrecompiledRegexes.VariableRegex.Replace(template, "");
         }
 
         logger.LogTrace("GCL ShoppingBasket: End ReplaceBasketInTemplate");

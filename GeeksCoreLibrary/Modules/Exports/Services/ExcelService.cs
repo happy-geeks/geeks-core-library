@@ -350,7 +350,7 @@ public class ExcelService : IExcelService, IScopedService
                 }
 
                 // Get the column index of the cell based on its name (e.g. A1).
-                var columnName = Regex.Replace(cell.CellReference.Value, @"[\d-]", String.Empty, RegexOptions.Compiled, TimeSpan.FromMilliseconds(2000));
+                var columnName = StringHelpers.RemoveDigitsAndHyphens(cell.CellReference.Value);
                 var columnIndex = GetColumnIndexFromName(columnName);
 
                 if (cell.CellValue != null && cell.DataType != null && cell.DataType == CellValues.SharedString)

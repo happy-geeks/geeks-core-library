@@ -12,6 +12,7 @@ using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using ReplacementRegexes = GeeksCoreLibrary.Modules.GclReplacements.Helpers.PrecompiledRegexes;
 
 namespace GeeksCoreLibrary.Components.Base.Services;
 
@@ -43,9 +44,8 @@ public class ComponentsService(
         {
             return await databaseConnection.GetAsync(queryToUse, skipCache);
         }
-
-        var expression = new Regex("{.*?}", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-        if (expression.IsMatch(queryToUse))
+        
+        if (ReplacementRegexes.VariableNonCaptureRegex.IsMatch(queryToUse))
         {
             // Don't proceed, query from data selector contains variables, this gives syntax errors.
             return new DataTable();

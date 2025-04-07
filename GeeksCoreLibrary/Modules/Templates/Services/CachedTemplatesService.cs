@@ -305,12 +305,12 @@ public class CachedTemplatesService(
             case TemplateCachingModes.ServerSideCachingBasedOnUrlRegex:
                 if (String.IsNullOrWhiteSpace(settings.CacheRegex))
                 {
-                    throw new Exception($"Caching for component {dynamicContent.Id} is set to {nameof(TemplateCachingModes.ServerSideCachingBasedOnUrlRegex)}, but no regex has been entered.");
+                    throw new InvalidOperationException($"Caching for component {dynamicContent.Id} is set to {nameof(TemplateCachingModes.ServerSideCachingBasedOnUrlRegex)}, but no regex has been entered.");
                 }
 
                 try
                 {
-                    var regex = new Regex(settings.CacheRegex, RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromMilliseconds(2000));
+                    var regex = new Regex(settings.CacheRegex, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
                     var match = regex.Match(originalUri.PathAndQuery);
                     if (!match.Success)
                     {

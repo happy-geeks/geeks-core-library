@@ -4319,9 +4319,7 @@ public class WiserItemsService(
         }
 
         // Entity blocks with templates.
-        var regEx = new Regex("""<div[^<>]*?(?:class=['"]dynamic-content['"][^<>]*?)?(entity-block-item-id)=['"](?<itemId>\d+)['"]([^<>]*?)?>[^<>]*?<h2>[^<>]*?(?<title>[^<>]*?)<\/h2>[^<>]*?<\/div>""", RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.IgnoreCase, TimeSpan.FromMinutes(3));
-
-        var matches = regEx.Matches(template);
+        var matches = PrecompiledRegexes.EntityBlockTemplateRegex.Matches(template);
         foreach (Match match in matches)
         {
             if (!match.Success)
