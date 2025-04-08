@@ -47,7 +47,6 @@ public class StringReplacementsService(
         }
 
         // Reusable variables.
-        Regex regex;
         var dataDictionary = new Dictionary<string, object>();
 
         // Defaults.
