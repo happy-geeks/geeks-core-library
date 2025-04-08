@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
 using GeeksCoreLibrary.Core.Models;
 
-namespace GeeksCoreLibrary.Components.ShoppingBasket;
+namespace GeeksCoreLibrary.Components.ShoppingBasket.Helpers;
 
 public static partial class PrecompiledRegexes
 {

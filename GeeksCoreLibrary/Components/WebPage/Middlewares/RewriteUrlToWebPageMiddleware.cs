@@ -100,7 +100,7 @@ public class RewriteUrlToWebPageMiddleware(RequestDelegate next, ILogger<Rewrite
             }
 
             var parts = entry.Split('|');
-            if (parts.Length != 3)
+            if (parts.Length < 3)
             {
                 logger.LogWarning($"Found invalid value in setting 'cms_fixedurl_page_method': '{entry}'");
                 continue;

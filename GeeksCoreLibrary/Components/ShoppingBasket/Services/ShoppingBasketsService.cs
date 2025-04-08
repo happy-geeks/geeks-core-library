@@ -28,6 +28,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Constants = GeeksCoreLibrary.Components.ShoppingBasket.Models.Constants;
 using OrderProcessConstants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
+using PrecompiledRegexes = GeeksCoreLibrary.Components.ShoppingBasket.Helpers.PrecompiledRegexes;
 
 namespace GeeksCoreLibrary.Components.ShoppingBasket.Services;
 
