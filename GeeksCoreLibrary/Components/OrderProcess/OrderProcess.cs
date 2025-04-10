@@ -757,7 +757,7 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
         return group.Type switch
         {
             OrderProcessGroupTypes.Fields => await RenderGroupFieldsAsync(group, loggedInUser, shoppingBasket, currentItems),
-            OrderProcessGroupTypes.PaymentMethods => await RenderGroupPaymentMethodsAsync(group, paymentMethods, fieldErrorsOccurred),
+            OrderProcessGroupTypes.PaymentMethods => await RenderGroupPaymentMethodsAsync(group, paymentMethods, shoppingBasket, fieldErrorsOccurred),
             _ => throw new ArgumentOutOfRangeException(nameof(group.Type), group.Type.ToString(), null)
         };
     }
@@ -808,9 +808,10 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
     /// </summary>
     /// <param name="group">The group to render.</param>
     /// <param name="paymentMethods">The list of available payment methods for the current order process.</param>
+    /// <param name="shoppingBasket">The list of available payment methods for the current order process.</param>
     /// <param name="fieldErrorsOccurred">Whether any errors occurred in this group.</param>
     /// <returns>The HTML for the group.</returns>
-    private async Task<string> RenderGroupPaymentMethodsAsync(OrderProcessGroupModel group, List<PaymentMethodSettingsModel> paymentMethods, bool fieldErrorsOccurred)
+    private async Task<string> RenderGroupPaymentMethodsAsync(OrderProcessGroupModel group, List<PaymentMethodSettingsModel> paymentMethods, WiserItemModel shoppingBasket, bool fieldErrorsOccurred)
     {
         // Skip this group if it has no fields that we can show.
         if (!paymentMethods.Any())
@@ -840,10 +841,16 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
             .Replace(Constants.ErrorReplacement, errorHtml, StringComparison.OrdinalIgnoreCase);
 
         // Build the fields HTML.
+        
+        if (!UInt64.TryParse(shoppingBasket.GetDetailValue(Constants.PaymentMethodProperty), out var paymentMethodId))
+        {
+            Logger.LogWarning($"{nameof(Constants.PaymentMethodProperty)} detail of shoppingbasket {shoppingBasket.Id} is not a valid Id");
+        }
+        
         var paymentMethodsBuilder = new StringBuilder();
         foreach (var paymentMethod in paymentMethods)
         {
-            var paymentMethodHtml = await RenderPaymentMethodAsync(paymentMethod);
+            var paymentMethodHtml = await RenderPaymentMethodAsync(paymentMethod, paymentMethodId);
             paymentMethodsBuilder.AppendLine(paymentMethodHtml);
         }
 
@@ -854,17 +861,19 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
     /// Renders the HTML for a single payment method.
     /// </summary>
     /// <param name="paymentMethod">The payment method to generate the HTML for.</param>
+    /// <param name="selectedMethodId"></param>
     /// <returns>The HTML for the payment method.</returns>
-    private async Task<string> RenderPaymentMethodAsync(PaymentMethodSettingsModel paymentMethod)
+    private async Task<string> RenderPaymentMethodAsync(PaymentMethodSettingsModel paymentMethod, ulong selectedMethodId)
     {
         // Create dictionary for replacements.
         var replaceData = new Dictionary<string, object>
         {
-            {"id", paymentMethod.Id},
-            {"title", await languagesService.GetTranslationAsync($"orderProcess_paymentMethod_{paymentMethod.Title}_title", defaultValue: paymentMethod.Title ?? "")},
-            {"logoPropertyName", Constants.PaymentMethodLogoProperty},
-            {"fee", paymentMethod.Fee},
-            {"paymentMethodFieldName", Constants.PaymentMethodProperty}
+            ["id"] = paymentMethod.Id,
+            ["title"] =  await languagesService.GetTranslationAsync($"orderProcess_paymentMethod_{paymentMethod.Title}_title", defaultValue: paymentMethod.Title ?? ""),
+            ["logoPropertyName"] =  Constants.PaymentMethodLogoProperty,
+            ["fee"] =  paymentMethod.Fee,
+            ["paymentMethodFieldName"] =  Constants.PaymentMethodProperty,
+            ["checked"] = selectedMethodId == paymentMethod.Id ? "checked" : String.Empty,
         };
 
         var paymentMethodHtml = StringReplacementsService.DoReplacements(Settings.TemplatePaymentMethod, replaceData);

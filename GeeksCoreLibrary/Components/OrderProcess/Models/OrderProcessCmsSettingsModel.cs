@@ -403,6 +403,7 @@ public class OrderProcessCmsSettingsModel : CmsSettings
                           <li><strong>{title}</strong> This name of the payment method.</li>
                           <li><strong>{logoPropertyName}</strong> The name of the field in wiser where the logo is saved for the payment method.</li>
                           <li><strong>{paymentMethodFieldName}</strong> The name of the input element for the selected payment method. Don't use any other name, otherwise the GCL will not know which payment method the user selected and throw an exception.</li>
+                          <li><strong>{checked}</strong> Whether this option should be checked, retrieved from the basket or logged in user, or POST variables. This will be replaced with the 'checked' attribute if it should, or an empty string if it shouldn't.</li>
                       </ul>
                       """,
         DeveloperRemarks = "",

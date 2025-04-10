@@ -146,7 +146,7 @@ internal class OrderProcessCheckoutSettingsModel
     [DefaultValue("""
                   <li>
                       <label>
-                          <input type='radio' id='paymentMethod_{id}' value='{id}' name='{paymentMethodFieldName}' required />
+                          <input type='radio' id='paymentMethod_{id}' value='{id}' {checked} name='{paymentMethodFieldName}' required />
                           <img class='logo' src='/image/wiser2/{id}/{logoPropertyName}/crop/32/32/{title:Seo}.png' alt='{title}' />
                           <span class='label'>{title}</span>
                       </label>
