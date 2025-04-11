@@ -62,9 +62,8 @@ public class RewriteUrlToWebPageMiddleware(RequestDelegate next, ILogger<Rewrite
     private async Task HandleRewritesAsync(HttpContext context, string path, IObjectsService objectsService, IWebPagesService webPagesService)
     {
         // Only handle the redirecting to webpages on normal URLs, not on images, css, js, etc.
-        var regEx = new Regex(Core.Models.CoreConstants.UrlsToSkipForMiddlewaresRegex, RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
         var currentUrl = HttpContextHelpers.GetOriginalRequestUri(context);
-        if (regEx.IsMatch(currentUrl.ToString()))
+        if (PrecompiledRegexes.UrlsToSkipForMiddlewaresRegex.IsMatch(currentUrl.ToString()))
         {
             return;
         }
@@ -88,22 +87,27 @@ public class RewriteUrlToWebPageMiddleware(RequestDelegate next, ILogger<Rewrite
 
         foreach (var entry in (await objectsService.FindSystemObjectByDomainNameAsync("cms_fixedurl_page_method", "0")).Split(';', StringSplitOptions.RemoveEmptyEntries))
         {
-            var regex = new Regex(@"^\d+\|", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-            if (!entry.Contains('|', StringComparison.Ordinal) || !regex.IsMatch(entry))
+            var pipeIndex = entry.IndexOf('|');
+            if (pipeIndex <= 0) // Must contain '|' and not start with it
+            {
+                continue;
+            }
+            
+            // Try parse the first part of the entry as a number
+            if (!UInt64.TryParse(entry.AsSpan(..pipeIndex), out var id))
             {
                 continue;
             }
 
-            var splitValues = entry.Split('|');
-            if (splitValues.Length < 3)
+            var parts = entry.Split('|');
+            if (parts.Length < 3)
             {
                 logger.LogWarning($"Found invalid value in setting 'cms_fixedurl_page_method': '{entry}'");
                 continue;
             }
-
-            var id = UInt64.Parse(splitValues[0]);
-            fixedUrlPageMethod.Add(id, splitValues[1]);
-            fixedUrlPageParamName.Add(id, splitValues[2]);
+            
+            fixedUrlPageMethod.Add(id, parts[1]);
+            fixedUrlPageParamName.Add(id, parts[2]);
         }
 
         var queryString = new QueryString();

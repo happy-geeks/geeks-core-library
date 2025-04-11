@@ -22,6 +22,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json.Linq;
 using Constants = GeeksCoreLibrary.Modules.Templates.Models.Constants;
+using PrecompiledRegexes = GeeksCoreLibrary.Modules.GclReplacements.Helpers.PrecompiledRegexes;
 
 namespace GeeksCoreLibrary.Modules.GclReplacements.Services;
 
@@ -46,7 +47,6 @@ public class StringReplacementsService(
         }
 
         // Reusable variables.
-        Regex regex;
         var dataDictionary = new Dictionary<string, object>();
 
         // Defaults.
@@ -85,9 +85,8 @@ public class StringReplacementsService(
         if (input.Contains("[SO{"))
         {
             dataDictionary.Clear();
-
-            regex = new Regex(@"\[SO{([^\}]+)}]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-            foreach (Match m in regex.Matches(input))
+            
+            foreach (Match m in PrecompiledRegexes.SystemObjectReplacementRegex.Matches(input))
             {
                 var value = m.Groups[1].Value;
 
@@ -138,8 +137,7 @@ public class StringReplacementsService(
             {
                 dataDictionary.Clear();
 
-                regex = new Regex(@"\[T{([^\}]+)}]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-                foreach (Match m in regex.Matches(input))
+                foreach (Match m in PrecompiledRegexes.TranslationReplacementRegex.Matches(input))
                 {
                     var value = m.Groups[1].Value;
 
@@ -175,9 +173,8 @@ public class StringReplacementsService(
                     // Revert to -100 if the parsing failed or if it returned 0. This is a special value that will look through all objects, ignoring the type number completely.
                     objectsTypeNumber = -100;
                 }
-
-                regex = new Regex(@"\[O{([^\}]+)}]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-                foreach (Match m in regex.Matches(input))
+                
+                foreach (Match m in PrecompiledRegexes.CmsObjectRegex.Matches(input))
                 {
                     var value = m.Groups[1].Value;
                     if (dataDictionary.ContainsKey(value))
@@ -398,12 +395,9 @@ public class StringReplacementsService(
             return inputString;
         }
 
-
-        var regexRepeats = new Regex(@"{repeat:([^\.]+?)}", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-
         // Handle the repeaters, duplicate (parts of) the template.
         // First get all repeaters in string.
-        foreach (Match repeater in regexRepeats.Matches(inputString))
+        foreach (Match repeater in PrecompiledRegexes.RepeatReplacementRegex.Matches(inputString))
         {
             var repeaterName = repeater.Groups[1].Value;
 
@@ -455,12 +449,12 @@ public class StringReplacementsService(
                 continue;
             }
 
-            foreach (Match innerRepeater in regexRepeats.Matches(inputString.Replace($"{{repeat:{repeaterName}(0).", "{repeat:")))
+            foreach (Match innerRepeater in PrecompiledRegexes.RepeatReplacementRegex.Matches(inputString.Replace($"{{repeat:{repeaterName}(0).", "{repeat:")))
             {
                 var innerRepeaterName = innerRepeater.Groups[1].Value;
 
                 // Then loop through each inner repeater
-                foreach (Match m in Regex.Matches(inputString, $"{{repeat:{repeaterName}\\(([0-9]+?)\\)\\.{innerRepeaterName}}}(.*?){{/repeat:{repeaterName}\\([0-9]+?\\)\\.{innerRepeaterName}}}", RegexOptions.Singleline, TimeSpan.FromSeconds(30)))
+                foreach (Match m in Regex.Matches(inputString, $@"{{repeat:{repeaterName}\(([0-9]+?)\)\.{innerRepeaterName}}}(.*?){{/repeat:{repeaterName}\([0-9]+?\)\.{innerRepeaterName}}}", RegexOptions.Singleline, TimeSpan.FromSeconds(30)))
                 {
                     var index = Convert.ToInt32(m.Groups[1].Value);
                     var template = m.Value.Replace($"{repeaterName}({index}).", "");
@@ -474,8 +468,7 @@ public class StringReplacementsService(
 
         // Replace all variables
         // Get matches like: {customer.address.streetline1}
-        var regex = new Regex("{([^};]*[^};\\s])}", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-        foreach (Match m in regex.Matches(inputString))
+        foreach (Match m in PrecompiledRegexes.MultiPartReplacementRegex.Matches(inputString))
         {
             var value = GetPropertyValue(input, MakeColumnValueFromVariable(m.Value));
             var stringValue = "";
@@ -559,7 +552,7 @@ public class StringReplacementsService(
             return null;
         }
 
-        if (propertyName.Contains(".") && !propertyName.Split('.')[0].Contains("("))
+        if (propertyName.Contains('.') && !propertyName.Split('.')[0].Contains('('))
         {
             var propertyInfo = input.GetType().GetProperty(propertyName.Split('.')[0], BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
             if (propertyInfo == null)
@@ -572,10 +565,9 @@ public class StringReplacementsService(
             return value != null ? value.ToString() : $"{{{propertyName}}}";
         }
 
-        if (propertyName.Contains("("))
+        if (propertyName.Contains('('))
         {
-            var regex = new Regex(@"(.*)\((\d.*)\)(.*)", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-            var m = regex.Match(propertyName);
+            var m = PrecompiledRegexes.IndexedPropertyRegex.Match(propertyName);
             if (!m.Success)
             {
                 return $"{{{propertyName}}}";

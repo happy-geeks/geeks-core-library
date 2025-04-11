@@ -30,6 +30,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Constants = GeeksCoreLibrary.Modules.Templates.Models.Constants;
+using PrecompiledRegexes = GeeksCoreLibrary.Modules.Templates.Helpers.PrecompiledRegexes;
 
 namespace GeeksCoreLibrary.Modules.Templates.Services;
 
@@ -103,8 +104,7 @@ public class PagesService(
             // To use this functionality the content of the SVG needs to be placed in the HTML, xlink can only load URLs from same domain, protocol and port.
             if (removeSvgUrlsFromIcons)
             {
-                var regex = new Regex(@"<svg(?:[^>]*)>(?:\s*)<use(?:[^>]*)xlink:href=""([^>""]*)#(?:[^>""]*)""(?:[^>]*)>", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-                foreach (Match match in regex.Matches(template.Content))
+                foreach (Match match in PrecompiledRegexes.SvgTagRegex.Matches(template.Content))
                 {
                     if (!String.IsNullOrEmpty(match.Groups[1].Value))
                     {

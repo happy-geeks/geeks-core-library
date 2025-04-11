@@ -8,6 +8,7 @@ using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Models;
 using HtmlAgilityPack;
+using PrecompiledRegexes = GeeksCoreLibrary.Modules.GclReplacements.Helpers.PrecompiledRegexes;
 
 namespace GeeksCoreLibrary.Modules.GclReplacements.Extensions;
 
@@ -211,8 +212,7 @@ public static class StringReplacementsExtensions
     /// <returns></returns>
     public static string StripInlineStyle(this string input)
     {
-        var regex = new Regex(" ?style=\".*?\"", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-        return String.IsNullOrEmpty(input) ? input : regex.Replace(input, "");
+        return String.IsNullOrEmpty(input) ? input : PrecompiledRegexes.InlineStyleRegex.Replace(input, "");
     }
 
     /// <summary>

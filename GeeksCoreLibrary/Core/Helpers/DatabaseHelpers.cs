@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace GeeksCoreLibrary.Core.Helpers;
@@ -16,8 +17,16 @@ public static class DatabaseHelpers
         {
             return "";
         }
-
-        var regex = new Regex(@"[^\w]", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-        return regex.Replace(input, "");
+        
+        // Remove all non-word characters (anything that is not a letter, digit, or underscore)
+        var sb = new StringBuilder(input.Length);
+        foreach (var c in input)
+        {
+            if (Char.IsLetterOrDigit(c) || c == '_')
+            {
+                sb.Append(c);
+            }
+        }
+        return sb.ToString();
     }
 }

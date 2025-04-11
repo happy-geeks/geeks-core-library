@@ -12,6 +12,7 @@ using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Databases.Interfaces;
+using GeeksCoreLibrary.Modules.DataSelector.Helpers;
 using GeeksCoreLibrary.Modules.DataSelector.Interfaces;
 using GeeksCoreLibrary.Modules.DataSelector.Models;
 using GeeksCoreLibrary.Modules.Exports.Interfaces;
@@ -1145,9 +1146,7 @@ public class DataSelectorsService(IOptions<GclSettings> gclSettings, IDatabaseCo
         }
 
         // Data selectors with templates.
-        var regEx = new Regex("""<div[^<>]*?(?:class=['"]dynamic-content['"][^<>]*?)?(data-selector-id)=['"](?<dataSelectorId>\d+)['"]([^<>]*?)?(template-id)=['"](?<templateId>\d+)['"][^>]*?>[^<>]*?<h2>[^<>]*?(?<title>[^<>]*?)<\/h2>[^<>]*?<\/div>""", RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.IgnoreCase, TimeSpan.FromMinutes(3));
-
-        var matches = regEx.Matches(template);
+        var matches = PrecompiledRegexes.TemplateRegex.Matches(template);
         foreach (Match match in matches)
         {
             if (!match.Success)

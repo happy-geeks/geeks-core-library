@@ -18,6 +18,7 @@ using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Interfaces;
 using GeeksCoreLibrary.Core.Models;
 using GeeksCoreLibrary.Modules.Communication.Enums;
+using GeeksCoreLibrary.Modules.Communication.Helpers;
 using GeeksCoreLibrary.Modules.Communication.Interfaces;
 using GeeksCoreLibrary.Modules.Communication.Models;
 using GeeksCoreLibrary.Modules.Communication.Models.SmtPeter;
@@ -34,7 +35,7 @@ using SmtpClient = MailKit.Net.Smtp.SmtpClient;
 namespace GeeksCoreLibrary.Modules.Communication.Services;
 
 /// <inheritdoc cref="ICommunicationsService" />
-public partial class CommunicationsService : ICommunicationsService, IScopedService
+public class CommunicationsService : ICommunicationsService, IScopedService
 {
     private readonly GclSettings gclSettings;
     private readonly ILogger<CommunicationsService> logger;
@@ -763,16 +764,21 @@ public partial class CommunicationsService : ICommunicationsService, IScopedServ
         }
 
         // Now "sanitize" the phone number by removing all non-digit characters.
-        receiverPhoneNumber = Regex.Replace(receiverPhoneNumber, @"\D+", "");
+        receiverPhoneNumber = PrecompiledRegexes.NumbersOnlyRegex.Replace(receiverPhoneNumber, "");
         var cmConnection = new TextClient(apiKey);
         var senderName = communication.SenderName ?? smsSettings.SenderName;
-        if (Regex.IsMatch(senderName, "^\\d+$") && senderName.Length > 17)
+        switch (senderName.Length)
         {
-            senderName = senderName.Substring(0, 17);
-        }
-        else if (senderName.Length > 11)
-        {
-            senderName = senderName.Split(' ')[0].Substring(0, Math.Min(11, senderName.Split(' ')[0].Length));
+            case > 17 when senderName.All(Char.IsDigit):
+                senderName = senderName[..17];
+                break;
+            case > 11:
+            {
+                var indexOfSpace = senderName.IndexOf(' ');
+                var cutOffPoint = indexOfSpace == -1 ? 11 : Math.Min(indexOfSpace, 11);
+                senderName = senderName[..cutOffPoint];
+                break;
+            }
         }
 
         var response = await cmConnection.SendMessageAsync(communication.Content, senderName, [receiverPhoneNumber], null);
@@ -855,18 +861,23 @@ public partial class CommunicationsService : ICommunicationsService, IScopedServ
         }
 
         // Now "sanitize" the phone number by removing all non-digit characters.
-        receiverPhoneNumber = Regex.Replace(receiverPhoneNumber, @"\D+", "");
+        receiverPhoneNumber = PrecompiledRegexes.NumbersOnlyRegex.Replace(receiverPhoneNumber, "");
 
         var cmConnection = new TextClient(apiKey);
 
         var senderName = communication.SenderName ?? smsSettings.SenderName;
-        if (Regex.IsMatch(senderName, "^\\d+$") && senderName.Length > 17)
+        switch (senderName.Length)
         {
-            senderName = senderName.Substring(0, 17);
-        }
-        else if (senderName.Length > 11)
-        {
-            senderName = senderName.Split(' ')[0].Substring(0, Math.Min(11, senderName.Split(' ')[0].Length));
+            case > 17 when senderName.All(Char.IsDigit):
+                senderName = senderName[..17];
+                break;
+            case > 11:
+            {
+                var indexOfSpace = senderName.IndexOf(' ');
+                var cutOffPoint = indexOfSpace == -1 ? 11 : Math.Min(indexOfSpace, 11);
+                senderName = senderName[..cutOffPoint];
+                break;
+            }
         }
 
         var builder = new MessageBuilder(communication.Content, senderName, new[] {receiverPhoneNumber});
@@ -895,7 +906,7 @@ public partial class CommunicationsService : ICommunicationsService, IScopedServ
             if (receiverPhoneNumber.StartsWith("00"))
             {
                 // Phone number looks something like "0031612345678".
-                receiverPhoneNumber = receiverPhoneNumber.Remove(0, 1).Remove(0, 1);
+                receiverPhoneNumber = receiverPhoneNumber.Remove(0, 2);
             }
             else
             {
@@ -909,7 +920,7 @@ public partial class CommunicationsService : ICommunicationsService, IScopedServ
         }
 
         // Now "sanitize" the phone number by removing all non-digit characters.
-        receiverPhoneNumber = NumbersOnlyRegex().Replace(receiverPhoneNumber, "");
+        receiverPhoneNumber = PrecompiledRegexes.NumbersOnlyRegex.Replace(receiverPhoneNumber, "");
 
         if (String.IsNullOrEmpty(communication.Content))
         {
@@ -1101,7 +1112,4 @@ public partial class CommunicationsService : ICommunicationsService, IScopedServ
 
         return result;
     }
-
-    [GeneratedRegex(@"\D+")]
-    private static partial Regex NumbersOnlyRegex();
 }

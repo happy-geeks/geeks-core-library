@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Security.Cryptography;
@@ -45,9 +46,7 @@ public class StringHelpers
     /// <returns>The validation digit</returns>
     public static int CalculateGtn13ValidationDigit(string ean)
     {
-        var regex = new Regex("^[0-9]{12}$", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-
-        if (!regex.IsMatch(ean))
+        if (ean.Length != 12 && ean.Any(c => !Char.IsDigit(c)))
         {
             throw new ArgumentException($"Value '{ean}' is an invalid EAN. The EAN must consist of 12 numerical values", ean);
         }
@@ -112,5 +111,18 @@ public class StringHelpers
             default:
                 throw new ArgumentOutOfRangeException(nameof(hashSettings.Representation), hashSettings.Representation, null);
         }
+    }
+    
+    public static string RemoveDigitsAndHyphens(string input)
+    {
+        var sb = new StringBuilder(input.Length);
+        foreach (var c in input)
+        {
+            if (!Char.IsDigit(c) && c != '-')
+            {
+                sb.Append(c);
+            }
+        }
+        return sb.ToString();
     }
 }

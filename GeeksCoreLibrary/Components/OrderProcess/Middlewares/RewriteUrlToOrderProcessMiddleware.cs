@@ -59,9 +59,8 @@ public class RewriteUrlToOrderProcessMiddleware(RequestDelegate next, ILogger<Re
     private async Task HandleRewritesAsync(HttpContext context, string path, QueryString queryStringFromUrl, IOrderProcessesService orderProcessesService)
     {
         // Only handle the redirecting to webpages on normal URLs, not on images, css, js, etc.
-        var regEx = new Regex(Core.Models.CoreConstants.UrlsToSkipForMiddlewaresRegex, RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
         var currentUrl = HttpContextHelpers.GetOriginalRequestUri(context);
-        if (regEx.IsMatch(currentUrl.ToString()))
+        if (PrecompiledRegexes.UrlsToSkipForMiddlewaresRegex.IsMatch(currentUrl.ToString()))
         {
             return;
         }

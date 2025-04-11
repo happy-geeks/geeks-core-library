@@ -17,11 +17,10 @@ public static class CssHelpers
         {
             return input;
         }
-
-        var regex = new Regex(@"\@import url\((.+?)\);", RegexOptions.Singleline | RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromSeconds(30));
+        
         var importList = new List<string>();
 
-        foreach (Match match in regex.Matches(input))
+        foreach (Match match in PrecompiledRegexes.CssImportRegex.Matches(input))
         {
             importList.Add(match.Value);
             input = input.Replace(match.Value, "");

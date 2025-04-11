@@ -34,8 +34,7 @@ public class RedirectMiddleWare(RequestDelegate next, ILogger<RedirectMiddleWare
         var redirectPermanent = true;
 
         // Redirect module.
-        var regEx = new Regex(CoreConstants.UrlsToSkipForMiddlewaresRegex, RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000)); // Only handle redirect module on pages, not on images, css, js, etc.
-        if (!regEx.IsMatch(oldUrl.ToString()))
+        if (!PrecompiledRegexes.UrlsToSkipForMiddlewaresRegex.IsMatch(oldUrl.ToString()))
         {
             var redirectRule = await redirectService.GetRedirectAsync(oldUrl);
             if (!String.IsNullOrEmpty(redirectRule.NewUrl))

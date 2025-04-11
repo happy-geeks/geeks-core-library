@@ -38,6 +38,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Constants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
+using PrecompiledRegexes = GeeksCoreLibrary.Components.OrderProcess.Helpers.PrecompiledRegexes;
 
 namespace GeeksCoreLibrary.Components.OrderProcess.Services;
 
@@ -615,7 +616,7 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
             if (!String.IsNullOrWhiteSpace(field.Pattern))
             {
                 // If the field is not mandatory, then it can be empty but must still pass validation if it's not empty.
-                return (!field.Mandatory && String.IsNullOrEmpty(field.Value)) || Regex.IsMatch(field.Value, field.Pattern, RegexOptions.Compiled, TimeSpan.FromMilliseconds(2000));
+                return (!field.Mandatory && String.IsNullOrEmpty(field.Value)) || Regex.IsMatch(field.Value, field.Pattern, RegexOptions.None, TimeSpan.FromMilliseconds(2000));
             }
 
             var isValid = field.Mandatory switch
@@ -624,7 +625,7 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
                 false when String.IsNullOrWhiteSpace(field.Value) => true,
                 _ => field.InputFieldType switch
                 {
-                    OrderProcessInputTypes.Email => Regex.IsMatch(field.Value, @"(@)(.+)$", RegexOptions.Compiled, TimeSpan.FromMilliseconds(2000)),
+                    OrderProcessInputTypes.Email => PrecompiledRegexes.EmailRegex.IsMatch(field.Value),
                     OrderProcessInputTypes.Number => Decimal.TryParse(field.Value, NumberStyles.Any, new CultureInfo("en-US"), out _),
                     _ => true
                 }
