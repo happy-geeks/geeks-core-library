@@ -861,7 +861,7 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
     /// Renders the HTML for a single payment method.
     /// </summary>
     /// <param name="paymentMethod">The payment method to generate the HTML for.</param>
-    /// <param name="selectedMethodId"></param>
+    /// <param name="selectedMethodId">The ID of the currently selected payment method.</param>
     /// <returns>The HTML for the payment method.</returns>
     private async Task<string> RenderPaymentMethodAsync(PaymentMethodSettingsModel paymentMethod, ulong selectedMethodId)
     {
