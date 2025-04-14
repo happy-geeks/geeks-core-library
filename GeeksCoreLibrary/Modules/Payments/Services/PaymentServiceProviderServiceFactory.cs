@@ -3,12 +3,15 @@ using GeeksCoreLibrary.Modules.Payments.Enums;
 using GeeksCoreLibrary.Modules.Payments.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Collections.Concurrent;
 using System.Linq;
 
 namespace GeeksCoreLibrary.Modules.Payments.Services;
 
 public class PaymentServiceProviderServiceFactory(IServiceProvider serviceProvider) : IPaymentServiceProviderServiceFactory, IScopedService
 {
+    private static readonly ConcurrentDictionary<string , Type> PaymentServiceProviderTypes = new();
+    
     public IPaymentServiceProviderService GetPaymentServiceProviderService(PaymentServiceProviders paymentServiceProvider)
     {
         var paymentServiceProviderName = paymentServiceProvider.ToString("G");
@@ -17,7 +20,7 @@ public class PaymentServiceProviderServiceFactory(IServiceProvider serviceProvid
 
     private IPaymentServiceProviderService GetPaymentServiceProviderService(string paymentServiceProviderName)
     {
-        var serviceProviderType = FindTypeInLoadedAssemblies(paymentServiceProviderName);
+        var serviceProviderType = PaymentServiceProviderTypes.GetOrAdd(paymentServiceProviderName, FindTypeInLoadedAssemblies);
         if (serviceProviderType == null)
         {
             throw new ArgumentOutOfRangeException(nameof(paymentServiceProviderName), paymentServiceProviderName, $"A payment service provider with the name '{paymentServiceProviderName}Service' was not found.");
