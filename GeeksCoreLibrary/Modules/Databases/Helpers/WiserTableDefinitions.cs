@@ -1122,11 +1122,12 @@ public class WiserTableDefinitions
                 new ColumnSettingsModel("branch_queue_id", MySqlDbType.Int32, notNull: true, defaultValue: "0", comment: "The ID of the merge action from the wiser_branches_queue table in the production database."),
                 new ColumnSettingsModel("branch_queue_name", MySqlDbType.VarChar, 255, notNull: true, defaultValue: "", comment: "The name of the merge action from the wiser_branches_queue table in the production database."),
                 new ColumnSettingsModel("branch_id", MySqlDbType.Int32, notNull: true, defaultValue: "0", comment: "The tenant ID of the branch, from the easy_customers table of the main Wiser database."),
-                new ColumnSettingsModel("datetime", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP", comment: "The date and time that the current action was executed."),
+                new ColumnSettingsModel("date_time", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP", comment: "The date and time that the current action was executed."),
 
                 new ColumnSettingsModel("history_id", MySqlDbType.UInt64, notNull: true, defaultValue: "0", comment: "The ID from the wiser_history table in the branch database that was being merged."),
-                new ColumnSettingsModel("table_name", MySqlDbType.VarChar, 255, notNull: true, defaultValue: "", comment: "The table name as it was stored in the wiser_history table of the branch database."),
-                new ColumnSettingsModel("action", MySqlDbType.VarChar, 255, notNull: true, defaultValue: "", comment: "The action as it was stored in the wiser_history table of the branch database."),
+                new ColumnSettingsModel("table_name", MySqlDbType.VarChar, 64, notNull: true, defaultValue: "", comment: "The table name as it was stored in the wiser_history table of the branch database."),
+                new ColumnSettingsModel("field", MySqlDbType.VarChar, 100, notNull: true, defaultValue: "", comment: "The field name as it was stored in the wiser_history table of the branch database. This can be the `key` from wiser_itemdetail tables, or a column name of any other table."),
+                new ColumnSettingsModel("action", MySqlDbType.VarChar, 100, notNull: true, defaultValue: "", comment: "The action as it was stored in the wiser_history table of the branch database."),
                 new ColumnSettingsModel("old_value", MySqlDbType.MediumText, notNull: true, defaultValue: "", comment: "The value as it was before the change."),
                 new ColumnSettingsModel("new_value", MySqlDbType.MediumText, notNull: true, defaultValue: "", comment: "The value that it was changed to in the branch database, which we attempted to merge to the production database."),
 
@@ -1135,27 +1136,35 @@ public class WiserTableDefinitions
 
                 new ColumnSettingsModel("item_id_original", MySqlDbType.UInt64, notNull: true, defaultValue: "0", comment: "If this change was for a Wiser item or something related to a Wiser item (such as a link), then this will contain the ID of the Wiser item in the branch database. If this is a change for a link, this is the ID of the source item."),
                 new ColumnSettingsModel("item_id_mapped", MySqlDbType.UInt64, notNull: true, defaultValue: "0", comment: "Same as `original_item_id`, but then for the production database."),
+                new ColumnSettingsModel("item_entity_type", MySqlDbType.VarChar, 25, notNull: true, defaultValue: "", comment: "If this change was for a Wiser item or something related to a Wiser item (such as a link), then this will contain the entity type of that item, as we found it. If this is a change for a link, this is the entity type of the source item."),
+                new ColumnSettingsModel("item_table_name", MySqlDbType.VarChar, 64, notNull: true, defaultValue: "", comment: "If this change was for a Wiser item or something related to a Wiser item (such as a link), then this will contain the full name of the `wiser_item` table that we used. If this is a change for a link, this is the table of the source item."),
 
-                new ColumnSettingsModel("link_id_original", MySqlDbType.UInt64, defaultValue: "0", notNull: true, comment: "If this is a change for a link, this is the value of the `id` column of `wiser_itemlink`."),
+                new ColumnSettingsModel("link_id_original", MySqlDbType.UInt64, defaultValue: "0", notNull: true, comment: "If this is a change for a link, this is the value of the `id` column of `wiser_itemlink`, in the branch database."),
                 new ColumnSettingsModel("link_id_mapped", MySqlDbType.UInt64, defaultValue: "0", notNull: true, comment: "Same as `link_id_original`, but then for the production database."),
-                new ColumnSettingsModel("link_destination_item_id_original", MySqlDbType.UInt64, defaultValue: "0", notNull: true, comment: "If this is a change for a link, this is the ID of the destination Wiser item of that link."),
+                new ColumnSettingsModel("link_destination_item_id_original", MySqlDbType.UInt64, defaultValue: "0", notNull: true, comment: "If this is a change for a link, this is the ID of the destination Wiser item of that link, in the branch database."),
                 new ColumnSettingsModel("link_destination_item_id_mapped", MySqlDbType.UInt64, defaultValue: "0", notNull: true, comment: "Same as `original_destination_item_id`, but then for the production database."),
+                new ColumnSettingsModel("link_destination_item_entity_type", MySqlDbType.VarChar, 25, notNull: true, defaultValue: "", comment: "If this is a change for a link, this is the entity type of the destination Wiser item of that link."),
+                new ColumnSettingsModel("link_destination_item_table_name", MySqlDbType.VarChar, 64, notNull: true, defaultValue: "", comment: "If this is a change for a link, this is the table name of the destination Wiser item of that link."),
                 new ColumnSettingsModel("link_type", MySqlDbType.Int32, defaultValue: "0", notNull: true, comment: "If this is a change for a link, then this is the value of the `type` column of `wiser_itemlink`."),
+                new ColumnSettingsModel("link_ordering", MySqlDbType.Int32, defaultValue: "0", notNull: true, comment: "If this is a change for a link, then this is the value of the `ordering` column of `wiser_itemlink`."),
 
-                new ColumnSettingsModel("item_detail_id_original", MySqlDbType.UInt64, notNull: true, defaultValue: "0", comment: "If this is a change for a Wiser item detail, this will contain the value of the `id` column of `wiser_itemdetail`, in the branch database. This is called `originalTargetId` in code."),
+                new ColumnSettingsModel("item_detail_id_original", MySqlDbType.UInt64, notNull: true, defaultValue: "0", comment: "If this is a change for a Wiser item detail, this will contain the value of the `id` column of `wiser_itemdetail`, in the branch database."),
                 new ColumnSettingsModel("item_detail_id_mapped", MySqlDbType.UInt64, notNull: true, defaultValue: "0", comment: "Same as `item_detail_id_original`, but for the production database."),
+                new ColumnSettingsModel("item_detail_language_code", MySqlDbType.VarChar, 10, notNull: true, defaultValue: "", comment: "If this is a change for a Wiser item detail, this will contain the value of the `language_code` column of `wiser_itemdetail`, in the branch database."),
+                new ColumnSettingsModel("item_detail_group_name", MySqlDbType.VarChar, 100, notNull: true, defaultValue: "", comment: "If this is a change for a Wiser item detail, this will contain the value of the `groupname` column of `wiser_itemdetail`, in the branch database."),
 
                 new ColumnSettingsModel("file_id_original", MySqlDbType.UInt64, notNull: true, defaultValue: "0", comment: "If this change was for a file in the database, then this will contain the value of the `id` column of `wiser_itemfile` in the branch database."),
                 new ColumnSettingsModel("file_id_mapped", MySqlDbType.UInt64, notNull: true, defaultValue: "0", comment: "Same as `file_id_original`, but then for the production database."),
 
-                new ColumnSettingsModel("used_merge_settings", MySqlDbType.JSON, notNull: true, defaultValue: "", comment: "The merge settings that were used for this specific action/object."),
+                new ColumnSettingsModel("used_merge_settings", MySqlDbType.JSON, comment: "The merge settings that were used for this specific action/object."),
+                new ColumnSettingsModel("used_conflict_settings", MySqlDbType.JSON, comment: "The conflict settings that were used for this specific action/object."),
 
-                new ColumnSettingsModel("production_host", MySqlDbType.VarChar, 255, notNull: true, defaultValue: ""),
-                new ColumnSettingsModel("production_database", MySqlDbType.VarChar, 255, notNull: true, defaultValue: ""),
-                new ColumnSettingsModel("branch_host", MySqlDbType.VarChar, 255, notNull: true, defaultValue: ""),
-                new ColumnSettingsModel("branch_database", MySqlDbType.VarChar, 255, notNull: true, defaultValue: ""),
+                new ColumnSettingsModel("production_host", MySqlDbType.VarChar, 255, notNull: true, defaultValue: "", comment: "The hostname of the production database server."),
+                new ColumnSettingsModel("production_database", MySqlDbType.VarChar, 64, notNull: true, defaultValue: "", comment: "The name of the production database schema."),
+                new ColumnSettingsModel("branch_host", MySqlDbType.VarChar, 255, notNull: true, defaultValue: "", comment: "The hostname of the branch database server."),
+                new ColumnSettingsModel("branch_database", MySqlDbType.VarChar, 64, notNull: true, defaultValue: "", comment: "The name of the branch database schema."),
 
-                new ColumnSettingsModel("status", MySqlDbType.Enum, notNull: true, enumValues: ["merged", "skipped", "failed"]),
+                new ColumnSettingsModel("status", MySqlDbType.Enum, notNull: true, enumValues: ["None", "Merged", "Skipped", "SkippedAndRemoved", "Failed"], defaultValue: "none", comment: "The merge status of this object."),
                 new ColumnSettingsModel("message", MySqlDbType.MediumText, notNull: true, defaultValue: "", comment: "This will contain debug information that explains what happened, where information was taken from etc. If the merge failed, it will explain the reason and/or contain the error message. If the merge was skipped, it will explain why.")
             ],
             Indexes =
