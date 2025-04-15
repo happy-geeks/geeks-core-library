@@ -156,7 +156,7 @@ public class CachedItemFilesService(
         }
         fileNameParts.Add(file.Id.ToString());
         fileNameParts.Add(fileNumber.ToString());
-        
+
         var extension = Path.GetExtension(String.IsNullOrWhiteSpace(fileName) ? file.FileName : fileName);
         var fileLocation = Path.Combine(cacheDirectory, String.Join("_", fileNameParts) + extension);
 
@@ -177,13 +177,13 @@ public class CachedItemFilesService(
     /// <inheritdoc />
     public async Task<FileResultModel> GetWiserItemFileAsync(ulong itemId, string propertyName, string fileName, int fileNumber, string encryptedItemId = null, string entityType = null)
     {
-        return await GetParsedFileAsync(FileLookupTypes.ItemId, String.IsNullOrWhiteSpace(encryptedItemId) ? itemId : encryptedItemId, fileName: fileName, entityType: entityType);
+        return await GetParsedFileAsync(FileLookupTypes.ItemId, String.IsNullOrWhiteSpace(encryptedItemId) ? itemId : encryptedItemId, fileName: fileName, entityType: entityType, propertyName: propertyName, fileNumber: fileNumber);
     }
 
     /// <inheritdoc />
     public async Task<FileResultModel> GetWiserItemLinkFileAsync(ulong itemLinkId, string propertyName, string fileName, int fileNumber, string encryptedItemLinkId = null, int linkType = 0)
     {
-        return await GetParsedFileAsync(FileLookupTypes.ItemLinkId, String.IsNullOrWhiteSpace(encryptedItemLinkId) ? itemLinkId : encryptedItemLinkId, fileName: fileName, linkType: linkType);
+        return await GetParsedFileAsync(FileLookupTypes.ItemLinkId, String.IsNullOrWhiteSpace(encryptedItemLinkId) ? itemLinkId : encryptedItemLinkId, fileName: fileName, linkType: linkType, propertyName: propertyName, fileNumber: fileNumber);
     }
 
     /// <inheritdoc />
