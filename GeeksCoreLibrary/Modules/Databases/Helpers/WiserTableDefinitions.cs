@@ -1179,6 +1179,25 @@ public class WiserTableDefinitions
                 new IndexSettingsModel(WiserTableNames.WiserBranchMergeLog, "idx_item_id_original", IndexTypes.Normal, ["item_id_original"]),
                 new IndexSettingsModel(WiserTableNames.WiserBranchMergeLog, "idx_item_id_mapped", IndexTypes.Normal, ["item_id_mapped"])
             ]
+        },
+
+        // wiser_products_api
+        new()
+        {
+            Name = WiserTableNames.WiserProductsApi,
+            LastUpdate = new DateTime(2025, 1, 24),
+            Columns =
+            [
+                new ColumnSettingsModel("id", MySqlDbType.UInt64, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                new ColumnSettingsModel("wiser_id", MySqlDbType.Int32),
+                new ColumnSettingsModel("version", MySqlDbType.Int24, notNull: true),
+                new ColumnSettingsModel("output", MySqlDbType.MediumText),
+                new ColumnSettingsModel("removed", MySqlDbType.Int16, 1, notNull: true, defaultValue: "0"),
+                new ColumnSettingsModel("added_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
+                new ColumnSettingsModel("added_by", MySqlDbType.VarChar, 50, notNull: true),
+                new ColumnSettingsModel("refresh_date", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
+                new ColumnSettingsModel("hash", MySqlDbType.MediumText)
+            ]
         }
     ];
 }
