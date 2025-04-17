@@ -1132,7 +1132,7 @@ public class WiserItemsService(
                     databaseConnection.AddParameter($"key{counter}", itemDetail.Key);
                     databaseConnection.AddParameter($"key{Constants.SeoPropertySuffix}{counter}", $"{itemDetail.Key}{Constants.SeoPropertySuffix}");
 
-                    var (_, valueChanged, deleteValue, alsoSaveSeoValue, seoValueItemDetailId) = await AddValueParameterToConnectionAsync(counter, itemDetail, fieldOptions, previousItemDetails, encryptionKey, alwaysSaveValues, isNewlyCreatedItem, tablePrefix);
+                    var (_, valueChanged, deleteValue, alsoSaveSeoValue, seoValueItemDetailId) = await AddValueParameterToConnectionAsync(counter, itemDetail, fieldOptions, previousItemDetails, encryptionKey, alwaysSaveValues, isNewlyCreatedItem, tablePrefix, String.Empty);
                     databaseConnection.AddParameter($"itemDetailId{counter}", itemDetail.Id);
                     databaseConnection.AddParameter($"itemDetailId{Constants.SeoPropertySuffix}{counter}", seoValueItemDetailId);
 
@@ -1271,7 +1271,7 @@ public class WiserItemsService(
                         databaseConnection.AddParameter($"key{counter}", itemDetail.Key);
                         databaseConnection.AddParameter($"key{Constants.SeoPropertySuffix}{counter}", $"{itemDetail.Key}{Constants.SeoPropertySuffix}");
 
-                        var (_, valueChanged, deleteValue, alsoSaveSeoValue, seoValueItemDetailId) = await AddValueParameterToConnectionAsync(counter, itemDetail, fieldOptions, new List<WiserItemDetailModel>(), encryptionKey, alwaysSaveValues, isNewlyCreatedItem, tablePrefix);
+                        var (_, valueChanged, deleteValue, alsoSaveSeoValue, seoValueItemDetailId) = await AddValueParameterToConnectionAsync(counter, itemDetail, fieldOptions, new List<WiserItemDetailModel>(), encryptionKey, alwaysSaveValues, isNewlyCreatedItem, tablePrefix, linkTablePrefix);
                         databaseConnection.AddParameter($"itemDetailId{counter}", itemDetail.Id);
                         databaseConnection.AddParameter($"itemDetailId{Constants.SeoPropertySuffix}{counter}", seoValueItemDetailId);
 
@@ -4238,7 +4238,7 @@ public class WiserItemsService(
             databaseConnection.AddParameter($"groupName{counter}", itemDetail.GroupName ?? "");
             databaseConnection.AddParameter($"key{counter}", itemDetail.Key);
             databaseConnection.AddParameter($"key{Constants.SeoPropertySuffix}{counter}", $"{itemDetail.Key}{Constants.SeoPropertySuffix}");
-            var (useLongValueColumn, _, deleteValue, alsoSaveSeoValue, seoValueItemDetailId) = await AddValueParameterToConnectionAsync(counter, itemDetail, fieldOptions, new List<WiserItemDetailModel>(), encryptionKey, true, true, "");
+            var (useLongValueColumn, _, deleteValue, alsoSaveSeoValue, seoValueItemDetailId) = await AddValueParameterToConnectionAsync(counter, itemDetail, fieldOptions, new List<WiserItemDetailModel>(), encryptionKey, true, true, String.Empty, String.Empty);
             databaseConnection.AddParameter($"itemDetailId{counter}", itemDetail.Id);
             databaseConnection.AddParameter($"itemDetailId{Constants.SeoPropertySuffix}{counter}", seoValueItemDetailId);
             parametersForQuery[setting.TableName].Add(deleteValue ? "NULL" : $"?{(useLongValueColumn ? "longValue" : "value")}{counter}");
@@ -4679,9 +4679,10 @@ public class WiserItemsService(
     /// <param name="encryptionKey">The encryption key used for encrypting values for secure-input fields.</param>
     /// <param name="alwaysSaveValues">This function gets the current values in the database and only saves values that have been changed. Set this parameter to true to disable that functionality and force the function to always save all values (except read only fields).</param>
     /// <param name="isNewlyCreatedItem">Whether this item has just been created in code and contains no details yet. If this is set to true, then this function will just insert all the details without checking if they already exist.</param>
-    /// <param name="tablePrefix">If the entity uses dedicated tables, then enter the prefix for those tables here. Enter empty string is not.</param>
+    /// <param name="tablePrefix">If the entity uses dedicated tables, then enter the prefix for those tables here. Enter empty string if not.</param>
+    /// <param name="linkTablePrefix">If the entity uses dedicated link tables, then enter the prefix for those tables here. Enter empty string if not.</param>
     /// <returns></returns>
-    private async Task<(bool useLongValueColumn, bool valueChanged, bool deleteValue, bool alsoSaveSeoValue, ulong seoValueItemDetailId)> AddValueParameterToConnectionAsync(int counter, WiserItemDetailModel wiserItemDetail, IReadOnlyDictionary<string, Dictionary<string, object>> fieldOptions, IEnumerable<WiserItemDetailModel> previousItemDetails, string encryptionKey, bool alwaysSaveValues, bool isNewlyCreatedItem, string tablePrefix)
+    private async Task<(bool useLongValueColumn, bool valueChanged, bool deleteValue, bool alsoSaveSeoValue, ulong seoValueItemDetailId)> AddValueParameterToConnectionAsync(int counter, WiserItemDetailModel wiserItemDetail, IReadOnlyDictionary<string, Dictionary<string, object>> fieldOptions, IEnumerable<WiserItemDetailModel> previousItemDetails, string encryptionKey, bool alwaysSaveValues, bool isNewlyCreatedItem, string tablePrefix, string linkTablePrefix)
     {
         var useLongValueColumn = false;
         var deleteValue = false;
@@ -4756,7 +4757,7 @@ public class WiserItemsService(
             {
                 queryResult = await databaseConnection.GetAsync($"""
                     SELECT id 
-                    FROM {WiserTableNames.WiserItemLinkDetail} 
+                    FROM {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail} 
                     WHERE itemlink_id = ?itemLinkId{counter} 
                         AND `key` = ?key{counter} 
                         AND language_code = ?languageCode{counter}
@@ -4945,7 +4946,7 @@ public class WiserItemsService(
             {
                 queryResult = await databaseConnection.GetAsync($"""
                                                                  SELECT id 
-                                                                 FROM {WiserTableNames.WiserItemLinkDetail} 
+                                                                 FROM {linkTablePrefix}{WiserTableNames.WiserItemLinkDetail} 
                                                                  WHERE itemlink_id = ?itemLinkId{counter} 
                                                                  AND `key` = ?key{Constants.SeoPropertySuffix}{counter}
                                                                  AND language_code = ?languageCode{counter}
