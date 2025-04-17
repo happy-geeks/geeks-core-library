@@ -1115,7 +1115,7 @@ public class WiserTableDefinitions
         new()
         {
             Name = WiserTableNames.WiserBranchMergeLog,
-            LastUpdate = new DateTime(2025, 3, 28),
+            LastUpdate = new DateTime(2025, 4, 16),
             Columns =
             [
                 new ColumnSettingsModel("id", MySqlDbType.UInt64, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -1147,6 +1147,7 @@ public class WiserTableDefinitions
                 new ColumnSettingsModel("link_destination_item_table_name", MySqlDbType.VarChar, 64, notNull: true, defaultValue: "", comment: "If this is a change for a link, this is the table name of the destination Wiser item of that link."),
                 new ColumnSettingsModel("link_type", MySqlDbType.Int32, defaultValue: "0", notNull: true, comment: "If this is a change for a link, then this is the value of the `type` column of `wiser_itemlink`."),
                 new ColumnSettingsModel("link_ordering", MySqlDbType.Int32, defaultValue: "0", notNull: true, comment: "If this is a change for a link, then this is the value of the `ordering` column of `wiser_itemlink`."),
+                new ColumnSettingsModel("link_table_name", MySqlDbType.VarChar, 64, notNull: true, defaultValue: "", comment: "If this is a change for a link, or something related to a link, then this is the full table name of the link table that we used."),
 
                 new ColumnSettingsModel("item_detail_id_original", MySqlDbType.UInt64, notNull: true, defaultValue: "0", comment: "If this is a change for a Wiser item detail, this will contain the value of the `id` column of `wiser_itemdetail`, in the branch database."),
                 new ColumnSettingsModel("item_detail_id_mapped", MySqlDbType.UInt64, notNull: true, defaultValue: "0", comment: "Same as `item_detail_id_original`, but for the production database."),
@@ -1165,7 +1166,9 @@ public class WiserTableDefinitions
                 new ColumnSettingsModel("branch_database", MySqlDbType.VarChar, 64, notNull: true, defaultValue: "", comment: "The name of the branch database schema."),
 
                 new ColumnSettingsModel("status", MySqlDbType.Enum, notNull: true, enumValues: ["None", "Merged", "Skipped", "SkippedAndRemoved", "Failed"], defaultValue: "none", comment: "The merge status of this object."),
-                new ColumnSettingsModel("message", MySqlDbType.MediumText, notNull: true, defaultValue: "", comment: "This will contain debug information that explains what happened, where information was taken from etc. If the merge failed, it will explain the reason and/or contain the error message. If the merge was skipped, it will explain why.")
+                new ColumnSettingsModel("message", MySqlDbType.MediumText, notNull: true, defaultValue: "", comment: "This will contain debug information that explains what happened, where information was taken from etc. If the merge failed, it will explain the reason and/or contain the error message. If the merge was skipped, it will explain why."),
+
+                new ColumnSettingsModel("developer_comment", MySqlDbType.MediumText, notNull: true, defaultValue: "", comment: "A column that is not used by the system. It can be used by developers to add comments about this log entry, to note down their findings when checking whether why a merge failed or was skipped.")
             ],
             Indexes =
             [
