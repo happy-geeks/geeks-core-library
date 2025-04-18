@@ -99,11 +99,11 @@ public static class ConfigurationServiceCollectionExtensions
         builder.UseMiddleware<IpAccessMiddleware>();
         builder.UseMiddleware<ClearCacheMiddleware>();
 
+        builder.UseMiddleware<WiserItemFilesMiddleware>();
+        builder.UseMiddleware<RewriteUrlToOrderProcessMiddleware>();
         builder.UseMiddleware<RedirectMiddleWare>();
 
         builder.UseWebMarkupMin();
-        builder.UseMiddleware<WiserItemFilesMiddleware>();
-        builder.UseMiddleware<RewriteUrlToOrderProcessMiddleware>();
         builder.UseMiddleware<RewriteUrlToWebPageMiddleware>();
         builder.UseMiddleware<RewriteUrlToTemplateMiddleware>();
 
