@@ -31,6 +31,13 @@ public class RedirectMiddleWare(RequestDelegate next, ILogger<RedirectMiddleWare
             return;
         }
 
+        if (HttpContextHelpers.IsGclMiddleWarePage(context))
+        {
+            // If this happens, it means that another middleware has already found something and we don't need to do this again.
+            await next.Invoke(context);
+            return;
+        }
+
         var redirectPermanent = true;
 
         // Redirect module.
