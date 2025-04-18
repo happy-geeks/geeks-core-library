@@ -1,0 +1,85 @@
+name: Create new release
+
+on:
+  workflow_dispatch:
+    inputs:
+      new_version:
+        description: 'Version for the new release'
+        required: true
+        default: 'v5.x.x.x'
+        type: string
+
+jobs:
+  create-release:
+    name: Create release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get auto-release app token
+        uses: actions/create-github-app-token@v1
+        id: get-app-token
+        with:
+          app-id: ${{ vars.HAPPY_HORIZON_RELEASE_APP_ID }}
+          private-key: ${{ secrets.HAPPY_HORIZON_RELEASE_PRIVATE_KEY }}
+
+      - name: Check Out Repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ steps.get-app-token.outputs.token }}
+          fetch-depth: 0
+          ref: 'develop'
+
+      - name: Update version in project
+        id: update-version
+        run: |
+          CSPROJ_PATH="./GeeksCoreLibrary/GeeksCoreLibrary.csproj"
+
+          # Extract current version
+          CURRENT_VERSION=$(grep -oPm1 "(?<=<Version>)[^<]+" "$CSPROJ_PATH")
+
+          # Get latest version
+          NEW_VERSION="${{ inputs.new_version }}"
+
+          # Update the .csproj file
+          sed -i "s|<Version>$CURRENT_VERSION</Version>|<Version>$NEW_VERSION</Version>|" "$CSPROJ_PATH"
+          sed -i "s|<AssemblyVersion>$CURRENT_VERSION</AssemblyVersion>|<AssemblyVersion>$NEW_VERSION</AssemblyVersion>|" "$CSPROJ_PATH"
+          sed -i "s|<FileVersion>$CURRENT_VERSION</FileVersion>|<FileVersion>$NEW_VERSION</FileVersion>|" "$CSPROJ_PATH"
+
+          # Extra for older versions that still had ".0" at the end.
+          sed -i "s|<AssemblyVersion>$CURRENT_VERSION.0</AssemblyVersion>|<AssemblyVersion>$NEW_VERSION</AssemblyVersion>|" "$CSPROJ_PATH"
+          sed -i "s|<FileVersion>$CURRENT_VERSION.0</FileVersion>|<FileVersion>$NEW_VERSION</FileVersion>|" "$CSPROJ_PATH"
+
+          echo "Updated version to $NEW_VERSION"
+
+      - name: Commit Changes to Branches
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          NEW_VERSION="${{ inputs.new_version }}"
+
+          git checkout develop
+          git pull origin develop # Ensure develop is up-to-date locally
+          git add -u
+          git commit -m "Created version $NEW_VERSION || echo "No changes to commit on develop."
+          git push origin develop
+
+          git checkout main
+          git pull origin main  # Ensure main is up-to-date locally
+          git merge develop
+          git push origin main
+
+      - name: Fetch and Reset to Latest Commit
+        run: |
+          git fetch --all --tags
+          git checkout main
+          git reset --hard origin/main
+
+      - name: Create a New Release
+        uses: ncipollo/release-action@v1
+        with:
+          token: ${{ steps.get-app-token.outputs.token }}
+          tag: "v${{ inputs.new_version }}"
+          name: "v${{ inputs.new_version }}"
+          generateReleaseNotes: true
+          body: |
+            Created version ${{ inputs.new_version }}
