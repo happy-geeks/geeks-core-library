@@ -23,7 +23,7 @@ public class MergeBranchSettingsModel : BranchActionBaseModel
     public List<SettingMergeSettingsModel> Settings { get; set; }
 
     /// <summary>
-    /// Gets or sets the linktypes too see what should be merged.
+    /// Gets or sets the link types of what should be merged.
     /// </summary>
     public List<LinkTypeMergeSettingsModel> LinkTypes { get; set; }
 
