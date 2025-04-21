@@ -55,7 +55,7 @@
         <PackageReference Include="SSH.NET" Version="2024.2.0"/>
         <PackageReference Include="System.Diagnostics.Debug" Version="4.3.0"/>
         <PackageReference Include="System.Globalization" Version="4.3.0"/>
-        <PackageReference Include="System.IO.Abstractions" Version="22.0.13" />
+        <PackageReference Include="System.IO.Abstractions" Version="22.0.14" />
         <PackageReference Include="System.IO.FileSystem" Version="4.3.0"/>
         <PackageReference Include="System.IO.FileSystem.Primitives" Version="4.3.0"/>
         <PackageReference Include="System.Net.Primitives" Version="4.3.1"/>
