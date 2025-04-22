@@ -274,9 +274,6 @@ public class NeDistriService(IOptions<GclSettings> gclSettings, IWiserItemsServi
 
         var city = orderDetails.GetDetailValue($"{prefix}city");
         var countrycode = await GetCountryCodeAsync(orderDetails, $"{prefix}country");
-        var firstName = orderDetails.GetDetailValue("firstname");
-        var lastname = orderDetails.GetDetailValue("lastname");
-        var lastNamePrefix = orderDetails.GetDetailValue("prefix");
         var houseNumber = orderDetails.GetDetailValue($"{prefix}housenumber");
         var houseNumberAddition = orderDetails.GetDetailValue($"{prefix}housenumber_suffix");
         var street = orderDetails.GetDetailValue($"{prefix}street");
@@ -284,9 +281,14 @@ public class NeDistriService(IOptions<GclSettings> gclSettings, IWiserItemsServi
         var email = orderDetails.GetDetailValue("email");
         var phone = orderDetails.GetDetailValue("phone");
 
-        if (!String.IsNullOrEmpty(lastNamePrefix))
+        var firstName = orderDetails.GetDetailValue("firstname");
+        var lastname = orderDetails.GetDetailValue("lastname");
+        var lastNamePrefix = orderDetails.GetDetailValue("prefix");
+        var name = !String.IsNullOrEmpty(lastNamePrefix) ? $"{firstName} {lastNamePrefix} {lastname}" : $"{firstName} {lastname}";
+
+        if (!UInt64.TryParse(new string(phone.Where(Char.IsDigit).ToArray()), out var phoneNumber))
         {
-            lastname = $"{lastNamePrefix} {lastname}";
+            logger.LogDebug("Parsing of phoneNumber failed when creating NeDistri Label. Phone number is not a valid number.");
         }
 
         return new AddressModel
@@ -294,8 +296,8 @@ public class NeDistriService(IOptions<GclSettings> gclSettings, IWiserItemsServi
             Address = $"{street} {houseNumber}{houseNumberAddition}",
             Country = countrycode,
             Email = email,
-            Phone = phone,
-            Name = $"{firstName} {lastname}",
+            Phone = phoneNumber,
+            Name = name,
             Place = city,
             Zipcode = zipcode
         };
