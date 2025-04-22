@@ -282,6 +282,7 @@ public class NeDistriService(IOptions<GclSettings> gclSettings, IWiserItemsServi
         var street = orderDetails.GetDetailValue($"{prefix}street");
         var zipcode = orderDetails.GetDetailValue($"{prefix}zipcode");
         var email = orderDetails.GetDetailValue("email");
+        var phone = orderDetails.GetDetailValue("phone");
 
         if (!String.IsNullOrEmpty(lastNamePrefix))
         {
@@ -293,6 +294,7 @@ public class NeDistriService(IOptions<GclSettings> gclSettings, IWiserItemsServi
             Address = $"{street} {houseNumber}{houseNumberAddition}",
             Country = countrycode,
             Email = email,
+            Phone = phone,
             Name = $"{firstName} {lastname}",
             Place = city,
             Zipcode = zipcode
