@@ -16,23 +16,22 @@ public static class BranchesHelpers
     /// <returns>The table prefix and whether or not this is something connected to an item from [prefix]wiser_item.</returns>
     public static (string TablePrefix, bool IsWiserItemChange) GetTablePrefix(string tableName, ulong originalItemId)
     {
-        var isWiserItemChange = true;
+        var isWiserItemChange = false;
         var tablePrefix = "";
         if (tableName.EndsWith(WiserTableNames.WiserItem, StringComparison.OrdinalIgnoreCase))
         {
             tablePrefix = tableName.Replace(WiserTableNames.WiserItem, "", StringComparison.OrdinalIgnoreCase);
+            isWiserItemChange = true;
         }
         else if (tableName.EndsWith(WiserTableNames.WiserItemDetail, StringComparison.OrdinalIgnoreCase))
         {
             tablePrefix = tableName.Replace(WiserTableNames.WiserItemDetail, "", StringComparison.OrdinalIgnoreCase);
+            isWiserItemChange = true;
         }
         else if (tableName.EndsWith(WiserTableNames.WiserItemFile, StringComparison.OrdinalIgnoreCase))
         {
             tablePrefix = tableName.Replace(WiserTableNames.WiserItemFile, "", StringComparison.OrdinalIgnoreCase);
-            if (originalItemId == 0)
-            {
-                isWiserItemChange = false;
-            }
+            isWiserItemChange = originalItemId > 0;
         }
         else if (tableName.EndsWith(WiserTableNames.WiserItemLink, StringComparison.OrdinalIgnoreCase))
         {
@@ -41,10 +40,6 @@ public static class BranchesHelpers
         else if (tableName.EndsWith(WiserTableNames.WiserItemLinkDetail, StringComparison.OrdinalIgnoreCase))
         {
             tablePrefix = tableName.Replace(WiserTableNames.WiserItemLinkDetail, "", StringComparison.OrdinalIgnoreCase);
-        }
-        else
-        {
-            isWiserItemChange = false;
         }
 
         return (tablePrefix, isWiserItemChange);

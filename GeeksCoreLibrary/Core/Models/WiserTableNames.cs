@@ -234,6 +234,11 @@ public class WiserTableNames
     public const string WiserBranchesQueue = "wiser_branches_queue";
 
     /// <summary>
+    /// This table is used by Wiser to log everything that happens when creating or merging a branch.
+    /// </summary>
+    public const string WiserBranchMergeLog = "wiser_branch_merge_log";
+
+    /// <summary>
     /// This table is used by Wiser to temporarily store data with various Wiser statistics.
     /// </summary>
     public const string WiserDashboard = "wiser_dashboard";
