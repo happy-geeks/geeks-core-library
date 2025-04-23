@@ -28,6 +28,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MySqlConnector;
 using Constants = GeeksCoreLibrary.Core.Models.Constants;
+using PrecompiledRegexes = GeeksCoreLibrary.Core.Helpers.PrecompiledRegexes;
 
 namespace GeeksCoreLibrary.Core.Services;
 
