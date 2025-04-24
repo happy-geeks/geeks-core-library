@@ -26,7 +26,7 @@ public class AddressModel
     /// <summary>
     /// Gets or sets phone number
     /// </summary>
-    public string Phone { get; set; }
+    public ulong Phone { get; set; }
 
     /// <summary>
     /// Gets or sets place name of the recipient 
