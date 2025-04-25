@@ -65,7 +65,15 @@ public class CachedItemFilesService(
         }
 
         // Generate the file name for caching.
-        var fileNameParts = new List<string> { "wiser_image" };
+        var fileNameParts = new List<string>(8)
+        {
+            "wiser_image",
+            file.Id.ToString(),
+            resizeMode.ToString("G"),
+            anchorPosition.ToString("G"),
+            preferredWidth.ToString(),
+            preferredHeight.ToString()
+        };
         if (!String.IsNullOrWhiteSpace(entityType))
         {
             fileNameParts.Add(entityType);
@@ -74,14 +82,10 @@ public class CachedItemFilesService(
         {
             fileNameParts.Add(linkType.ToString());
         }
-        fileNameParts.Add(file.Id.ToString());
-        fileNameParts.Add(resizeMode.ToString("G"));
-        fileNameParts.Add(anchorPosition.ToString("G"));
-        fileNameParts.Add(preferredWidth.ToString());
-        fileNameParts.Add(preferredHeight.ToString());
 
         var extension = Path.GetExtension(String.IsNullOrWhiteSpace(fileName) ? file.FileName : fileName);
-        var fileLocation = Path.Combine(cacheDirectory, String.Join("_", fileNameParts) + extension);
+        var cachedFileName = FileSystemHelpers.HashFileName(String.Join("_", fileNameParts), false);
+        var fileLocation = Path.Combine(cacheDirectory, cachedFileName + extension);
 
         var (fileBytes, lastModifiedDate) = await fileCacheService.GetOrAddAsync(fileLocation, async () =>
         {
@@ -157,8 +161,11 @@ public class CachedItemFilesService(
         fileNameParts.Add(file.Id.ToString());
         fileNameParts.Add(fileNumber.ToString());
 
+        
         var extension = Path.GetExtension(String.IsNullOrWhiteSpace(fileName) ? file.FileName : fileName);
-        var fileLocation = Path.Combine(cacheDirectory, String.Join("_", fileNameParts) + extension);
+
+        var cachedFileName = FileSystemHelpers.HashFileName(String.Join("_", fileNameParts), false);
+        var fileLocation = Path.Combine(cacheDirectory, cachedFileName + extension);
 
         var (fileBytes, lastModifiedDate) = await fileCacheService.GetOrAddAsync(fileLocation, async () =>
         {

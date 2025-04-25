@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Models;
@@ -87,6 +88,52 @@ public static class FileSystemHelpers
         var fileLocation = Path.Combine(directoryLocation, Path.GetFileName(filename));
         File.WriteAllBytes(fileLocation, fileBytes);
         return fileLocation;
+    }
+    
+    /// <summary>
+    /// Hashes a file name to create a unique, shortened name for it.
+    /// </summary>
+    /// <param name="filename">The original file name to be hashed.</param>
+    /// <param name="fileNameContainsExtension">
+    /// Indicates whether the file name includes an extension. Defaults to <c>true</c>.
+    /// If <c>true</c>, the extension will be preserved in the hashed name.
+    /// </param>
+    /// <returns>
+    /// A hashed version of the file name, truncated to 32 characters, optionally preserving the original extension.
+    /// </returns>
+    public static string HashFileName(string filename, bool fileNameContainsExtension = true)
+    {
+        const int truncationLength = 32;
+        if (String.IsNullOrWhiteSpace(filename) || filename.Length <= truncationLength)
+        {
+            return filename;
+        }
+
+        var extension = String.Empty;
+        if (fileNameContainsExtension)
+        {
+            extension = Path.GetExtension(filename);
+            filename = Path.GetFileNameWithoutExtension(filename);
+            
+            if (filename.Length <= truncationLength)
+            {
+                return filename;
+            }
+        }
+
+        // Before adding the extension hash the file name to prevent long file names.
+        var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(filename));
+        
+        var fullHex = Convert.ToHexStringLower(hashBytes);
+
+        if (fullHex.Length <= truncationLength)
+        {
+            return fullHex + extension;
+        }
+        
+        var fileNameHash = fullHex.AsSpan(..truncationLength);
+
+        return String.Concat(fileNameHash, extension);
     }
 
     /// <summary>

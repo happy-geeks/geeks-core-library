@@ -1427,8 +1427,15 @@ public class TemplatesService(
             {
                 var extraData = match.Groups["data"].Value.ToDictionary("&", "=");
                 var dynamicContentData = componentOverrides?.FirstOrDefault(d => d.Id == contentId);
-                var html = dynamicContentData == null ? await templatesService.GenerateDynamicContentHtmlAsync(contentId, extraData: extraData) : await templatesService.GenerateDynamicContentHtmlAsync(dynamicContentData, extraData: extraData);
-                template = template.Replace(match.Value, $"<!-- Start component {contentId} -->{(string) html}<!-- End component {contentId} -->");
+                var content = dynamicContentData == null ? await templatesService.GenerateDynamicContentHtmlAsync(contentId, extraData: extraData) : await templatesService.GenerateDynamicContentHtmlAsync(dynamicContentData, extraData: extraData);
+                if (content is string html)
+                {
+                    template = template.Replace(match.Value, $"<!-- Start component {contentId} -->{html}<!-- End component {contentId} -->");
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Component {contentId} did not return a string, but a {content.GetType()}");
+                }
             }
             catch (Exception exception)
             {
