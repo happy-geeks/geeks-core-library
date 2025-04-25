@@ -14,8 +14,7 @@ using Microsoft.Extensions.Options;
 namespace GeeksCoreLibrary.Core.Services;
 
 /// <inheritdoc />
-public class CachedWiserItemsService(IOptions<GclSettings> gclSettings, IAppCache cache, IWiserItemsService wiserItemsService, IDatabaseConnection databaseConnection, ICacheService cacheService, IBranchesService branchesService)
-    : IWiserItemsService
+public class CachedWiserItemsService(IOptions<GclSettings> gclSettings, IAppCache cache, IWiserItemsService wiserItemsService, IDatabaseConnection databaseConnection, ICacheService cacheService, IBranchesService branchesService) : IWiserItemsService
 {
     private readonly GclSettings gclSettings = gclSettings.Value;
 
@@ -32,15 +31,15 @@ public class CachedWiserItemsService(IOptions<GclSettings> gclSettings, IAppCach
     }
 
     /// <inheritdoc />
-    public async Task<WiserItemModel> CreateAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 1, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, StoreType? storeTypeOverride = null)
+    public async Task<WiserItemModel> CreateAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 1, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, StoreType? storeTypeOverride = null, string parentEntityType = null)
     {
-        return await CreateAsync(this, wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, saveHistory, createNewTransaction, skipPermissionsCheck, storeTypeOverride);
+        return await CreateAsync(this, wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, saveHistory, createNewTransaction, skipPermissionsCheck, storeTypeOverride, parentEntityType);
     }
 
     /// <inheritdoc />
-    public async Task<WiserItemModel> CreateAsync(IWiserItemsService service, WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 1, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, StoreType? storeTypeOverride = null)
+    public async Task<WiserItemModel> CreateAsync(IWiserItemsService service, WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 1, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, StoreType? storeTypeOverride = null, string parentEntityType = null)
     {
-        return await wiserItemsService.CreateAsync(service, wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, saveHistory, createNewTransaction, skipPermissionsCheck, storeTypeOverride);
+        return await wiserItemsService.CreateAsync(service, wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, saveHistory, createNewTransaction, skipPermissionsCheck, storeTypeOverride, parentEntityType);
     }
 
     /// <inheritdoc />
