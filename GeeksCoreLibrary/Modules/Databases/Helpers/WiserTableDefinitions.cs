@@ -1197,6 +1197,11 @@ public class WiserTableDefinitions
                 new ColumnSettingsModel("added_by", MySqlDbType.VarChar, 50, notNull: true),
                 new ColumnSettingsModel("refresh_date", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
                 new ColumnSettingsModel("hash", MySqlDbType.MediumText)
+            ],
+            Indexes =
+            [
+                new IndexSettingsModel(WiserTableNames.WiserProductsApi, "idx_unique", IndexTypes.Unique, ["wiser_id", "version"]),
+                new IndexSettingsModel(WiserTableNames.WiserProductsApi, "idx_wiser_id", IndexTypes.Normal, ["wiser_id", "removed"])
             ]
         }
     ];
