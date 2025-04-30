@@ -261,6 +261,7 @@ public class WiserItemsService(
                 // Check where we need to save the link to the parent ID.
                 if (String.IsNullOrWhiteSpace(parentEntityType))
                 {
+                    // If we don't have a parent entity type, check if we can find it in all link type settings.
                     var allLinkTypes = await linkTypesService.GetAllLinkTypeSettingsAsync();
                     var possibleLinkTypes = allLinkTypes.Where(x => x.Type == linkTypeNumber && String.Equals(x.SourceEntityType, wiserItem.EntityType, StringComparison.OrdinalIgnoreCase)).ToList();
                     databaseConnection.AddParameter("parentId", parentId.Value);
@@ -278,6 +279,7 @@ public class WiserItemsService(
                     }
                 }
 
+                // Get the link type settings, to see whether we need to use parent_item_id or wiser_itemlink and which table prefix if the latter.
                 var linkTypeSettings = await linkTypesService.GetLinkTypeSettingsAsync(linkTypeNumber, wiserItem.EntityType, parentEntityType);
                 if (linkTypeSettings is {UseItemParentId: true})
                 {
