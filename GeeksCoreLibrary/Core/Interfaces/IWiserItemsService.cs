@@ -60,9 +60,10 @@ public interface IWiserItemsService
     /// <param name="createNewTransaction">Optional: Set to false if you don't want this function to try and create a new database transaction. Be warned that this will then also not rollback any changes if an error occurred. It's recommended to only set this to false if you already created a transaction in your code, before calling this function. Default value is true.</param>
     /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
     /// <param name="storeTypeOverride">Optional: Override the storeType of the item.</param>
+    /// <param name="parentEntityType">Optional: The entity type of the parent item. We need this to determine where and how to save the parent link.</param>
     /// <returns>The same <see cref="WiserItemModel"/> again, with the new ID.</returns>
     /// <exception cref="System.ArgumentNullException">If wiserItem or entityType is <see langword="null"/>.</exception>
-    Task<WiserItemModel> CreateAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 1, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, StoreType? storeTypeOverride = null);
+    Task<WiserItemModel> CreateAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 1, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, StoreType? storeTypeOverride = null, string parentEntityType = null);
 
     /// <summary>
     /// Creates an item.
@@ -79,9 +80,10 @@ public interface IWiserItemsService
     /// <param name="createNewTransaction">Optional: Set to false if you don't want this function to try and create a new database transaction. Be warned that this will then also not rollback any changes if an error occurred. It's recommended to only set this to false if you already created a transaction in your code, before calling this function. Default value is true.</param>
     /// <param name="skipPermissionsCheck">Optional: Whether to skip the check for permissions. Only do this for things that should always be possible by anyone, such as creating a basket.</param>
     /// <param name="storeTypeOverride">Optional: Override the storeType of the item.</param>
+    /// <param name="parentEntityType">Optional: The entity type of the parent item. We need this to determine where and how to save the parent link.</param>
     /// <returns>The same <see cref="WiserItemModel"/> again, with the new ID.</returns>
     /// <exception cref="System.ArgumentNullException">If wiserItem or entityType is <see langword="null"/>.</exception>
-    Task<WiserItemModel> CreateAsync(IWiserItemsService wiserItemsService, WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 1, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, StoreType? storeTypeOverride = null);
+    Task<WiserItemModel> CreateAsync(IWiserItemsService wiserItemsService, WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 1, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, StoreType? storeTypeOverride = null, string parentEntityType = null);
 
     /// <summary>
     /// Duplicate an item. This could also duplicate links and linked items, depending on the settings in wiser_link.
