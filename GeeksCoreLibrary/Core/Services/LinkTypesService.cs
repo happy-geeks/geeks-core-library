@@ -51,7 +51,7 @@ public class LinkTypesService : ILinkTypesService, IScopedService
             whereClause.Add("destination_entity_type = ?destinationEntityType");
         }
 
-        var query = $@"SELECT * FROM {WiserTableNames.WiserLink} WHERE {String.Join(" AND ", whereClause)}";
+        var query = $"SELECT * FROM {WiserTableNames.WiserLink} WHERE {String.Join(" AND ", whereClause)}";
 
         var dataTable = await databaseConnection.GetAsync(query);
         return dataTable.Rows.Count == 0 ? new LinkSettingsModel() : DataRowToLinkSettingsModel(dataTable.Rows[0]);

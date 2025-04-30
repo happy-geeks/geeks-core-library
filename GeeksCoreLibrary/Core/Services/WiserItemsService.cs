@@ -155,13 +155,13 @@ public class WiserItemsService(
     }
 
     /// <inheritdoc />
-    public async Task<WiserItemModel> CreateAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 1, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, StoreType? storeTypeOverride = null)
+    public async Task<WiserItemModel> CreateAsync(WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 1, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, StoreType? storeTypeOverride = null, string parentEntityType = null)
     {
-        return await CreateAsync(this, wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, saveHistory, createNewTransaction, skipPermissionsCheck, storeTypeOverride);
+        return await CreateAsync(this, wiserItem, parentId, linkTypeNumber, userId, username, encryptionKey, saveHistory, createNewTransaction, skipPermissionsCheck, storeTypeOverride, parentEntityType);
     }
 
     /// <inheritdoc />
-    public async Task<WiserItemModel> CreateAsync(IWiserItemsService wiserItemsService, WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 1, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, StoreType? storeTypeOverride = null)
+    public async Task<WiserItemModel> CreateAsync(IWiserItemsService wiserItemsService, WiserItemModel wiserItem, ulong? parentId = null, int linkTypeNumber = 1, ulong userId = 0, string username = "GCL", string encryptionKey = "", bool saveHistory = true, bool createNewTransaction = true, bool skipPermissionsCheck = false, StoreType? storeTypeOverride = null, string parentEntityType = null)
     {
         if (String.IsNullOrWhiteSpace(wiserItem?.EntityType))
         {
@@ -211,8 +211,16 @@ public class WiserItemsService(
 
             try
             {
-                if (createNewTransaction && !alreadyHadTransaction) await databaseConnection.BeginTransactionAsync();
-                if (wiserItem.Id > 0) databaseConnection.AddParameter("id", wiserItem.Id);
+                if (createNewTransaction && !alreadyHadTransaction)
+                {
+                    await databaseConnection.BeginTransactionAsync();
+                }
+
+                if (wiserItem.Id > 0)
+                {
+                    databaseConnection.AddParameter("id", wiserItem.Id);
+                }
+
                 databaseConnection.AddParameter("moduleId", wiserItem.ModuleId);
                 databaseConnection.AddParameter("ordering", wiserItem.Ordering);
                 databaseConnection.AddParameter("title", wiserItem.Title ?? "");
@@ -221,8 +229,7 @@ public class WiserItemsService(
                 databaseConnection.AddParameter("linkTypeNumber", linkTypeNumber);
                 databaseConnection.AddParameter("username", username);
                 databaseConnection.AddParameter("userId", userId);
-                databaseConnection.AddParameter("publishedEnvironment",
-                    wiserItem.PublishedEnvironment ?? Environments.Live | Environments.Acceptance | Environments.Test | Environments.Development);
+                databaseConnection.AddParameter("publishedEnvironment", wiserItem.PublishedEnvironment ?? Environments.Live | Environments.Acceptance | Environments.Test | Environments.Development);
                 databaseConnection.AddParameter("json", wiserItem.Json);
                 databaseConnection.AddParameter("jsonLastProcessedDate", wiserItem.JsonLastProcessedDate);
                 databaseConnection.AddParameter("saveHistoryGcl", saveHistory); // This is used in triggers.
@@ -252,15 +259,26 @@ public class WiserItemsService(
                 }
 
                 // Check where we need to save the link to the parent ID.
-                databaseConnection.AddParameter("parentId", parentId.Value);
-                queryResult = await databaseConnection.GetAsync($@"SELECT entity_type FROM {tablePrefix}{WiserTableNames.WiserItem} WHERE id = ?parentId", true);
-                var destinationEntityType = "";
-                if (queryResult.Rows.Count > 0)
+                if (String.IsNullOrWhiteSpace(parentEntityType))
                 {
-                    destinationEntityType = queryResult.Rows[0].Field<string>("entity_type");
+                    var allLinkTypes = await linkTypesService.GetAllLinkTypeSettingsAsync();
+                    var possibleLinkTypes = allLinkTypes.Where(x => x.Type == linkTypeNumber && String.Equals(x.SourceEntityType, wiserItem.EntityType, StringComparison.OrdinalIgnoreCase)).ToList();
+                    databaseConnection.AddParameter("parentId", parentId.Value);
+                    foreach (var linkType in possibleLinkTypes)
+                    {
+                        var destinationTablePrefix = await entityTypesService.GetTablePrefixForEntityAsync(linkType.DestinationEntityType);
+                        queryResult = await databaseConnection.GetAsync($"SELECT entity_type FROM {destinationTablePrefix}{WiserTableNames.WiserItem} WHERE id = ?parentId", true);
+                        if (queryResult.Rows.Count <= 0)
+                        {
+                            continue;
+                        }
+
+                        parentEntityType = queryResult.Rows[0].Field<string>("entity_type");
+                        break;
+                    }
                 }
 
-                var linkTypeSettings = await wiserItemsService.GetLinkTypeSettingsAsync(0, wiserItem.EntityType, destinationEntityType);
+                var linkTypeSettings = await linkTypesService.GetLinkTypeSettingsAsync(linkTypeNumber, wiserItem.EntityType, parentEntityType);
                 if (linkTypeSettings is {UseItemParentId: true})
                 {
                     // Save parent ID in parent_item_id column of wiser_item.
@@ -273,7 +291,7 @@ public class WiserItemsService(
                 }
                 else
                 {
-                    var linkTablePrefix = wiserItemsService.GetTablePrefixForLink(linkTypeSettings);
+                    var linkTablePrefix = linkTypesService.GetTablePrefixForLink(linkTypeSettings);
 
                     // Save parent ID in wiser_itemlink.
                     var newOrderNumber = 1;
@@ -291,7 +309,11 @@ public class WiserItemsService(
                                                            """);
                 }
 
-                if (createNewTransaction && !alreadyHadTransaction) await databaseConnection.CommitTransactionAsync();
+                if (createNewTransaction && !alreadyHadTransaction)
+                {
+                    await databaseConnection.CommitTransactionAsync();
+                }
+
                 transactionCompleted = true;
 
                 return wiserItem;
@@ -3513,7 +3535,7 @@ public class WiserItemsService(
                 }
             }
         }
-        
+
         databaseConnection.AddParameter("itemId", wiserItemFile.ItemId);
         databaseConnection.AddParameter("itemLinkId", wiserItemFile.ItemLinkId);
         databaseConnection.AddParameter("content", wiserItemFile.Content);
