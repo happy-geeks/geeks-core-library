@@ -60,7 +60,7 @@ jobs:
           git checkout develop
           git pull origin develop # Ensure develop is up-to-date locally
           git add -u
-          git commit -m "Created version $NEW_VERSION || echo "No changes to commit on develop."
+          git commit -m "Created version $NEW_VERSION" || echo "No changes to commit on develop."
           git push origin develop
 
           git checkout main
