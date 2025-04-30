@@ -623,9 +623,8 @@ public static class StringExtensions
     /// <returns>The Base64 string containing the SHA512 hash of the input.</returns>
     public static string ToSha512Simple(this string input)
     {
-        using var sha512Hasher = SHA512.Create();
         var inputBytes = Encoding.UTF8.GetBytes(input);
-        var hashedBytes = sha512Hasher.ComputeHash(inputBytes);
+        var hashedBytes = SHA512.HashData(inputBytes);
         return Convert.ToBase64String(hashedBytes);
     }
 
