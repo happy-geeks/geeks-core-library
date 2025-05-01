@@ -2,29 +2,25 @@
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
+using System.Runtime.Versioning;
+using JetBrains.Annotations;
 
 namespace GeeksCoreLibrary.Modules.HealthChecks.Services
 {
     public class SystemServiceHealth : IHealthCheck, IDisposable
     {
         private readonly HealthCheckSettings _healthCheckSettings;
-        private static PerformanceCounter? _cpuCounter;
-        private static readonly bool _isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
-
+        
+         [CanBeNull] private static PerformanceCounter _cpuCounter;
+        
         public SystemServiceHealth(IOptions<HealthCheckSettings> healthCheckSettings)
         {
+            if (healthCheckSettings == null) throw new ArgumentNullException(nameof(healthCheckSettings));
             _healthCheckSettings = healthCheckSettings.Value;
-
-            // Initialize PerformanceCounter only on Windows
-            if (_isWindows)
-            {
-                _cpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
-            }
         }
        
         // Checks overall system health by evaluating CPU usage, memory usage, and disk space.
@@ -32,7 +28,7 @@ namespace GeeksCoreLibrary.Modules.HealthChecks.Services
             HealthCheckContext context,
             CancellationToken cancellationToken = default)
         {
-            double cpuUsage = await GetCpuUsageAsync(cancellationToken);
+            double cpuUsage = OperatingSystem.IsWindows() ? await GetCpuUsageAsync(cancellationToken) : await GetCrossPlatformCpuUsageAsync(cancellationToken);
             var (currentMemoryUsage, maxMemory) = GetMemoryUsage();
             var diskSpace = GetDiskSpace();
 
@@ -43,15 +39,15 @@ namespace GeeksCoreLibrary.Modules.HealthChecks.Services
             string diskSpaceFormatted = $"{Math.Round(diskSpace.UsedSpaceGB, 2)} / {Math.Round(diskSpace.TotalSizeGB, 2)} GB";
 
             string healthCheckMessage = $"CPU Usage: {cpuUsage}%, Memory: {memoryUsageFormatted}, Disk Space: {diskSpaceFormatted}";
-            bool isHealthy = cpuUsage < _healthCheckSettings.CpuUsageThreshold &&
-                             memoryUsagePercentage < _healthCheckSettings.MemoryUsageThreshold;
+            bool isHealthy = cpuUsage < _healthCheckSettings.CpuUsageThreshold && memoryUsagePercentage < _healthCheckSettings.MemoryUsageThreshold;
 
             return isHealthy
                 ? HealthCheckResult.Healthy(healthCheckMessage)
                 : HealthCheckResult.Unhealthy(healthCheckMessage);
         }
 
-        // Cross-platform CPU usage approximation (used on non-Windows systems).
+        // Cross-platform CPU usage approximation (used on non-Windows systems (Linux/MacOS).
+        [UnsupportedOSPlatform("windows")]
         private async Task<double> GetCrossPlatformCpuUsageAsync(CancellationToken cancellationToken)
         {
             var startTime = DateTime.UtcNow;
@@ -71,16 +67,17 @@ namespace GeeksCoreLibrary.Modules.HealthChecks.Services
         }
         
         // Gets CPU usage percentage for the current system using platform-specific methods.
+        [SupportedOSPlatform("windows")]
         private async Task<double> GetCpuUsageAsync(CancellationToken cancellationToken)
         {
-            if (_isWindows && _cpuCounter != null)
+            if (_cpuCounter == null)
             {
-                _cpuCounter.NextValue(); // Warm-up
-                await Task.Delay(1000, cancellationToken);
-                return Math.Round(_cpuCounter.NextValue(), 2);
+                _cpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
             }
-
-            return await GetCrossPlatformCpuUsageAsync(cancellationToken);
+            
+            _cpuCounter.NextValue(); // Warm-up
+            await Task.Delay(1000, cancellationToken);
+            return Math.Round(_cpuCounter.NextValue(), 2);
         }
         
         // Gets disk space usage info for the OS drive.
@@ -94,15 +91,15 @@ namespace GeeksCoreLibrary.Modules.HealthChecks.Services
                 return new DiskSpaceInfo { TotalSizeGB = 0, FreeSpaceGB = 0, UsedSpaceGB = 0 };
             }
 
-            double totalSizeGB = drive.TotalSize / (1024.0 * 1024.0 * 1024.0);
-            double freeSpaceGB = drive.TotalFreeSpace / (1024.0 * 1024.0 * 1024.0);
-            double usedSpaceGB = totalSizeGB - freeSpaceGB;
+            double totalSizeGb = drive.TotalSize / (1024.0 * 1024.0 * 1024.0);
+            double freeSpaceGb = drive.TotalFreeSpace / (1024.0 * 1024.0 * 1024.0);
+            double usedSpaceGb = totalSizeGb - freeSpaceGb;
 
             return new DiskSpaceInfo
             {
-                TotalSizeGB = totalSizeGB,
-                FreeSpaceGB = freeSpaceGB,
-                UsedSpaceGB = usedSpaceGB
+                TotalSizeGB = totalSizeGb,
+                FreeSpaceGB = freeSpaceGb,
+                UsedSpaceGB = usedSpaceGb
             };
         }
     
@@ -111,16 +108,19 @@ namespace GeeksCoreLibrary.Modules.HealthChecks.Services
         {
             using var process = Process.GetCurrentProcess();
 
-            double currentUsageGB = process.WorkingSet64 / (1024.0 * 1024.0 * 1024.0);
-            double maxMemoryGB = GC.GetGCMemoryInfo().TotalAvailableMemoryBytes / (1024.0 * 1024.0 * 1024.0);
+            double currentUsageGb = process.WorkingSet64 / (1024.0 * 1024.0 * 1024.0);
+            double maxMemoryGb = GC.GetGCMemoryInfo().TotalAvailableMemoryBytes / (1024.0 * 1024.0 * 1024.0);
 
-            return (currentUsageGB, maxMemoryGB);
+            return (currentUsageGb, maxMemoryGb);
         }
 
         // Disposes the CPU counter to release system resources.
         public void Dispose()
         {
-            _cpuCounter?.Dispose();
+            if (OperatingSystem.IsWindows())
+            {
+                _cpuCounter?.Dispose();
+            }
         }
     }
 }
