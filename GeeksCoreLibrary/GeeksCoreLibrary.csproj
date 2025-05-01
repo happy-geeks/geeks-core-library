@@ -5,11 +5,11 @@
         <OutputType>Library</OutputType>
         <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
         <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
-        <Version>5.3.2504.4</Version>
+        <Version>5.3.2505.1</Version>
         <Company>Happy Horizon B.V.</Company>
         <Description>Our base/core library that we use for most of our other projects.</Description>
-        <AssemblyVersion>5.3.2504.4</AssemblyVersion>
-        <FileVersion>5.3.2504.4</FileVersion>
+        <AssemblyVersion>5.3.2505.1</AssemblyVersion>
+        <FileVersion>5.3.2505.1</FileVersion>
         <PackageDescription>Geeks Core Library</PackageDescription>
         <RepositoryUrl>https://github.com/happy-geeks/geeks-core-library.git</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
