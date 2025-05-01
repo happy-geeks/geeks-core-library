@@ -1122,7 +1122,7 @@ public class WiserTableDefinitions
                 new ColumnSettingsModel("branch_queue_id", MySqlDbType.Int32, notNull: true, defaultValue: "0", comment: "The ID of the merge action from the wiser_branches_queue table in the production database."),
                 new ColumnSettingsModel("branch_queue_name", MySqlDbType.VarChar, 255, notNull: true, defaultValue: "", comment: "The name of the merge action from the wiser_branches_queue table in the production database."),
                 new ColumnSettingsModel("branch_id", MySqlDbType.Int32, notNull: true, defaultValue: "0", comment: "The tenant ID of the branch, from the easy_customers table of the main Wiser database."),
-                new ColumnSettingsModel("date_time", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP", comment: "The date and time that the current action was executed."),
+                new ColumnSettingsModel("date_time", MySqlDbType.DateTime, notNull: true, comment: "The date and time that the current action was executed. This is always in the UTC time zone."),
 
                 new ColumnSettingsModel("history_id", MySqlDbType.UInt64, notNull: true, defaultValue: "0", comment: "The ID from the wiser_history table in the branch database that was being merged."),
                 new ColumnSettingsModel("table_name", MySqlDbType.VarChar, 64, notNull: true, defaultValue: "", comment: "The table name as it was stored in the wiser_history table of the branch database."),
