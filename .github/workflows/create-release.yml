@@ -25,7 +25,7 @@ jobs:
             echo "Error: NEW_VERSION '$NEW_VERSION' is not in valid format x.x.x.x"
             exit 1
           else
-            echo "Validation successful! Proceeding...
+            echo "Validation successful! Proceeding..."
           fi
 
       - name: Get auto-release app token
