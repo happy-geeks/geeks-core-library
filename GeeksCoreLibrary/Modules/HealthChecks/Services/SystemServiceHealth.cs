@@ -43,7 +43,6 @@ namespace GeeksCoreLibrary.Modules.HealthChecks.Services
             string diskSpaceFormatted = $"{Math.Round(diskSpace.UsedSpaceGB, 2)} / {Math.Round(diskSpace.TotalSizeGB, 2)} GB";
 
             string healthCheckMessage = $"CPU Usage: {cpuUsage}%, Memory: {memoryUsageFormatted}, Disk Space: {diskSpaceFormatted}";
-
             bool isHealthy = cpuUsage < _healthCheckSettings.CpuUsageThreshold &&
                              memoryUsagePercentage < _healthCheckSettings.MemoryUsageThreshold;
 
@@ -106,7 +105,6 @@ namespace GeeksCoreLibrary.Modules.HealthChecks.Services
                 UsedSpaceGB = usedSpaceGB
             };
         }
-
     
         // Gets current and maximum memory usage in GB.
         private (double CurrentMemoryUsage, double MaxMemory) GetMemoryUsage()
@@ -119,7 +117,6 @@ namespace GeeksCoreLibrary.Modules.HealthChecks.Services
             return (currentUsageGB, maxMemoryGB);
         }
 
-     
         // Disposes the CPU counter to release system resources.
         public void Dispose()
         {
