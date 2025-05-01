@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -18,84 +19,108 @@ namespace GeeksCoreLibrary.Modules.HealthChecks.Services
         public SystemServiceHealth(IOptions<HealthCheckSettings> healthCheckSettings)
         {
             _healthCheckSettings = healthCheckSettings.Value;
-            // Uses CPU counter only if the platform is Windows.
+
+            // Initialize PerformanceCounter only on Windows
             if (_isWindows)
             {
                 _cpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
             }
         }
-
-        public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context,
+       
+        // Checks overall system health by evaluating CPU usage, memory usage, and disk space.
+        public async Task<HealthCheckResult> CheckHealthAsync(
+            HealthCheckContext context,
             CancellationToken cancellationToken = default)
         {
-            double cpuUsage = await MeasureCpuUsageWithDelayAsync();
+            double cpuUsage = await GetCpuUsageAsync(cancellationToken);
             var (currentMemoryUsage, maxMemory) = GetMemoryUsage();
             var diskSpace = GetDiskSpace();
 
-            string memoryUsageFormatted = $"{currentMemoryUsage} / {maxMemory} GB";
-            string diskSpaceFormatted = $"{Math.Round(diskSpace.UsedSpaceGB, 2)} / {Math.Round(diskSpace.TotalSizeGB, 2)} GB";
-
-            // Calculate memory usage percentage
             double memoryUsagePercentage = (currentMemoryUsage / maxMemory) * 100;
-
             cpuUsage = Math.Round(cpuUsage, 2);
 
-            // Now comparing cpuUsage with the threshold and memory usage percentage with the memory threshold
-            if (cpuUsage < _healthCheckSettings.CpuUsageThreshold && memoryUsagePercentage < _healthCheckSettings.MemoryUsageThreshold)
-            {
-                return HealthCheckResult.Healthy(
-                    $"CPU Usage: {cpuUsage}%, Memory: {memoryUsageFormatted}, Disk Space: {diskSpaceFormatted}");
-            }
-            else
-            {
-                return HealthCheckResult.Unhealthy(
-                    $"CPU Usage: {cpuUsage}%, Memory: {memoryUsageFormatted}, Disk Space: {diskSpaceFormatted}");
-            }
+            string memoryUsageFormatted = $"{Math.Round(currentMemoryUsage, 2)} / {Math.Round(maxMemory, 2)} GB";
+            string diskSpaceFormatted = $"{Math.Round(diskSpace.UsedSpaceGB, 2)} / {Math.Round(diskSpace.TotalSizeGB, 2)} GB";
+
+            string healthCheckMessage = $"CPU Usage: {cpuUsage}%, Memory: {memoryUsageFormatted}, Disk Space: {diskSpaceFormatted}";
+
+            bool isHealthy = cpuUsage < _healthCheckSettings.CpuUsageThreshold &&
+                             memoryUsagePercentage < _healthCheckSettings.MemoryUsageThreshold;
+
+            return isHealthy
+                ? HealthCheckResult.Healthy(healthCheckMessage)
+                : HealthCheckResult.Unhealthy(healthCheckMessage);
         }
 
-        /// <summary>
-        /// Measures CPU usage over a short period (1 second).
-        /// This method requires an initial NextValue call, followed by a delay, to get an accurate reading.
-        /// The delay is necessary because PerformanceCounter CPU usage readings rely on measuring usage over time.
-        /// </summary>
-        public async Task<double> MeasureCpuUsageWithDelayAsync()
+        // Cross-platform CPU usage approximation (used on non-Windows systems).
+        private async Task<double> GetCrossPlatformCpuUsageAsync(CancellationToken cancellationToken)
         {
-            if (!_isWindows || _cpuCounter == null)
-            {
-                return 0;
-            }
-            _cpuCounter.NextValue();
-            await Task.Delay(1000); // Required delay for accurate CPU measurement
-            return _cpuCounter.NextValue();
-        }
-        /// Gets the disk space of the OS drive.
-        public DiskSpaceInfo GetDiskSpace()
-        {
-            var drives = DriveInfo.GetDrives();
-            foreach (var drive in drives)
-            {
-                if (drive.IsReady && drive.Name == Path.GetPathRoot(Environment.SystemDirectory)) // Ensure it's the OS drive
-                {
-                    double totalSizeGB = Math.Round(drive.TotalSize / (1024.0 * 1024.0 * 1024.0), 2);
-                    double freeSpaceGB = Math.Round(drive.TotalFreeSpace / (1024.0 * 1024.0 * 1024.0), 2);
-                    double usedSpaceGB = totalSizeGB - freeSpaceGB;
-                    return new DiskSpaceInfo { TotalSizeGB = totalSizeGB, FreeSpaceGB = freeSpaceGB, UsedSpaceGB = usedSpaceGB };
-                }
-            }
-            return new DiskSpaceInfo { TotalSizeGB = 0, FreeSpaceGB = 0, UsedSpaceGB = 0 };
-        }
-        /// Gets the current memory usage and the maximum available memory.
-        public (double CurrentMemoryUsage, double MaxMemory) GetMemoryUsage()
-        {
-            using (var process = Process.GetCurrentProcess())
-            {
-                double currentUsageGB = Math.Round(process.WorkingSet64 / (1024.0 * 1024.0 * 1024.0), 2); // Direct calculation of GB
-                double maxMemoryGB = Math.Round(GC.GetGCMemoryInfo().TotalAvailableMemoryBytes / (1024.0 * 1024.0 * 1024.0), 2);
+            var startTime = DateTime.UtcNow;
+            var startCpuUsage = Process.GetCurrentProcess().TotalProcessorTime;
+            int processorCount = Environment.ProcessorCount;
 
-                return (currentUsageGB, maxMemoryGB);
-            }
+            await Task.Delay(1000, cancellationToken);
+
+            var endTime = DateTime.UtcNow;
+            var endCpuUsage = Process.GetCurrentProcess().TotalProcessorTime;
+
+            double cpuUsedMs = (endCpuUsage - startCpuUsage).TotalMilliseconds;
+            double totalMsPassed = (endTime - startTime).TotalMilliseconds;
+
+            double cpuUsageTotal = (cpuUsedMs / (totalMsPassed * processorCount)) * 100;
+            return Math.Round(cpuUsageTotal, 2);
         }
-        // Dispose of the CPU counter to release resources.
+        
+        // Gets CPU usage percentage for the current system using platform-specific methods.
+        private async Task<double> GetCpuUsageAsync(CancellationToken cancellationToken)
+        {
+            if (_isWindows && _cpuCounter != null)
+            {
+                _cpuCounter.NextValue(); // Warm-up
+                await Task.Delay(1000, cancellationToken);
+                return Math.Round(_cpuCounter.NextValue(), 2);
+            }
+
+            return await GetCrossPlatformCpuUsageAsync(cancellationToken);
+        }
+        
+        // Gets disk space usage info for the OS drive.
+        private DiskSpaceInfo GetDiskSpace()
+        {
+            var drive = DriveInfo.GetDrives()
+                .FirstOrDefault(d => d.IsReady && d.Name == Path.GetPathRoot(Environment.SystemDirectory));
+
+            if (drive == null)
+            {
+                return new DiskSpaceInfo { TotalSizeGB = 0, FreeSpaceGB = 0, UsedSpaceGB = 0 };
+            }
+
+            double totalSizeGB = drive.TotalSize / (1024.0 * 1024.0 * 1024.0);
+            double freeSpaceGB = drive.TotalFreeSpace / (1024.0 * 1024.0 * 1024.0);
+            double usedSpaceGB = totalSizeGB - freeSpaceGB;
+
+            return new DiskSpaceInfo
+            {
+                TotalSizeGB = totalSizeGB,
+                FreeSpaceGB = freeSpaceGB,
+                UsedSpaceGB = usedSpaceGB
+            };
+        }
+
+    
+        // Gets current and maximum memory usage in GB.
+        private (double CurrentMemoryUsage, double MaxMemory) GetMemoryUsage()
+        {
+            using var process = Process.GetCurrentProcess();
+
+            double currentUsageGB = process.WorkingSet64 / (1024.0 * 1024.0 * 1024.0);
+            double maxMemoryGB = GC.GetGCMemoryInfo().TotalAvailableMemoryBytes / (1024.0 * 1024.0 * 1024.0);
+
+            return (currentUsageGB, maxMemoryGB);
+        }
+
+     
+        // Disposes the CPU counter to release system resources.
         public void Dispose()
         {
             _cpuCounter?.Dispose();
