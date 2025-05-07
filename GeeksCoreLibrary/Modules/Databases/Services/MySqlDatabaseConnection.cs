@@ -138,6 +138,84 @@ public class MySqlDatabaseConnection : IDatabaseConnection, IScopedService
     }
 
     /// <inheritdoc />
+    public async Task<T> ExecuteScalarAsync<T>(string query, bool skipCache = false, bool cleanUp = true, bool useWritingConnectionIfAvailable = false)
+    {
+        var result = await ExecuteScalarAsync(query, skipCache, cleanUp, useWritingConnectionIfAvailable);
+        return result == null ? default : (T)Convert.ChangeType(result, typeof(T));
+    }
+
+    /// <inheritdoc />
+    public async Task<object> ExecuteScalarAsync(string query, bool skipCache = false, bool cleanUp = true, bool useWritingConnectionIfAvailable = false)
+    {
+        return await ExecuteScalarAsync(query, 0, cleanUp, useWritingConnectionIfAvailable);
+    }
+
+    private async Task<object> ExecuteScalarAsync(string query, int retryCount, bool cleanUp = true, bool useWritingConnectionIfAvailable = false)
+    {
+        MySqlCommand commandToUse = null;
+        try
+        {
+            if ((useWritingConnectionIfAvailable || QueryHelpers.IsWriteQuery(query)) && !String.IsNullOrWhiteSpace(connectionStringForWriting?.ConnectionString))
+            {
+                await EnsureOpenConnectionForWritingAsync();
+                commandToUse = new MySqlCommand(query, ConnectionForWriting);
+            }
+            else
+            {
+                await EnsureOpenConnectionForReadingAsync();
+                commandToUse = new MySqlCommand(query, ConnectionForReading);
+            }
+
+            await SetupMySqlCommandAsync(commandToUse);
+
+            commandToUse.CommandText = query;
+
+            logger.LogDebug("Query: {query}", query);
+
+            return await commandToUse.ExecuteScalarAsync();
+        }
+        catch (InvalidOperationException invalidOperationException)
+        {
+            if (retryCount >= gclSettings.MaximumRetryCountForQueries || !MySqlHelpers.IsErrorToRetry(invalidOperationException))
+            {
+                logger.LogError(invalidOperationException, "Error trying to run this query: {query}", query);
+                throw new GclQueryException("Error trying to run query", query, invalidOperationException);
+            }
+
+            await Task.Delay(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
+            return await ExecuteScalarAsync(query, retryCount + 1, cleanUp, useWritingConnectionIfAvailable);
+        }
+        catch (MySqlException mySqlException)
+        {
+            // Never retry single queries if we're in a transaction, because transactions will get rolled back when a deadlock occurs,
+            // so retrying a single query in a transaction is not very useful on most/all cases.
+            // Also, if we've reached the maximum number of retries, don't retry anymore.
+            if (HasActiveTransaction() || retryCount >= gclSettings.MaximumRetryCountForQueries || !MySqlHelpers.IsErrorToRetry(mySqlException))
+            {
+                logger.LogError(mySqlException, "Error trying to run this query: {query}", query);
+                throw new GclQueryException("Error trying to run query", query, mySqlException);
+            }
+
+            // If we're not in a transaction, retry the query if it's a deadlock.
+            await Task.Delay(gclSettings.TimeToWaitBeforeRetryingQueryInMilliseconds);
+            return await ExecuteScalarAsync(query, retryCount + 1, cleanUp, useWritingConnectionIfAvailable);
+        }
+        finally
+        {
+            if (commandToUse != null)
+            {
+                await commandToUse.DisposeAsync();
+            }
+
+            // If we're not using transactions, dispose everything here. Otherwise we will dispose it when the transaction gets committed or roll backed.
+            if (!HasActiveTransaction() && cleanUp)
+            {
+                await CleanUpAsync();
+            }
+        }
+    }
+
+    /// <inheritdoc />
     public Task<DataTable> GetAsync(string query, bool skipCache = false, bool cleanUp = true, bool useWritingConnectionIfAvailable = false)
     {
         return GetAsync(query, 0, cleanUp, useWritingConnectionIfAvailable);
@@ -642,13 +720,19 @@ public class MySqlDatabaseConnection : IDatabaseConnection, IScopedService
     /// <inheritdoc />
     public async Task ChangeConnectionStringsAsync(string newConnectionStringForReading, string newConnectionStringForWriting = null, SshSettings newSshSettingsForReading = null, SshSettings newSshSettingsForWriting = null)
     {
-        connectionStringForReading ??= new MySqlConnectionStringBuilder();
-        connectionStringForWriting ??= new MySqlConnectionStringBuilder();
+        connectionStringForReading = String.IsNullOrWhiteSpace(newConnectionStringForReading) ? null : new MySqlConnectionStringBuilder(newConnectionStringForReading);
+        connectionStringForWriting = String.IsNullOrWhiteSpace(newConnectionStringForWriting) ? null : new MySqlConnectionStringBuilder(newConnectionStringForWriting);
 
-        connectionStringForReading.ConnectionString = newConnectionStringForReading;
-        connectionStringForWriting.ConnectionString = String.IsNullOrWhiteSpace(newConnectionStringForWriting) ? newConnectionStringForReading : newConnectionStringForWriting;
-        connectionStringForReading.IgnoreCommandTransaction = true;
-        connectionStringForWriting.IgnoreCommandTransaction = true;
+        if (connectionStringForReading != null)
+        {
+            connectionStringForReading.IgnoreCommandTransaction = true;
+        }
+
+        if (connectionStringForWriting != null)
+        {
+            connectionStringForWriting.IgnoreCommandTransaction = true;
+        }
+
         sshSettingsForReading = newSshSettingsForReading;
         sshSettingsForWriting = newSshSettingsForWriting;
 
