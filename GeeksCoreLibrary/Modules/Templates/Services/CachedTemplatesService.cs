@@ -398,16 +398,16 @@ public class CachedTemplatesService(
                     var fileName = $"{cacheName}.html";
                     var fullCachePath = Path.Combine(cacheFolder, Constants.ComponentsCacheRootDirectoryName, dynamicContent.Name.StripIllegalPathCharacters(), $"{dynamicContent.Title.StripIllegalPathCharacters()} ({dynamicContent.Id})", fileName);
 
-                    content = fileCacheService.GetTextAsync(fullCachePath, cacheMinutes);
+                    content = await fileCacheService.GetTextAsync(fullCachePath, cacheMinutes);
 
                     if (content is null)
                     {
-                        var generatedContent = await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
-                        
-                        if (generatedContent is string htmlContent)
+                        content = await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
+
+                        if (content is string contentString)
                         {
-                            // Save the generated content to the disk.
-                            await fileCacheService.WriteFileIfNotExistsOrExpiredAsync(fullCachePath, htmlContent, cacheMinutes);
+                            addedToCache = true;
+                            await fileCacheService.WriteFileIfNotExistsOrExpiredAsync(fullCachePath, contentString, cacheMinutes);
                         }
                         else
                         {
@@ -424,14 +424,14 @@ public class CachedTemplatesService(
         }
 
         // Cache page SEO data,
-        if (httpContextAccessor?.HttpContext == null)
+        if (httpContextAccessor?.HttpContext == null && !addedToCache)
         {
             return content;
         }
 
         cacheName.Append($"_{Constants.PageMetaDataFromComponentKey}");
 
-        if (addedToCache && httpContextAccessor.HttpContext.Items[Constants.PageMetaDataFromComponentKey] is PageMetaDataModel componentSeoData)
+        if (httpContextAccessor.HttpContext.Items[Constants.PageMetaDataFromComponentKey] is PageMetaDataModel componentSeoData)
         {
             cache.GetOrAdd(cacheName.ToString(),
                 cacheEntry =>
