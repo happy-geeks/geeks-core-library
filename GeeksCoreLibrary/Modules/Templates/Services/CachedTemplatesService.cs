@@ -358,7 +358,7 @@ public class CachedTemplatesService(
         cacheName.Append($"_{branchesService.GetDatabaseNameFromCookie()}");
         cacheName.Append($"_{callMethod}");
 
-        string html = null;
+        object content = null;
         var addedToCache = false;
         
         // Check how long this template should be cached:
@@ -376,7 +376,7 @@ public class CachedTemplatesService(
         {
             case TemplateCachingLocations.InMemory:
             {
-                html = (string) await cache.GetOrAddAsync(cacheName.ToString(),
+                content = await cache.GetOrAddAsync(cacheName.ToString(),
                     async cacheEntry =>
                     {
                         addedToCache = true;
@@ -398,11 +398,23 @@ public class CachedTemplatesService(
                     var fileName = $"{cacheName}.html";
                     var fullCachePath = Path.Combine(cacheFolder, Constants.ComponentsCacheRootDirectoryName, dynamicContent.Name.StripIllegalPathCharacters(), $"{dynamicContent.Title.StripIllegalPathCharacters()} ({dynamicContent.Id})", fileName);
 
-                    html = await fileCacheService.GetOrAddAsync(fullCachePath, async () =>
+                    content = fileCacheService.GetTextAsync(fullCachePath, cacheMinutes);
+
+                    if (content is null)
                     {
-                        addedToCache = true;
-                        return (string)await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
-                    }, cacheMinutes);
+                        var generatedContent = await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
+                        
+                        if (generatedContent is string htmlContent)
+                        {
+                            // Save the generated content to the disk.
+                            await fileCacheService.WriteFileIfNotExistsOrExpiredAsync(fullCachePath, htmlContent, cacheMinutes);
+                        }
+                        else
+                        {
+                            // If the content is not a string, we can't save it to disk.
+                            logger.LogWarning($"The generated content for component '{dynamicContent.Id}' is not a string. It cannot be saved to disk.");
+                        }
+                    }
                 }
 
                 break;
@@ -414,7 +426,7 @@ public class CachedTemplatesService(
         // Cache page SEO data,
         if (httpContextAccessor?.HttpContext == null)
         {
-            return html;
+            return content;
         }
 
         cacheName.Append($"_{Constants.PageMetaDataFromComponentKey}");
@@ -437,7 +449,7 @@ public class CachedTemplatesService(
             }
         }
 
-        return html;
+        return content;
     }
 
     /// <inheritdoc />
