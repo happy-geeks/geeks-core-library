@@ -288,19 +288,19 @@ public class CachedTemplatesService(
         }
 
         var originalUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext);
-        var cacheName = new StringBuilder($"dynamicContent_{languagesService.CurrentLanguageCode ?? ""}_{dynamicContent.Id}_");
+        var cacheNameBuilder = new StringBuilder($"dynamicContent_{languagesService.CurrentLanguageCode ?? ""}_{dynamicContent.Id}_");
         switch (settings.CachingMode)
         {
             case TemplateCachingModes.ServerSideCaching:
                 break;
             case TemplateCachingModes.ServerSideCachingPerUrl:
-                cacheName.Append(Uri.EscapeDataString(originalUri.AbsolutePath.ToSha512Simple()));
+                cacheNameBuilder.Append(Uri.EscapeDataString(originalUri.AbsolutePath.ToSha512Simple()));
                 break;
             case TemplateCachingModes.ServerSideCachingPerUrlAndQueryString:
-                cacheName.Append(Uri.EscapeDataString(originalUri.PathAndQuery.ToSha512Simple()));
+                cacheNameBuilder.Append(Uri.EscapeDataString(originalUri.PathAndQuery.ToSha512Simple()));
                 break;
             case TemplateCachingModes.ServerSideCachingPerHostNameAndQueryString:
-                cacheName.Append(Uri.EscapeDataString(originalUri.ToString().ToSha512Simple()));
+                cacheNameBuilder.Append(Uri.EscapeDataString(originalUri.ToString().ToSha512Simple()));
                 break;
             case TemplateCachingModes.ServerSideCachingBasedOnUrlRegex:
                 if (String.IsNullOrWhiteSpace(settings.CacheRegex))
@@ -330,7 +330,7 @@ public class CachedTemplatesService(
                         var value = Path.GetInvalidFileNameChars().Aggregate(group.Value, (current, character) => current.Replace(character, '-'));
 
                         // Add the group value to the file name.
-                        cacheName.Append($"{Uri.EscapeDataString(value)}_");
+                        cacheNameBuilder.Append($"{Uri.EscapeDataString(value)}_");
                     }
                 }
                 catch (ArgumentException argumentException)
@@ -351,12 +351,12 @@ public class CachedTemplatesService(
         {
             foreach (var key in extraData.Keys)
             {
-                cacheName.Append($"_{key}={extraData[key]}");
+                cacheNameBuilder.Append($"_{key}={extraData[key]}");
             }
         }
 
-        cacheName.Append($"_{branchesService.GetDatabaseNameFromCookie()}");
-        cacheName.Append($"_{callMethod}");
+        cacheNameBuilder.Append($"_{branchesService.GetDatabaseNameFromCookie()}");
+        cacheNameBuilder.Append($"_{callMethod}");
 
         string html = null;
         var addedToCache = false;
@@ -372,11 +372,13 @@ public class CachedTemplatesService(
             cacheMinutes = settings.CacheMinutes == 0 ? gclSettings.DefaultTemplateCacheDuration : TimeSpan.FromMinutes(settings.CacheMinutes);
         }
         
+        var cacheName = cacheNameBuilder.ToString();
+        
         switch (settings.CachingLocation)
         {
             case TemplateCachingLocations.InMemory:
             {
-                html = (string) await cache.GetOrAddAsync(cacheName.ToString(),
+                html = (string) await cache.GetOrAddAsync(cacheName,
                     async cacheEntry =>
                     {
                         addedToCache = true;
@@ -395,7 +397,7 @@ public class CachedTemplatesService(
                 }
                 else
                 {
-                    var fileName = $"{cacheName}.html";
+                    var fileName = $"{FileSystemHelpers.HashFileName(cacheName)}.html";
                     var fullCachePath = Path.Combine(cacheFolder, Constants.ComponentsCacheRootDirectoryName, dynamicContent.Name.StripIllegalPathCharacters(), $"{dynamicContent.Title.StripIllegalPathCharacters()} ({dynamicContent.Id})", fileName);
 
                     html = await fileCacheService.GetOrAddAsync(fullCachePath, async () =>
@@ -417,11 +419,11 @@ public class CachedTemplatesService(
             return html;
         }
 
-        cacheName.Append($"_{Constants.PageMetaDataFromComponentKey}");
+        cacheNameBuilder.Append($"_{Constants.PageMetaDataFromComponentKey}");
 
         if (addedToCache && httpContextAccessor.HttpContext.Items[Constants.PageMetaDataFromComponentKey] is PageMetaDataModel componentSeoData)
         {
-            cache.GetOrAdd(cacheName.ToString(),
+            cache.GetOrAdd(cacheNameBuilder.ToString(),
                 cacheEntry =>
                 {
                     cacheEntry.AbsoluteExpirationRelativeToNow = settings.CacheMinutes == 0 ? gclSettings.DefaultSeoModuleCacheDuration : TimeSpan.FromMinutes(settings.CacheMinutes);
@@ -430,7 +432,7 @@ public class CachedTemplatesService(
         }
         else if (!addedToCache && httpContextAccessor.HttpContext.Items[Constants.PageMetaDataFromComponentKey] == null)
         {
-            componentSeoData = cache.Get<PageMetaDataModel>(cacheName.ToString());
+            componentSeoData = cache.Get<PageMetaDataModel>(cacheNameBuilder.ToString());
             if (componentSeoData != null)
             {
                 httpContextAccessor.HttpContext.Items[Constants.PageMetaDataFromComponentKey] = componentSeoData;

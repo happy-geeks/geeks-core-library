@@ -98,10 +98,11 @@ public class CachedPagesService(
                     }
                     else
                     {
+                        var hashedCacheFileName = FileSystemHelpers.HashFileName(cacheFileName);
                         // Build the cache directory, based on template type and name.
                         fullCachePath = Path.Combine(cacheFolder, Constants.TemplateCacheRootDirectoryName,
                             cacheSettings.Type.ToString(),
-                            $"{cacheSettings.Name.StripIllegalPathCharacters()} ({cacheSettings.Id})", cacheFileName);
+                            $"{cacheSettings.Name.StripIllegalPathCharacters()} ({cacheSettings.Id})", hashedCacheFileName);
                         logger.LogDebug(
                             $"Content cache enabled for template '{cacheSettings.Id}', cache file location: {fullCachePath}.");
 
