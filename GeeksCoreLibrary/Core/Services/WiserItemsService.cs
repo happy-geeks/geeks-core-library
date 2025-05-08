@@ -305,10 +305,10 @@ public class WiserItemsService(
 
                     databaseConnection.AddParameter("newId", wiserItem.Id);
                     databaseConnection.AddParameter("newOrderNumber", newOrderNumber);
-                    await databaseConnection.ExecuteAsync($"""
-                                                           INSERT INTO {linkTablePrefix}{WiserTableNames.WiserItemLink} (item_id, destination_item_id, ordering, type)
-                                                           VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber)
-                                                           """);
+                    wiserItem.NewLinkId = await databaseConnection.InsertRecordAsync($"""
+                                                                                INSERT INTO {linkTablePrefix}{WiserTableNames.WiserItemLink} (item_id, destination_item_id, ordering, type)
+                                                                                VALUES (?newId, ?parentId, ?newOrderNumber, ?linkTypeNumber);
+                                                                                """);
                 }
 
                 if (createNewTransaction && !alreadyHadTransaction)

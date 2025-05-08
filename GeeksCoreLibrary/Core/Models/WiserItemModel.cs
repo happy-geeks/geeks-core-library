@@ -388,6 +388,12 @@ public class WiserItemModel
     }
 
     /// <summary>
+    /// Gets or sets the link ID when the item has been created. This is only used internally during the creation phase and is therefore ignored in the JSON.
+    /// </summary>
+    [JsonIgnore]
+    public long NewLinkId { get; set; }
+
+    /// <summary>
     /// Gets or sets the item details.
     /// </summary>
     public List<WiserItemDetailModel> Details { get; set; } = [];
