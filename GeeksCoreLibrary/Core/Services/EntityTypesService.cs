@@ -42,7 +42,6 @@ public class EntityTypesService : IEntityTypesService, IScopedService
         {
             var tablePrefix = dataRow.Field<string>("dedicated_table_prefix");
             if (!tablePrefix!.EndsWith('_'))
-
             {
                 tablePrefix += "_";
             }
