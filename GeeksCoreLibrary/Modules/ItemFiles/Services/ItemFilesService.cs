@@ -247,13 +247,13 @@ public class ItemFilesService(
     /// <inheritdoc />
     public async Task<FileResultModel> GetWiserItemFileAsync(ulong itemId, string propertyName, string fileName, int fileNumber, string encryptedItemId = null, string entityType = null)
     {
-        return await GetParsedFileAsync(FileLookupTypes.ItemId, String.IsNullOrWhiteSpace(encryptedItemId) ? itemId : encryptedItemId, fileName: fileName, entityType: entityType);
+        return await GetParsedFileAsync(FileLookupTypes.ItemId, String.IsNullOrWhiteSpace(encryptedItemId) ? itemId : encryptedItemId, fileName: fileName, propertyName: propertyName, entityType: entityType);
     }
 
     /// <inheritdoc />
     public async Task<FileResultModel> GetWiserItemLinkFileAsync(ulong itemLinkId, string propertyName, string fileName, int fileNumber, string encryptedItemLinkId = null, int linkType = 0)
     {
-        return await GetParsedFileAsync(FileLookupTypes.ItemLinkId, String.IsNullOrWhiteSpace(encryptedItemLinkId) ? itemLinkId : encryptedItemLinkId, fileName: fileName, linkType: linkType);
+        return await GetParsedFileAsync(FileLookupTypes.ItemLinkId, String.IsNullOrWhiteSpace(encryptedItemLinkId) ? itemLinkId : encryptedItemLinkId, fileName: fileName, propertyName: propertyName, linkType: linkType);
     }
 
     /// <inheritdoc />
