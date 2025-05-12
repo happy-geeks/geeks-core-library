@@ -315,7 +315,7 @@ public static class FileSystemHelpers
                 "svg" => "image/svg+xml",
                 "tif" => "image/tiff",
                 "avifs" => "image/avif",
-            "ico" => "image/x-icon",
+                "ico" => "image/x-icon",
                 _ => $"image/{extension}"
             };
         }
