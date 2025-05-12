@@ -116,12 +116,8 @@ public class SystemServiceHealth(IOptions<HealthCheckSettings> healthCheckSettin
     /// <returns>Information about the current memory usage.</returns>
     private static (double CurrentMemoryUsage, double TotalAvailableMemory) GetMemoryUsage()
     {
-        using var process = Process.GetCurrentProcess();
-
-        var currentUsage = process.WorkingSet64;
-        var totalAvailableMemory = GC.GetGCMemoryInfo().TotalAvailableMemoryBytes;
-
-        return (currentUsage, totalAvailableMemory);
+        var memoryInformation = GC.GetGCMemoryInfo();
+        return (memoryInformation.MemoryLoadBytes, memoryInformation.TotalAvailableMemoryBytes);
     }
 
     /// <inheritdoc />

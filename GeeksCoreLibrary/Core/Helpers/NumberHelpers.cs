@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 
 namespace GeeksCoreLibrary.Core.Helpers;
 
@@ -25,6 +26,6 @@ public class NumberHelpers
         logarithm = logarithm >= fileSizeSuffixes.Count ? fileSizeSuffixes.Count - 1 : logarithm;
         var normalizedSize = absoluteSize / Math.Pow(1000, logarithm);
 
-        return String.Format(formatTemplate, size < 0 ? "-" : null, normalizedSize, fileSizeSuffixes[logarithm]);
+        return String.Format(CultureInfo.InvariantCulture, formatTemplate, size < 0 ? "-" : null, normalizedSize, fileSizeSuffixes[logarithm]);
     }
 }
