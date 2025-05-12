@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Amazon;
 using Amazon.Runtime;
 using Amazon.Runtime.CredentialManagement;
+using Amazon.Runtime.Credentials;
 using Amazon.SecretsManager;
 using Amazon.SecretsManager.Model;
 using GeeksCoreLibrary.Modules.Amazon.Models;
@@ -42,7 +43,7 @@ public static class AwsSecretsManagerHelpers
             if (!chain.TryGetAWSCredentials(awsSecretsManagerSettings?.ProfileName ?? "default", out credentials))
             {
                 // Fallback to default credentials from ~/.aws/credentials or environment variables.
-                credentials = FallbackCredentialsFactory.GetCredentials();
+                credentials = await DefaultAWSCredentialsIdentityResolver.GetCredentialsAsync();
             }
         }
 
