@@ -114,7 +114,7 @@ public class LinkTypesService : ILinkTypesService, IScopedService
     /// <inheritdoc />
     public string GetTablePrefixForLink(LinkSettingsModel linkTypeSettings)
     {
-        return linkTypeSettings == null || !linkTypeSettings.UseDedicatedTable || linkTypeSettings.UseItemParentId ? "" : $"{linkTypeSettings.Type}_";
+        return linkTypeSettings is not {UseDedicatedTable: true} || linkTypeSettings.UseItemParentId ? "" : $"{linkTypeSettings.Type}_";
     }
 
     /// <summary>
