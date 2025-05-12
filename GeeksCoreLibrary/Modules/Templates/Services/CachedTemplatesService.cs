@@ -424,14 +424,14 @@ public class CachedTemplatesService(
         }
 
         // Cache page SEO data,
-        if (httpContextAccessor?.HttpContext == null && !addedToCache)
+        if (httpContextAccessor?.HttpContext == null)
         {
             return content;
         }
 
         cacheName.Append($"_{Constants.PageMetaDataFromComponentKey}");
 
-        if (httpContextAccessor.HttpContext.Items[Constants.PageMetaDataFromComponentKey] is PageMetaDataModel componentSeoData)
+        if (addedToCache && httpContextAccessor.HttpContext.Items[Constants.PageMetaDataFromComponentKey] is PageMetaDataModel componentSeoData)
         {
             cache.GetOrAdd(cacheName.ToString(),
                 cacheEntry =>
