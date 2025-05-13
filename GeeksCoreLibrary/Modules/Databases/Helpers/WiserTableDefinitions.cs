@@ -155,8 +155,8 @@ public class WiserTableDefinitions
                 new ColumnSettingsModel("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
                 new ColumnSettingsModel("selector", MySqlDbType.VarChar, 32, notNull: true),
                 new ColumnSettingsModel("hashed_validator", MySqlDbType.VarChar, 150, notNull: true),
-                new ColumnSettingsModel("user_id", MySqlDbType.Int64, notNull: true),
-                new ColumnSettingsModel("main_user_id", MySqlDbType.Int64, notNull: true),
+                new ColumnSettingsModel("user_id", MySqlDbType.UInt64, notNull: true),
+                new ColumnSettingsModel("main_user_id", MySqlDbType.UInt64, notNull: true),
                 new ColumnSettingsModel("entity_type", MySqlDbType.VarChar, 255, notNull: true),
                 new ColumnSettingsModel("main_user_entity_type", MySqlDbType.VarChar, 255, notNull: true),
                 new ColumnSettingsModel("role", MySqlDbType.VarChar, 255),
@@ -434,10 +434,10 @@ public class WiserTableDefinitions
                 new ColumnSettingsModel("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
                 new ColumnSettingsModel("commit_id", MySqlDbType.Int32, notNull: true),
                 new ColumnSettingsModel("requested_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
-                new ColumnSettingsModel("requested_by", MySqlDbType.Int64, notNull: true, comment: "Negative numbers are IDs of admins"),
+                new ColumnSettingsModel("requested_by", MySqlDbType.UInt64, notNull: true, comment: "Negative numbers are IDs of admins"),
                 new ColumnSettingsModel("requested_by_name", MySqlDbType.VarChar, 255),
                 new ColumnSettingsModel("reviewed_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
-                new ColumnSettingsModel("reviewed_by", MySqlDbType.Int64, notNull: true, defaultValue: "0", comment: "Negative numbers are IDs of admins"),
+                new ColumnSettingsModel("reviewed_by", MySqlDbType.UInt64, notNull: true, defaultValue: "0", comment: "Negative numbers are IDs of admins"),
                 new ColumnSettingsModel("reviewed_by_name", MySqlDbType.VarChar, 255),
                 new ColumnSettingsModel("status", MySqlDbType.Enum, enumValues: new List<string> {"Pending", "Approved", "RequestChanges"})
             ],
@@ -459,7 +459,7 @@ public class WiserTableDefinitions
                 new ColumnSettingsModel("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
                 new ColumnSettingsModel("review_id", MySqlDbType.Int32, notNull: true),
                 new ColumnSettingsModel("added_on", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
-                new ColumnSettingsModel("added_by", MySqlDbType.Int64, notNull: true, comment: "Negative numbers are IDs of admins"),
+                new ColumnSettingsModel("added_by", MySqlDbType.UInt64, notNull: true, comment: "Negative numbers are IDs of admins"),
                 new ColumnSettingsModel("added_by_name", MySqlDbType.VarChar, 255),
                 new ColumnSettingsModel("text", MySqlDbType.MediumText)
             ],
@@ -478,7 +478,7 @@ public class WiserTableDefinitions
             Columns =
             [
                 new ColumnSettingsModel("review_id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true),
-                new ColumnSettingsModel("requested_user", MySqlDbType.Int64, notNull: true, isPrimaryKey: true, comment: "Negative numbers are IDs of admins")
+                new ColumnSettingsModel("requested_user", MySqlDbType.UInt64, notNull: true, isPrimaryKey: true, comment: "Negative numbers are IDs of admins")
             ]
         },
 
@@ -794,7 +794,7 @@ public class WiserTableDefinitions
             [
                 new ColumnSettingsModel("id", MySqlDbType.UInt64, notNull: true, isPrimaryKey: true, autoIncrement: true),
                 new ColumnSettingsModel("user_id", MySqlDbType.UInt64, notNull: true),
-                new ColumnSettingsModel("time_active_in_seconds", MySqlDbType.Int64, notNull: true, defaultValue: "0"),
+                new ColumnSettingsModel("time_active_in_seconds", MySqlDbType.UInt64, notNull: true, defaultValue: "0"),
                 new ColumnSettingsModel("added_on", MySqlDbType.DateTime, notNull: true),
                 new ColumnSettingsModel("time_active_changed_on", MySqlDbType.DateTime, notNull: true)
             ],
