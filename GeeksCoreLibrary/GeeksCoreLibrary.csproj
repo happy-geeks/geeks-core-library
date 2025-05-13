@@ -54,7 +54,7 @@
         <PackageReference Include="SharpZipLib" Version="1.4.2"/>
         <PackageReference Include="SSH.NET" Version="2025.0.0" />
         <PackageReference Include="System.Diagnostics.Debug" Version="4.3.0"/>
-        <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="10.0.0-preview.3.25171.5" />
+        <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="10.0.0-preview.4.25258.110" />
         <PackageReference Include="System.Globalization" Version="4.3.0"/>
         <PackageReference Include="System.IO.Abstractions" Version="22.0.14" />
         <PackageReference Include="System.IO.FileSystem" Version="4.3.0"/>
