@@ -16,6 +16,31 @@ public interface IDatabaseHelpersService
     List<WiserTableDefinitionModel> ExtraWiserTableDefinitions { get; set; }
 
     /// <summary>
+    /// Get all columns for specific tables.
+    /// </summary>
+    /// <param name="tableNames">The tables to get the columns for.</param>
+    /// <param name="databaseName">Optional: The name of the database schema that the tables belong to. Leave empty to use the database schema from the connection string.</param>
+    /// <returns>A <see cref="Dictionary{T,T}"/> where the key is the name of the table and the value is a <see cref="List{t}"/> of <see cref="ColumnSettingsModel"/> with all columns of that table.</returns>
+    Task<Dictionary<string, List<ColumnSettingsModel>>> GetColumnsAsync(List<string> tableNames, string databaseName = null);
+
+    /// <summary>
+    /// Get all columns for a specific table.
+    /// </summary>
+    /// <param name="tableName">The name of the table to get the columns for.</param>
+    /// <param name="databaseName">Optional: The name of the database schema that the tables belong to. Leave empty to use the database schema from the connection string.</param>
+    /// <returns>A <see cref="List{T}"/> of <see cref="ColumnSettingsModel"/> with all columns of that table.</returns>
+    Task<List<ColumnSettingsModel>> GetColumnsAsync(string tableName, string databaseName = null);
+
+    /// <summary>
+    /// Get all columns for a specific table.
+    /// </summary>
+    /// <param name="databaseHelpersService">The <see cref="IDatabaseHelpersService"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to other methods of the same service.</param>
+    /// <param name="tableName">The name of the table to get the columns for.</param>
+    /// <param name="databaseName">Optional: The name of the database schema that the tables belong to. Leave empty to use the database schema from the connection string.</param>
+    /// <returns>A <see cref="List{T}"/> of <see cref="ColumnSettingsModel"/> with all columns of that table.</returns>
+    Task<List<ColumnSettingsModel>> GetColumnsAsync(IDatabaseHelpersService databaseHelpersService, string tableName, string databaseName = null);
+
+    /// <summary>
     /// Check whether or not a column exists in a specific table.
     /// </summary>
     /// <param name="tableName">The name of the table.</param>

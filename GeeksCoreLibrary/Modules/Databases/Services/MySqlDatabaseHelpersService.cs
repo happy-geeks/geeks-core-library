@@ -36,6 +36,161 @@ public class MySqlDatabaseHelpersService : IDatabaseHelpersService, IScopedServi
     public List<WiserTableDefinitionModel> ExtraWiserTableDefinitions { get; set; }
 
     /// <inheritdoc />
+    public async Task<Dictionary<string, List<ColumnSettingsModel>>> GetColumnsAsync(List<string> tableNames, string databaseName = null)
+    {
+        if (tableNames == null || tableNames.Count == 0)
+        {
+            throw new ArgumentNullException(nameof(tableNames));
+        }
+
+        await databaseConnection.EnsureOpenConnectionForReadingAsync();
+        if (String.IsNullOrWhiteSpace(databaseName))
+        {
+            databaseName = databaseConnection.ConnectedDatabase;
+        }
+
+        // Add parameters for the database name and all table names.
+        databaseConnection.AddParameter("databaseName", databaseName);
+        for (var index = 0; index < tableNames.Count; index++)
+        {
+            databaseConnection.AddParameter($"tableName{index}", tableNames[index]);
+        }
+
+        // Get the indexes of all specified tables from the database.
+        var query = $"""
+                     SELECT
+                         TABLE_NAME,
+                         COLUMN_NAME,
+                         COLUMN_DEFAULT,
+                         IS_NULLABLE,
+                         DATA_TYPE,
+                         COLUMN_TYPE,
+                         CHARACTER_MAXIMUM_LENGTH,
+                         NUMERIC_PRECISION,
+                         NUMERIC_SCALE,
+                         CHARACTER_SET_NAME,
+                         COLLATION_NAME,
+                         COLUMN_KEY,
+                         EXTRA
+                     FROM INFORMATION_SCHEMA.`COLUMNS`
+                     WHERE TABLE_SCHEMA = ?databaseName
+                     AND TABLE_NAME IN ({String.Join(",", tableNames.Select((_, index) => $"?tableName{index}"))})
+                     ORDER BY ORDINAL_POSITION ASC
+                     """;
+
+        var results = new Dictionary<string, List<ColumnSettingsModel>>();
+        var dataTable = await databaseConnection.GetAsync(query);
+        foreach (DataRow dataRow in dataTable.Rows)
+        {
+            var tableName = dataRow.Field<string>("TABLE_NAME");
+            var dataType = dataRow.Field<string>("DATA_TYPE");
+            var columnType = dataRow.Field<string>("COLUMN_TYPE") ?? String.Empty;
+            var extra = dataRow.Field<string>("EXTRA") ?? String.Empty;
+            var numericScale = dataRow.ConvertValueIfColumnExists<int>("NUMERIC_SCALE");
+            var isUnsigned = columnType.Contains("unsigned", StringComparison.OrdinalIgnoreCase);
+            var length = 0;
+            if (!dataRow.IsNull("NUMERIC_PRECISION"))
+            {
+                length = dataRow.ConvertValueIfColumnExists<int>("NUMERIC_PRECISION");
+            }
+            else if (!dataRow.IsNull("CHARACTER_MAXIMUM_LENGTH") && String.Equals(dataType, "varchar", StringComparison.OrdinalIgnoreCase))
+            {
+                length = dataRow.ConvertValueIfColumnExists<int>("CHARACTER_MAXIMUM_LENGTH");
+            }
+
+            // Add the table to the dictionary, if it doesn't exist yet.
+            if (!results.TryGetValue(tableName, out var columns))
+            {
+                columns = [];
+                results.Add(tableName, columns);
+            }
+
+            // Add the index to the list of indexes for this table, if it doesn't exist yet.
+            var columnSettings = new ColumnSettingsModel
+            {
+                Name = dataRow.Field<string>("COLUMN_NAME"),
+                AutoIncrement = extra.Contains("auto_increment", StringComparison.OrdinalIgnoreCase),
+                CharacterSet = dataRow.Field<string>("CHARACTER_SET_NAME"),
+                Collation = dataRow.Field<string>("COLLATION_NAME"),
+                Length = length,
+                Decimals = numericScale,
+                IsPrimaryKey = String.Equals(dataRow.Field<string>("COLUMN_TYPE"), "PRI", StringComparison.OrdinalIgnoreCase),
+                NotNull = String.Equals(dataRow.Field<string>("IS_NULLABLE"), "NO", StringComparison.OrdinalIgnoreCase),
+                DefaultValue = dataRow.Field<string>("COLUMN_DEFAULT"),
+                UpdateTimeStampOnChange = extra.Contains("on update CURRENT_TIMESTAMP", StringComparison.OrdinalIgnoreCase),
+                Type = dataType.ToUpperInvariant() switch
+                {
+                    "TINYINT" when length == 1 && !isUnsigned => MySqlDbType.Bool,
+                    "TINYINT" => isUnsigned ? MySqlDbType.UByte : MySqlDbType.Byte,
+                    "SMALLINT" => isUnsigned ? MySqlDbType.UInt16 : MySqlDbType.Int16,
+                    "MEDIUMINT" => isUnsigned ? MySqlDbType.UInt24 : MySqlDbType.Int24,
+                    "INT" => isUnsigned ? MySqlDbType.UInt32 : MySqlDbType.Int32,
+                    "BIGINT" => isUnsigned ? MySqlDbType.UInt64 : MySqlDbType.Int64,
+                    "DECIMAL" => isUnsigned ? MySqlDbType.NewDecimal : MySqlDbType.Decimal,
+                    "FLOAT" => MySqlDbType.Float,
+                    "DOUBLE" => MySqlDbType.Double,
+                    "TIMESTAMP" => MySqlDbType.Timestamp,
+                    "DATE" => MySqlDbType.Date,
+                    "TIME" => MySqlDbType.Time,
+                    "DATETIME" => MySqlDbType.DateTime,
+                    "YEAR" => MySqlDbType.Year,
+                    "BIT" => MySqlDbType.Bit,
+                    "JSON" => MySqlDbType.JSON,
+                    "ENUM" => MySqlDbType.Enum,
+                    "SET" => MySqlDbType.Set,
+                    "TINYBLOB" => MySqlDbType.TinyBlob,
+                    "MEDIUMBLOB" => MySqlDbType.MediumBlob,
+                    "LONGBLOB" => MySqlDbType.LongBlob,
+                    "BLOB" => MySqlDbType.Blob,
+                    "VARCHAR" => MySqlDbType.VarChar,
+                    "CHAR" => MySqlDbType.String,
+                    "GEOMETRY" => MySqlDbType.Geometry,
+                    "BINARY" => MySqlDbType.Binary,
+                    "VARBINARY" => MySqlDbType.VarBinary,
+                    "TINYTEXT" => MySqlDbType.TinyText,
+                    "MEDIUMTEXT" => MySqlDbType.MediumText,
+                    "LONGTEXT" => MySqlDbType.LongText,
+                    "TEXT" => MySqlDbType.Text,
+                    "GUID" => MySqlDbType.Guid,
+                    _ => throw new ArgumentOutOfRangeException(nameof(dataType), dataType, null)
+                }
+            };
+
+            if (columnSettings.Type == MySqlDbType.Enum)
+            {
+                // Check if the column name contains a list of enums (e.g. "enum('a','b','c')").
+                var subPartStart = columnType.LastIndexOf('(');
+                var subPartEnd = columnType.LastIndexOf(')');
+
+                // Check if the field contains both opening and closing parentheses and if the closing parenthesis comes after the opening parenthesis.
+                if (subPartStart != -1 && subPartEnd != -1 && subPartStart <= subPartEnd)
+                {
+                    var columnProperties = columnType[(subPartStart + 1)..subPartEnd];
+                    var enumValues = columnProperties.Split(',').Select(x => x.Trim('\''));
+                    columnSettings.EnumValues = enumValues.ToList();
+                }
+            }
+
+            columns.Add(columnSettings);
+        }
+
+        return results;
+    }
+
+    /// <inheritdoc />
+    public async Task<List<ColumnSettingsModel>> GetColumnsAsync(string tableName, string databaseName = null)
+    {
+        return await GetColumnsAsync(this, tableName, databaseName);
+    }
+
+    /// <inheritdoc />
+    public async Task<List<ColumnSettingsModel>> GetColumnsAsync(IDatabaseHelpersService databaseHelpersService, string tableName, string databaseName = null)
+    {
+        var results = await databaseHelpersService.GetColumnsAsync([tableName], databaseName);
+        return results.SingleOrDefault().Value ?? [];
+    }
+
+    /// <inheritdoc />
     public async Task<bool> ColumnExistsAsync(string tableName, string columnName, string databaseName = null)
     {
         if (String.IsNullOrWhiteSpace(databaseName))
