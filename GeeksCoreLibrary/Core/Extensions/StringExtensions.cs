@@ -6,6 +6,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
+using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Models;
 using Microsoft.AspNetCore.Cryptography.KeyDerivation;
@@ -623,9 +624,7 @@ public static class StringExtensions
     /// <returns>The Base64 string containing the SHA512 hash of the input.</returns>
     public static string ToSha512Simple(this string input)
     {
-        var inputBytes = Encoding.UTF8.GetBytes(input);
-        var hashedBytes = SHA512.HashData(inputBytes);
-        return Convert.ToBase64String(hashedBytes);
+        return StringHelpers.HashValue(input, new HashSettingsModel {Algorithm = HashAlgorithms.SHA512, Representation = HashRepresentations.Base64});
     }
 
     /// <summary>

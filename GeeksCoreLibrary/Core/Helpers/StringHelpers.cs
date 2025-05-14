@@ -77,52 +77,36 @@ public class StringHelpers
     /// <returns>Returns the value hashed with the algorithm converted to the given representation.</returns>
     public static string HashValue(string value, HashSettingsModel hashSettings)
     {
-        HashAlgorithm hashAlgorithm;
-
-        switch (hashSettings.Algorithm)
+        var inputBytes = Encoding.UTF8.GetBytes(value);
+        var hashBytes = hashSettings.Algorithm switch
         {
-            case HashAlgorithms.MD5:
-                hashAlgorithm = MD5.Create();
-                break;
-            case HashAlgorithms.SHA256:
-                hashAlgorithm = SHA256.Create();
-                break;
-            case HashAlgorithms.SHA384:
-                hashAlgorithm = SHA384.Create();
-                break;
-            case HashAlgorithms.SHA512:
-                hashAlgorithm = SHA512.Create();
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(hashSettings.Algorithm), hashSettings.Algorithm, null);
-        }
+            HashAlgorithms.MD5 => MD5.HashData(inputBytes),
+            HashAlgorithms.SHA256 => SHA256.HashData(inputBytes),
+            HashAlgorithms.SHA384 => SHA384.HashData(inputBytes),
+            HashAlgorithms.SHA512 => SHA512.HashData(inputBytes),
+            _ => throw new ArgumentOutOfRangeException(nameof(hashSettings.Algorithm), hashSettings.Algorithm, null)
+        };
 
-        var bytes = Encoding.ASCII.GetBytes(value);
-        var hashBytes = hashAlgorithm.ComputeHash(bytes);
-
-        hashAlgorithm.Dispose();
-
-        switch (hashSettings.Representation)
+        return hashSettings.Representation switch
         {
-            case HashRepresentations.Base64:
-                return Convert.ToBase64String(hashBytes);
-            case HashRepresentations.Hex:
-                return Convert.ToHexString(hashBytes);
-            default:
-                throw new ArgumentOutOfRangeException(nameof(hashSettings.Representation), hashSettings.Representation, null);
-        }
+            HashRepresentations.Base64 => Convert.ToBase64String(hashBytes),
+            HashRepresentations.Hex => Convert.ToHexString(hashBytes),
+            _ => throw new ArgumentOutOfRangeException(nameof(hashSettings.Representation), hashSettings.Representation, null)
+        };
     }
-    
+
+    /// <summary>
+    /// Remove all digits and hyphens from a string.
+    /// </summary>
+    /// <param name="input">The string to remove the characters from.</param>
+    /// <returns>The same string with all digits and hyphens removed.</returns>
     public static string RemoveDigitsAndHyphens(string input)
     {
-        var sb = new StringBuilder(input.Length);
-        foreach (var c in input)
+        var stringBuilder = new StringBuilder(input.Length);
+        foreach (var c in input.Where(c => !Char.IsDigit(c) && c != '-'))
         {
-            if (!Char.IsDigit(c) && c != '-')
-            {
-                sb.Append(c);
-            }
+            stringBuilder.Append(c);
         }
-        return sb.ToString();
+        return stringBuilder.ToString();
     }
 }
