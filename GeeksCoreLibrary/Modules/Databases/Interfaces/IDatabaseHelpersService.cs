@@ -130,7 +130,7 @@ public interface IDatabaseHelpersService
     /// <summary>
     /// Get all indexes for a specific table.
     /// </summary>
-    /// <param name="tableName">The name if the table to get the indexes for.</param>
+    /// <param name="tableName">The name of the table to get the indexes for.</param>
     /// <param name="databaseName">Optional: The name of the database schema that the tables belong to. Leave empty to use the database schema from the connection string.</param>
     /// <returns>A <see cref="List{T}"/> of <see cref="IndexSettingsModel"/> with all indexes of that table.</returns>
     Task<List<IndexSettingsModel>> GetIndexesAsync(string tableName, string databaseName = null);
@@ -139,7 +139,7 @@ public interface IDatabaseHelpersService
     /// Get all indexes for a specific table.
     /// </summary>
     /// <param name="databaseHelpersService">The <see cref="IDatabaseHelpersService"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to other methods of the same service.</param>
-    /// <param name="tableName">The name if the table to get the indexes for.</param>
+    /// <param name="tableName">The name of the table to get the indexes for.</param>
     /// <param name="databaseName">Optional: The name of the database schema that the tables belong to. Leave empty to use the database schema from the connection string.</param>
     /// <returns>A <see cref="List{T}"/> of <see cref="IndexSettingsModel"/> with all indexes of that table.</returns>
     Task<List<IndexSettingsModel>> GetIndexesAsync(IDatabaseHelpersService databaseHelpersService, string tableName, string databaseName = null);
