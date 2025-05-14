@@ -90,7 +90,7 @@ public class SftpHandler : IFtpHandler, IScopedService
 
         // Get the names of the files that need to be downloaded.
         var filesToDownload = await GetFilesInFolderAsync(downloadPath);
-        if (!filesToDownload.Any())
+        if (filesToDownload.Count == 0)
         {
             return true;
         }

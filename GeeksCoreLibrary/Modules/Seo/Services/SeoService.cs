@@ -92,7 +92,7 @@ public class SeoService(IDatabaseConnection databaseConnection, IObjectsService 
             }
         }
 
-        if (robots.Any())
+        if (robots.Count != 0)
         {
             result.MetaTags.TryAdd("robots", String.Join(",", robots));
         }

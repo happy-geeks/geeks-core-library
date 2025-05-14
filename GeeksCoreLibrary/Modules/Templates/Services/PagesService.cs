@@ -366,25 +366,25 @@ public class PagesService(
                 }
             }
 
-            var lastChanged = !templates.Any() ? DateTime.Now : templates.Max(t => t.LastChanged);
+            var lastChanged = templates.Count == 0 ? DateTime.Now : templates.Max(t => t.LastChanged);
             var standardSuffix = $"c={lastChanged:yyyyMMddHHmmss}";
 
-            if (standardCssTemplates.Any())
+            if (standardCssTemplates.Count != 0)
             {
                 viewModel.Css.PageStandardCssFileName = $"/css/gclcss_{String.Join("_", standardCssTemplates)}.css?mode=Standard&{standardSuffix}";
             }
 
-            if (inlineHeadCssTemplates.Any())
+            if (inlineHeadCssTemplates.Count != 0)
             {
                 viewModel.Css.PageInlineHeadCss = String.Join(Environment.NewLine, inlineHeadCssTemplates);
             }
 
-            if (asyncFooterCssTemplates.Any())
+            if (asyncFooterCssTemplates.Count != 0)
             {
                 viewModel.Css.PageAsyncFooterCssFileName = $"/css/gclcss_{String.Join("_", asyncFooterCssTemplates)}.css?mode=AsyncFooter&{standardSuffix}";
             }
 
-            if (syncFooterCssTemplates.Any())
+            if (syncFooterCssTemplates.Count != 0)
             {
                 viewModel.Css.PageSyncFooterCssFileName = $"/css/gclcss_{String.Join("_", asyncFooterCssTemplates)}.css?mode=SyncFooter&{standardSuffix}";
             }
@@ -475,26 +475,26 @@ public class PagesService(
                 }
             }
 
-            var lastChanged = !templates.Any() ? DateTime.Now : templates.Max(t => t.LastChanged);
+            var lastChanged = templates.Count == 0 ? DateTime.Now : templates.Max(t => t.LastChanged);
             var standardSuffix = $"c={lastChanged:yyyyMMddHHmmss}";
 
-            if (standardJavascriptTemplates.Any())
+            if (standardJavascriptTemplates.Count != 0)
             {
                 viewModel.Javascript.PageStandardJavascriptFileName = $"/scripts/gcljs_{String.Join("_", standardJavascriptTemplates)}.js?mode=Standard&{standardSuffix}";
             }
 
-            if (inlineHeadJavascriptTemplates.Any())
+            if (inlineHeadJavascriptTemplates.Count != 0)
             {
                 viewModel.Javascript.PageInlineHeadJavascript ??= [];
                 viewModel.Javascript.PageInlineHeadJavascript.AddRange(inlineHeadJavascriptTemplates);
             }
 
-            if (asyncFooterJavascriptTemplates.Any())
+            if (asyncFooterJavascriptTemplates.Count != 0)
             {
                 viewModel.Javascript.PageAsyncFooterJavascriptFileName = $"/scripts/gcljs_{String.Join("_", asyncFooterJavascriptTemplates)}.js?mode=AsyncFooter&{standardSuffix}";
             }
 
-            if (syncFooterJavascriptTemplates.Any())
+            if (syncFooterJavascriptTemplates.Count != 0)
             {
                 viewModel.Javascript.PageSyncFooterJavascriptFileName = $"/scripts/gcljs_{String.Join("_", syncFooterJavascriptTemplates)}.js?mode=SyncFooter&{standardSuffix}";
             }
@@ -601,7 +601,7 @@ public class PagesService(
         // Check if some component is adding SEO data to the page.
         if (httpContextAccessor?.HttpContext.Items[Constants.PageMetaDataFromComponentKey] is PageMetaDataModel componentSeoData)
         {
-            if (componentSeoData.MetaTags != null && componentSeoData.MetaTags.Any())
+            if (componentSeoData.MetaTags != null && componentSeoData.MetaTags.Count != 0)
             {
                 foreach (var (key, value) in componentSeoData.MetaTags.Where(metaTag => !viewModel.MetaData.MetaTags.ContainsKey(metaTag.Key) || String.IsNullOrWhiteSpace(viewModel.MetaData.MetaTags[metaTag.Key])))
                 {
@@ -609,7 +609,7 @@ public class PagesService(
                 }
             }
 
-            if (componentSeoData.OpenGraphMetaTags != null && componentSeoData.OpenGraphMetaTags.Any())
+            if (componentSeoData.OpenGraphMetaTags != null && componentSeoData.OpenGraphMetaTags.Count != 0)
             {
                 foreach (var (key, value) in componentSeoData.OpenGraphMetaTags.Where(metaTag => !viewModel.MetaData.OpenGraphMetaTags.ContainsKey(metaTag.Key) || String.IsNullOrWhiteSpace(viewModel.MetaData.MetaTags[metaTag.Key])))
                 {
@@ -787,7 +787,7 @@ public class PagesService(
                 allRobots.Add("nofollow");
             }
 
-            if (allRobots.Any())
+            if (allRobots.Count != 0)
             {
                 componentSeoData.MetaTags.Add("robots", String.Join(",", allRobots));
             }

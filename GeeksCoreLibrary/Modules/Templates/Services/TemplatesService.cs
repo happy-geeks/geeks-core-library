@@ -317,7 +317,7 @@ public class TemplatesService(
         // Check current login, and match user's roles against required roles of the template.
         var userData = await accountsService.GetUserDataFromCookieAsync();
 
-        if (userData is not {UserId: > 0} || (template.LoginRoles != null && template.LoginRoles.Any() && userData.Roles != null && !userData.Roles.Any(role => template.LoginRoles.Contains(role.Id))))
+        if (userData is not {UserId: > 0} || (template.LoginRoles != null && template.LoginRoles.Count != 0 && userData.Roles != null && !userData.Roles.Any(role => template.LoginRoles.Contains(role.Id))))
         {
             return emptyTemplate;
         }
@@ -827,7 +827,7 @@ public class TemplatesService(
         idsLoaded.Add(template.Id);
 
         // Get files from Wiser CDN.
-        if (template.WiserCdnFiles.Any())
+        if (template.WiserCdnFiles.Count != 0)
         {
             resultBuilder.AppendLine(await GetWiserCdnFilesAsync(template.WiserCdnFiles));
         }
@@ -859,7 +859,7 @@ public class TemplatesService(
         }
 
         var enumerable = fileNames.ToList();
-        if (!enumerable.Any())
+        if (enumerable.Count == 0)
         {
             return "";
         }
@@ -1476,7 +1476,7 @@ public class TemplatesService(
         var dataTable = await databaseConnection.GetAsync(query, skipCache: queryTemplate.CachingMinutes < 0);
         var result = dataTable.Rows.Count == 0 ? [] : dataTable.ToJsonArray(queryTemplate.GroupingSettings, encryptionKey, skipNullValues, allowValueDecryption, recursive, childItemsMustHaveId);
 
-        if (pusherMatches.Any())
+        if (pusherMatches.Count != 0)
         {
             throw new NotImplementedException("Pusher messages not yet implemented");
         }

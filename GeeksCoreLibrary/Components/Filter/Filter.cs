@@ -131,7 +131,7 @@ public class Filter : CmsComponent<FilterCmsSettingsModel, Filter.ComponentModes
 
         var output = await GenerateFiltersAsync();
 
-        if (ExtraDataForReplacements != null && ExtraDataForReplacements.Any())
+        if (ExtraDataForReplacements != null && ExtraDataForReplacements.Count != 0)
         {
             output = StringReplacementsService.DoReplacements(output, ExtraDataForReplacements);
         }

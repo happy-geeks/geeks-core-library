@@ -271,7 +271,7 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
             var paymentMethods = await orderProcessesService.GetPaymentMethodsAsync(Settings.OrderProcessId, loggedInUser);
 
             // If there are no payment methods, throw an error.
-            if (paymentMethods == null || !paymentMethods.Any())
+            if (paymentMethods == null || paymentMethods.Count == 0)
             {
                 throw new Exception("No payment methods have been configured, therefor we cannot proceed with the order process.");
             }
@@ -776,7 +776,7 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
         var fieldsToShow = GetGroupFieldsToShow(group, loggedInUser);
 
         // Skip this group if it has no fields that we can show.
-        if (!fieldsToShow.Any())
+        if (fieldsToShow.Count == 0)
         {
             return null;
         }
@@ -814,7 +814,7 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
     private async Task<string> RenderGroupPaymentMethodsAsync(OrderProcessGroupModel group, List<PaymentMethodSettingsModel> paymentMethods, WiserItemModel shoppingBasket, bool fieldErrorsOccurred)
     {
         // Skip this group if it has no fields that we can show.
-        if (!paymentMethods.Any())
+        if (paymentMethods.Count == 0)
         {
             return null;
         }
@@ -893,7 +893,7 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
         var loggedInUser = await AccountsService.GetUserDataFromCookieAsync();
         if (String.IsNullOrEmpty(fieldValue) && field.InputFieldType != OrderProcessInputTypes.Password)
         {
-            if (!field.SaveTo.Any())
+            if (field.SaveTo.Count == 0)
             {
                 fieldValue = shoppingBasket.GetDetailValue(field.FieldId);
                 if (String.IsNullOrWhiteSpace(fieldValue))
@@ -964,7 +964,7 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
         fieldHtml = fieldHtml.Replace("{tabindex}", field.TabIndex > 0 ? $"tabindex='{field.TabIndex}'" : "", StringComparison.OrdinalIgnoreCase);
 
         // Build the field options HTML, if applicable.
-        if (field.Values != null && field.Values.Any() && field.Type is OrderProcessFieldTypes.Radio or OrderProcessFieldTypes.Select)
+        if (field.Values != null && field.Values.Count != 0 && field.Type is OrderProcessFieldTypes.Radio or OrderProcessFieldTypes.Select)
         {
             var optionsHtml = await RenderFieldOptionsAsync(field, fieldValue);
             fieldHtml = fieldHtml.Replace(Constants.FieldOptionsReplacement, optionsHtml, StringComparison.OrdinalIgnoreCase);
@@ -1090,7 +1090,7 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
                 case OrderProcessGroupTypes.Fields:
                 {
                     // Skip this group if it has no fields that we can show.
-                    if (!fieldsToShow.Any())
+                    if (fieldsToShow.Count == 0)
                     {
                         continue;
                     }
@@ -1119,7 +1119,7 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
 
                         // Set the posted value in the basket or user. We do that here so that we can be sure that people can only save values that are configured in Wiser.
                         // This way they can't just add a random field to the HTML to save that value in our database.
-                        if (!field.SaveTo.Any())
+                        if (field.SaveTo.Count == 0)
                         {
                             shoppingBasket.SetDetail(field.FieldId, valueForDatabase);
                         }
@@ -1134,7 +1134,7 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
                                 else
                                 {
                                     var itemsOfEntityType = currentItems.Where(item => String.Equals(item.Item.EntityType, saveLocation.EntityType, StringComparison.CurrentCultureIgnoreCase) && item.LinkSettings.Type == saveLocation.LinkType).ToList();
-                                    if (itemsOfEntityType.Any())
+                                    if (itemsOfEntityType.Count != 0)
                                     {
                                         // If we already have item(s) of the given entity type, save the value there.
                                         itemsOfEntityType.ForEach(item => item.Item.SetDetail(saveLocation.PropertyName, valueForDatabase));

@@ -48,7 +48,7 @@ public class JsonHelpers
                     }
                 }
 
-                if (!arrayProperties.Any())
+                if (arrayProperties.Count == 0)
                 {
                     output.Add(item);
                     continue;

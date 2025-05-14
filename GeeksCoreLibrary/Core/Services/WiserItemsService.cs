@@ -743,7 +743,7 @@ public class WiserItemsService(
                 var fieldOptions = entityTypeSettings.FieldOptions;
 
                 // Check auto increment fields and save the correct value.
-                if (entityTypeSettings.AutoIncrementFields != null && entityTypeSettings.AutoIncrementFields.Any())
+                if (entityTypeSettings.AutoIncrementFields != null && entityTypeSettings.AutoIncrementFields.Count != 0)
                 {
                     var fieldCounter = 0;
                     foreach (var (fieldName, languageCode) in entityTypeSettings.AutoIncrementFields)
@@ -884,7 +884,7 @@ public class WiserItemsService(
                     wiserItem.Changed = false;
                 }
 
-                if (skipDetails || ((wiserItem.Details == null || !wiserItem.Details.Any()) && !insertQueryBuilder.Any() && !updateQueryBuilder.Any()))
+                if (skipDetails || ((wiserItem.Details == null || wiserItem.Details.Count == 0) && insertQueryBuilder.Count == 0 && updateQueryBuilder.Count == 0))
                 {
                     if (createNewTransaction && !alreadyHadTransaction) await databaseConnection.CommitTransactionAsync();
                     return wiserItem;
@@ -934,7 +934,7 @@ public class WiserItemsService(
                     var previousValuesQueryBuilder = new List<string>();
                     var allLinkTypeSettings = await GetAllLinkTypeSettingsAsync();
                     var linksWithDedicatedTables = allLinkTypeSettings.Where(x => x.UseDedicatedTable && String.Equals(x.SourceEntityType, wiserItem.EntityType, StringComparison.OrdinalIgnoreCase)).ToList();
-                    if (!linksWithDedicatedTables.Any())
+                    if (linksWithDedicatedTables.Count == 0)
                     {
                         previousValuesQueryBuilder.Add($"""
                                                         SELECT 
@@ -1193,7 +1193,7 @@ public class WiserItemsService(
                     itemDetail.Changed = false;
                 }
 
-                if (deleteQueryBuilder.Any())
+                if (deleteQueryBuilder.Count != 0)
                 {
                     var query = $"""
                                  SET @_username = ?username;
@@ -1205,7 +1205,7 @@ public class WiserItemsService(
                     deleteQueryBuilder.Clear();
                 }
 
-                if (insertQueryBuilder.Any())
+                if (insertQueryBuilder.Count != 0)
                 {
                     var query = $"""
                                  SET @_username = ?username;
@@ -1218,7 +1218,7 @@ public class WiserItemsService(
                     insertQueryBuilder.Clear();
                 }
 
-                if (updateQueryBuilder.Any())
+                if (updateQueryBuilder.Count != 0)
                 {
                     var query = $"""
                                  SET @_username = ?username;
@@ -1329,7 +1329,7 @@ public class WiserItemsService(
                         itemDetail.Changed = false;
                     }
 
-                    if (deleteQueryBuilder.Any())
+                    if (deleteQueryBuilder.Count != 0)
                     {
                         var query = $"""
                                      SET @_username = ?username;
@@ -1341,7 +1341,7 @@ public class WiserItemsService(
                         deleteQueryBuilder.Clear();
                     }
 
-                    if (insertQueryBuilder.Any())
+                    if (insertQueryBuilder.Count != 0)
                     {
                         var query = $"""
                                      SET @_username = ?username;
@@ -1355,7 +1355,7 @@ public class WiserItemsService(
                     }
                 }
 
-                if (updateQueryBuilder.Any())
+                if (updateQueryBuilder.Count != 0)
                 {
                     var query = $"""
                                  SET @_username = ?username;
@@ -1483,7 +1483,7 @@ public class WiserItemsService(
     public async Task<int> DeleteAsync(IWiserItemsService wiserItemsService, List<ulong> itemIds, bool undelete = false, string username = "GCL", ulong userId = 0, bool saveHistory = true, string entityType = null, bool createNewTransaction = true, bool skipPermissionsCheck = false)
     {
         var filteredItemIds = itemIds.Where(id => id > 0).ToList();
-        if (!filteredItemIds.Any())
+        if (filteredItemIds.Count == 0)
         {
             return 0;
         }
@@ -1501,7 +1501,7 @@ public class WiserItemsService(
                 }
             }
 
-            if (itemsWithNoPermissionToDelete.Any())
+            if (itemsWithNoPermissionToDelete.Count != 0)
             {
                 throw new InvalidAccessPermissionsException($"User '{userId}' is not allowed to delete items '{String.Join(", ", itemsWithNoPermissionToDelete)}'.")
                 {
@@ -1830,7 +1830,7 @@ public class WiserItemsService(
                 .Replace($"{{{replacement.Key}}}", replacement.Value, StringComparison.OrdinalIgnoreCase);
         }
 
-        if (wiserItem?.Details != null && wiserItem.Details.Any())
+        if (wiserItem?.Details != null && wiserItem.Details.Count != 0)
         {
             // Convert the details to a dictionary and do the replacements.
             var dictionary = new Dictionary<string, string>();
@@ -3043,7 +3043,7 @@ public class WiserItemsService(
         {
             var itemsWithNoPermissionToUpdate = await GetItemIdsWithNoPermissionToUpdateLinkAsync(wiserItemsService, sourceEntityType, sourceIds, destinationEntityType, destinationIds, userId);
 
-            if (itemsWithNoPermissionToUpdate.Any())
+            if (itemsWithNoPermissionToUpdate.Count != 0)
             {
                 throw new InvalidAccessPermissionsException($"User '{userId}' is not allowed to change the links attached to items '{String.Join(", ", itemsWithNoPermissionToUpdate)}'.")
                 {
@@ -3138,7 +3138,7 @@ public class WiserItemsService(
         {
             var itemsWithNoPermissionToUpdate = await GetItemIdsWithNoPermissionToUpdateLinkAsync(wiserItemsService, sourceEntityType, sourceIds, destinationEntityType, destinationIds, userId);
 
-            if (itemsWithNoPermissionToUpdate.Any())
+            if (itemsWithNoPermissionToUpdate.Count != 0)
             {
                 throw new InvalidAccessPermissionsException($"User '{userId}' is not allowed to change the links attached to items '{String.Join(", ", itemsWithNoPermissionToUpdate)}'.")
                 {
@@ -3284,7 +3284,7 @@ public class WiserItemsService(
             parentItemIdQueryBuilder.Append(" AND item.entity_type = ?entityType");
         }
 
-        if (exceptItemIds != null && exceptItemIds.Any())
+        if (exceptItemIds != null && exceptItemIds.Count != 0)
         {
             wiserItemLinkQueryBuilder.Append($" AND item.id NOT IN ({String.Join(",", exceptItemIds)})");
             parentItemIdQueryBuilder.Append($" AND item.id NOT IN ({String.Join(",", exceptItemIds)})");
@@ -4833,7 +4833,7 @@ public class WiserItemsService(
                 databaseConnection.AddParameter($"value{counter}", useLongValueColumn ? "" : value);
                 databaseConnection.AddParameter($"longValue{counter}", useLongValueColumn ? value : "");
 
-                if ((valueChanged || alwaysSaveValues) && options.Any() && (bool) options[Constants.SaveSeoValueKey])
+                if ((valueChanged || alwaysSaveValues) && options.Count != 0 && (bool) options[Constants.SaveSeoValueKey])
                 {
                     value = String.Join(",", valueAsList.Select(v => v.ToString().ConvertToSeo()));
                     databaseConnection.AddParameter($"value{Constants.SeoPropertySuffix}{counter}", useLongValueColumn ? "" : value);

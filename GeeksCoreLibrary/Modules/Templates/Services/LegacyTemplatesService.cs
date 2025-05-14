@@ -689,7 +689,7 @@ public class LegacyTemplatesService : ITemplatesService
         idsLoaded.Add(template.Id);
 
         // Get files from Wiser CDN.
-        if (template.WiserCdnFiles.Any())
+        if (template.WiserCdnFiles.Count != 0)
         {
             resultBuilder.AppendLine(await GetWiserCdnFilesAsync(template.WiserCdnFiles));
         }
@@ -721,7 +721,7 @@ public class LegacyTemplatesService : ITemplatesService
         }
 
         var enumerable = fileNames.ToList();
-        if (!enumerable.Any())
+        if (enumerable.Count == 0)
         {
             return "";
         }
@@ -1350,7 +1350,7 @@ public class LegacyTemplatesService : ITemplatesService
         var dataTable = await databaseConnection.GetAsync(query, skipCache: queryTemplate.CachingMinutes < 0);
         var result = dataTable.Rows.Count == 0 ? [] : dataTable.ToJsonArray(queryTemplate.GroupingSettings, encryptionKey, skipNullValues, allowValueDecryption, recursive, childItemsMustHaveId);
 
-        if (pusherMatches.Any())
+        if (pusherMatches.Count != 0)
         {
             throw new NotImplementedException("Pusher messages not yet implemented");
         }

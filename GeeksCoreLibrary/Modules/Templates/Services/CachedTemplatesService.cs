@@ -347,7 +347,7 @@ public class CachedTemplatesService(
                 throw new ArgumentOutOfRangeException(nameof(settings.CachingMode), settings.CachingMode.ToString(), null);
         }
 
-        if (extraData != null && extraData.Any())
+        if (extraData != null && extraData.Count != 0)
         {
             foreach (var key in extraData.Keys)
             {

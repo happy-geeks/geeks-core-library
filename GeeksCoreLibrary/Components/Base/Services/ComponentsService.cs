@@ -32,7 +32,7 @@ public class ComponentsService(
             return new DataTable();
         }
 
-        if (extraDataForReplacements != null && extraDataForReplacements.Any())
+        if (extraDataForReplacements != null && extraDataForReplacements.Count != 0)
         {
             queryToUse = replacementsMediator.DoReplacements(queryToUse, extraDataForReplacements, true);
         }

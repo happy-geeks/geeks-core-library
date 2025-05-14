@@ -1856,7 +1856,7 @@ public class ShoppingBasketsService(
     /// <inheritdoc />
     public async Task<List<WiserItemModel>> RemoveLinesAsync(WiserItemModel shoppingBasket, List<WiserItemModel> basketLines, ShoppingBasketCmsSettingsModel settings, ICollection<string> itemIdsOrUniqueIds, bool createNewTransaction = true, int basketToUserLinkType = Constants.BasketToUserLinkType)
     {
-        if (itemIdsOrUniqueIds == null || !itemIdsOrUniqueIds.Any())
+        if (itemIdsOrUniqueIds == null || itemIdsOrUniqueIds.Count == 0)
         {
             return basketLines;
         }
@@ -2235,7 +2235,7 @@ public class ShoppingBasketsService(
             return [];
         }
 
-        if (!basketLines.Any() || String.IsNullOrWhiteSpace(lineType))
+        if (basketLines.Count == 0 || String.IsNullOrWhiteSpace(lineType))
         {
             return basketLines;
         }
@@ -2719,7 +2719,7 @@ public class ShoppingBasketsService(
         }
 
         var linkedUsers = await wiserItemsService.GetLinkedItemIdsAsync(wiserItemsService, shoppingBasket.Id, basketToUserLinkType, reverse: true, skipPermissionsCheck: true);
-        if (linkedUsers.Any())
+        if (linkedUsers.Count != 0)
         {
             if (deleteCookieIfBasketIsLinkedToSomeoneElse && linkedUsers.All(id => id != userId))
             {
@@ -3390,7 +3390,7 @@ public class ShoppingBasketsService(
 
     private static WiserItemModel GetLine(IReadOnlyCollection<WiserItemModel> basketLines, ulong id)
     {
-        if (basketLines == null || !basketLines.Any())
+        if (basketLines == null || basketLines.Count == 0)
         {
             return null;
         }

@@ -242,7 +242,7 @@ public class PostNLService : IPostNLService, IScopedService
             }
 
             var postNlResponse = await CreateTrackTraceLabelAsync(orderId, postNlRequest);
-            if (postNlResponse?.ResponseShipments == null || !postNlResponse.ResponseShipments.Any())
+            if (postNlResponse?.ResponseShipments == null || postNlResponse.ResponseShipments.Count == 0)
             {
                 result.Add($"Order {orderId}: Er is iets fout gegaan met de koppeling met de PostNL API.");
                 continue;
@@ -256,7 +256,7 @@ public class PostNLService : IPostNLService, IScopedService
             await wiserItemsService.UpdateAsync(orderDetails.Id, orderDetails, skipPermissionsCheck: true);
             foreach (var labelResponseShipment in postNlResponse.ResponseShipments)
             {
-                if (labelResponseShipment.Errors.Any())
+                if (labelResponseShipment.Errors.Count != 0)
                 {
                     result.Add($"Order {orderId}: De PostNL API heeft een of meer fouten gegeven: {String.Join(", ", labelResponseShipment.Errors.Select(x => x.Description))}");
                     continue;

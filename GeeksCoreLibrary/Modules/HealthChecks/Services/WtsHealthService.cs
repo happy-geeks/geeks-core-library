@@ -114,6 +114,6 @@ public class WtsHealthService(IDatabaseConnection databaseConnection, IHttpConte
             }
         }
 
-        return errors.Any() ? HealthCheckResult.Unhealthy(String.Join(", ", errors)) : HealthCheckResult.Healthy();
+        return errors.Count != 0 ? HealthCheckResult.Unhealthy(String.Join(", ", errors)) : HealthCheckResult.Healthy();
     }
 }

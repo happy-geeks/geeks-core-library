@@ -646,7 +646,7 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
                 }
 
                 var itemsOfEntityType = currentItems?.Where(item => String.Equals(item.Item.EntityType, saveLocation.EntityType, StringComparison.CurrentCultureIgnoreCase) && item.LinkSettings.Type == saveLocation.LinkType).ToList();
-                var idsClause = itemsOfEntityType == null || !itemsOfEntityType.Any() ? "" : $"AND item.id NOT IN ({String.Join(",", itemsOfEntityType.Select(item => item.Item.Id))})";
+                var idsClause = itemsOfEntityType == null || itemsOfEntityType.Count == 0 ? "" : $"AND item.id NOT IN ({String.Join(",", itemsOfEntityType.Select(item => item.Item.Id))})";
                 var tablePrefix = await wiserItemsService.GetTablePrefixForEntityAsync(saveLocation.EntityType);
 
                 databaseConnection.AddParameter("entityType", saveLocation.EntityType);

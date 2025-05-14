@@ -402,12 +402,12 @@ public class CommunicationsService : ICommunicationsService, IScopedService
             databaseConnection.AddParameter("bcc", String.Join(";", communication.Bcc));
         }
 
-        if (communication.AttachmentUrls != null && communication.AttachmentUrls.Any())
+        if (communication.AttachmentUrls != null && communication.AttachmentUrls.Count != 0)
         {
             databaseConnection.AddParameter("attachment_urls", String.Join(Environment.NewLine, communication.AttachmentUrls));
         }
 
-        if (communication.WiserItemFiles != null && communication.WiserItemFiles.Any())
+        if (communication.WiserItemFiles != null && communication.WiserItemFiles.Count != 0)
         {
             databaseConnection.AddParameter("wiser_item_files", String.Join(",", communication.WiserItemFiles));
         }
@@ -478,7 +478,7 @@ public class CommunicationsService : ICommunicationsService, IScopedService
         // Build the body of the message.
         var builder = new BodyBuilder();
 
-        if (attachments != null && attachments.Any())
+        if (attachments != null && attachments.Count != 0)
         {
             foreach (var (fileName, fileBytes) in attachments)
             {
@@ -544,7 +544,7 @@ public class CommunicationsService : ICommunicationsService, IScopedService
             Html = communication.Content
         };
 
-        if (attachments != null && attachments.Any())
+        if (attachments != null && attachments.Count != 0)
         {
             requestBody.Attachments = [];
 

@@ -238,7 +238,7 @@ public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel, Shopp
 
     public WiserItemModel GetLine(ulong id)
     {
-        if (Lines == null || !Lines.Any())
+        if (Lines == null || Lines.Count == 0)
         {
             return null;
         }
@@ -259,7 +259,7 @@ public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel, Shopp
             return [];
         }
 
-        if (!Lines.Any() || String.IsNullOrWhiteSpace(lineType))
+        if (Lines.Count == 0 || String.IsNullOrWhiteSpace(lineType))
         {
             return Lines;
         }
@@ -326,7 +326,7 @@ public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel, Shopp
         var result = new StringBuilder();
 
         // If there is extra data saved for replacements, add it to the extra data dictionary that is used in the replacements later.
-        if (ExtraDataForReplacements != null && ExtraDataForReplacements.Any())
+        if (ExtraDataForReplacements != null && ExtraDataForReplacements.Count != 0)
         {
             extraData ??= new Dictionary<string, object>();
             foreach (var keyValuePair in ExtraDataForReplacements)

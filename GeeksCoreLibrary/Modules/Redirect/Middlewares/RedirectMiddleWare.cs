@@ -73,7 +73,7 @@ public class RedirectMiddleWare(RequestDelegate next, ILogger<RedirectMiddleWare
 
         // Custom redirects from settings module.
         var customRedirects = (await objectsService.FindSystemObjectByDomainNameAsync("url_syntax_redirects"))?.Split('\r', '\n').Where(x => !String.IsNullOrWhiteSpace(x)).ToList();
-        if (customRedirects != null && customRedirects.Any())
+        if (customRedirects != null && customRedirects.Count != 0)
         {
             var fullUri = String.IsNullOrEmpty(redirectToUrl) ? HttpContextHelpers.GetOriginalRequestUri(context) : new Uri(redirectToUrl);
             var urlWithoutQuery = fullUri.AbsolutePath;

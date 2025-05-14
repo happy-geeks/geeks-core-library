@@ -270,7 +270,7 @@ public class Repeater : CmsComponent<RepeaterCmsSettingsModel, Repeater.LegacyCo
         }
 
         var output = generatedHtml.ToString();
-        if (ExtraDataForReplacements != null && ExtraDataForReplacements.Any())
+        if (ExtraDataForReplacements != null && ExtraDataForReplacements.Count != 0)
         {
             output = StringReplacementsService.DoReplacements(output, ExtraDataForReplacements);
         }

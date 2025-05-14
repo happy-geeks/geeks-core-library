@@ -61,7 +61,7 @@ public class CachedWebPagesService(IAppCache cache, IOptions<GclSettings> gclSet
         }
 
         var cacheName = $"WebPage_{languageCode}_{settings.PageId}_{pageName}_{pathMustContainName}_{settings.SearchNumberOfLevels}";
-        if (extraData != null && extraData.Any())
+        if (extraData != null && extraData.Count != 0)
         {
             cacheName += $"_{String.Join("_", extraData.Select(x => $"{x.Key}={x.Value}"))}";
         }

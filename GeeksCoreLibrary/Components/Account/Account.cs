@@ -1245,7 +1245,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
                 var createdNewAccount = false;
 
                 // If we have no available fields from the main query, just add everything. The developer has been warned in the documentation about this.
-                if (!availableFields.Any())
+                if (availableFields.Count == 0)
                 {
                     foreach (var formKey in request.Form.Keys.Where(k => !k.StartsWith("_")))
                     {

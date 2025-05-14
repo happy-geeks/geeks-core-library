@@ -242,7 +242,7 @@ public abstract class CmsComponent<T, T2> : ViewComponent
             return new DataTable();
         }
 
-        if (ExtraDataForReplacements != null && ExtraDataForReplacements.Any())
+        if (ExtraDataForReplacements != null && ExtraDataForReplacements.Count != 0)
         {
             queryToUse = StringReplacementsService.DoReplacements(queryToUse, ExtraDataForReplacements, true);
         }
