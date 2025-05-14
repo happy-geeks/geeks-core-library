@@ -32,6 +32,31 @@ public class CachedDatabaseHelpersService(
     }
 
     /// <inheritdoc />
+    public async Task<Dictionary<string, List<ColumnSettingsModel>>> GetColumnsAsync(List<string> tableNames, string databaseName = null)
+    {
+        var cacheName = $"CachedDatabaseHelpersService_GetColumnsAsync_{String.Join("_", tableNames.Order())}_{databaseName}_{branchesService.GetDatabaseNameFromCookie()}";
+        return await cache.GetOrAddAsync(cacheName,
+            async cacheEntry =>
+            {
+                cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;
+                return await databaseHelpersService.GetColumnsAsync(tableNames, databaseName);
+            }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Database));
+    }
+
+    /// <inheritdoc />
+    public async Task<List<ColumnSettingsModel>> GetColumnsAsync(string tableName, string databaseName = null)
+    {
+        return await GetColumnsAsync(this, tableName, databaseName);
+    }
+
+    /// <inheritdoc />
+    public async Task<List<ColumnSettingsModel>> GetColumnsAsync(IDatabaseHelpersService service, string tableName, string databaseName = null)
+    {
+        // Caching is not needed here, because we are already caching the columns for all tables in the GetColumnsAsync(List<string> tableNames) method.
+        return await databaseHelpersService.GetColumnsAsync(service, tableName, databaseName);
+    }
+
+    /// <inheritdoc />
     public async Task<bool> ColumnExistsAsync(string tableName, string columnName, string databaseName = null)
     {
         if (String.IsNullOrWhiteSpace(databaseName))
