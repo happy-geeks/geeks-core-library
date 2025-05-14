@@ -58,6 +58,51 @@ public class CachedDatabaseConnection(
     }
 
     /// <inheritdoc />
+    public async Task<T> ExecuteScalarAsync<T>(string query, bool skipCache = false, bool cleanUp = true, bool useWritingConnectionIfAvailable = false)
+    {
+        var result = await ExecuteScalarAsync(query, skipCache, cleanUp, useWritingConnectionIfAvailable);
+        return result == null ? default : (T)Convert.ChangeType(result, typeof(T));
+    }
+
+    /// <inheritdoc />
+    public async Task<object> ExecuteScalarAsync(string query, bool skipCache = false, bool cleanUp = true, bool useWritingConnectionIfAvailable = false)
+    {
+        // TODO: This skipCache parameter is temporary, and will be removed once a better solution is found to skip cache.
+        if (skipCache)
+        {
+            return await databaseConnection.ExecuteScalarAsync(query, cleanUp: cleanUp, useWritingConnectionIfAvailable: useWritingConnectionIfAvailable);
+        }
+
+        var currentUri = HttpContextHelpers.GetOriginalRequestUri(httpContextAccessor?.HttpContext);
+        var cacheName = new StringBuilder($"GCL_QUERY_SCALAR_{currentUri.Host}");
+
+        if (gclSettings.MultiLanguageBasedOnUrlSegments && currentUri.Segments.Length > gclSettings.IndexOfLanguagePartInUrl)
+        {
+            cacheName.Append(currentUri.Segments[gclSettings.IndexOfLanguagePartInUrl].Trim('/'));
+        }
+
+        cacheName.Append(query.ToSha512Simple());
+        foreach (var (key, value) in parameters.OrderBy(item => item.Key))
+        {
+            if (!query.Contains($"?{key}", StringComparison.OrdinalIgnoreCase))
+            {
+                // Don't include parameters that are not used in the query.
+                continue;
+            }
+
+            cacheName.Append($"{key}={value}");
+        }
+
+        cacheName.Append('_').Append(branchesService.GetDatabaseNameFromCookie());
+        return await cache.GetOrAddAsync(cacheName.ToString(),
+            async cacheEntry =>
+            {
+                cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;
+                return await databaseConnection.ExecuteScalarAsync(query, cleanUp: cleanUp, useWritingConnectionIfAvailable: useWritingConnectionIfAvailable);
+            }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Database));
+    }
+
+    /// <inheritdoc />
     public async Task<DataTable> GetAsync(string query, bool skipCache = false, bool cleanUp = true, bool useWritingConnectionIfAvailable = false)
     {
         // TODO: This skipCache parameter is temporary, and will be removed once a better solution is found to skip cache.

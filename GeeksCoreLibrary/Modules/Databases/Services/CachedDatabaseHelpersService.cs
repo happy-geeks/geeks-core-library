@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Interfaces;
@@ -13,7 +14,13 @@ using Microsoft.Extensions.Options;
 namespace GeeksCoreLibrary.Modules.Databases.Services;
 
 /// <inheritdoc cref="IDatabaseHelpersService" />.
-public class CachedDatabaseHelpersService(IDatabaseHelpersService databaseHelpersService, IAppCache cache, IOptions<GclSettings> gclSettings, ICacheService cacheService, IDatabaseConnection databaseConnection, IBranchesService branchesService)
+public class CachedDatabaseHelpersService(
+    IDatabaseHelpersService databaseHelpersService,
+    IAppCache cache,
+    IOptions<GclSettings> gclSettings,
+    ICacheService cacheService,
+    IDatabaseConnection databaseConnection,
+    IBranchesService branchesService)
     : IDatabaseHelpersService
 {
     private readonly GclSettings gclSettings = gclSettings.Value;
@@ -22,6 +29,31 @@ public class CachedDatabaseHelpersService(IDatabaseHelpersService databaseHelper
     {
         get => databaseHelpersService.ExtraWiserTableDefinitions;
         set => databaseHelpersService.ExtraWiserTableDefinitions = value;
+    }
+
+    /// <inheritdoc />
+    public async Task<Dictionary<string, List<ColumnSettingsModel>>> GetColumnsAsync(List<string> tableNames, string databaseName = null)
+    {
+        var cacheName = $"CachedDatabaseHelpersService_GetColumnsAsync_{String.Join("_", tableNames.Order())}_{databaseName}_{branchesService.GetDatabaseNameFromCookie()}";
+        return await cache.GetOrAddAsync(cacheName,
+            async cacheEntry =>
+            {
+                cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;
+                return await databaseHelpersService.GetColumnsAsync(tableNames, databaseName);
+            }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Database));
+    }
+
+    /// <inheritdoc />
+    public async Task<List<ColumnSettingsModel>> GetColumnsAsync(string tableName, string databaseName = null)
+    {
+        return await GetColumnsAsync(this, tableName, databaseName);
+    }
+
+    /// <inheritdoc />
+    public async Task<List<ColumnSettingsModel>> GetColumnsAsync(IDatabaseHelpersService service, string tableName, string databaseName = null)
+    {
+        // Caching is not needed here, because we are already caching the columns for all tables in the GetColumnsAsync(List<string> tableNames) method.
+        return await databaseHelpersService.GetColumnsAsync(service, tableName, databaseName);
     }
 
     /// <inheritdoc />
@@ -139,9 +171,40 @@ public class CachedDatabaseHelpersService(IDatabaseHelpersService databaseHelper
     }
 
     /// <inheritdoc />
+    public async Task<Dictionary<string, List<IndexSettingsModel>>> GetIndexesAsync(List<string> tableNames, string databaseName = null)
+    {
+        var cacheName = $"CachedDatabaseHelpersService_GetIndexesAsync_{String.Join("_", tableNames.Order())}_{databaseName}_{branchesService.GetDatabaseNameFromCookie()}";
+        return await cache.GetOrAddAsync(cacheName,
+            async cacheEntry =>
+            {
+                cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultQueryCacheDuration;
+                return await databaseHelpersService.GetIndexesAsync(tableNames, databaseName);
+            }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Database));
+    }
+
+    /// <inheritdoc />
+    public async Task<List<IndexSettingsModel>> GetIndexesAsync(string tableName, string databaseName = null)
+    {
+        return await GetIndexesAsync(this, tableName, databaseName);
+    }
+
+    /// <inheritdoc />
+    public async Task<List<IndexSettingsModel>> GetIndexesAsync(IDatabaseHelpersService service, string tableName, string databaseName = null)
+    {
+        // Caching is not needed here, because we are already caching the indexes for all tables in the GetIndexesAsync(List<string> tableNames) method.
+        return await databaseHelpersService.GetIndexesAsync(service, tableName, databaseName);
+    }
+
+    /// <inheritdoc />
     public async Task CreateOrUpdateIndexesAsync(List<IndexSettingsModel> indexes, string databaseName = null)
     {
         await databaseHelpersService.CreateOrUpdateIndexesAsync(indexes, databaseName);
+    }
+
+    /// <inheritdoc />
+    public async Task CreateOrUpdateIndexesAsync(IDatabaseHelpersService service, List<IndexSettingsModel> indexes, string databaseName = null)
+    {
+        await databaseHelpersService.CreateOrUpdateIndexesAsync(service, indexes, databaseName);
     }
 
     /// <inheritdoc />
