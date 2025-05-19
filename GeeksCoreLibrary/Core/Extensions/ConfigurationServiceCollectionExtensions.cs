@@ -133,6 +133,12 @@ public static class ConfigurationServiceCollectionExtensions
             ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
         });
 
+        builder.MapHealthChecks("/health/system", new HealthCheckOptions
+        {
+            Predicate = healthCheck => healthCheck.Tags.Contains("System"),
+            ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+        });
+
         builder.HandleStartupFunctions();
         return builder;
     }
@@ -227,14 +233,12 @@ public static class ConfigurationServiceCollectionExtensions
         // Add MySql health checks.
         if (isWeb)
         {
-            services.AddHealthChecks()
-                .AddMySql(gclSettings.ConnectionString, name: "MySqlRead", tags: ["Database"])
-                .AddCheck<WtsHealthService>("WTS Health Check", HealthStatus.Degraded, ["WTS", "Wiser Task Scheduler"])
-                .AddCheck<DatabaseHealthService>("Database Health Check", tags: ["Database"])
-                .AddCheck<SystemServiceHealth>("System Services Health Check", tags: ["server-stats"]);
+            var healthChecks = services.AddHealthChecks().AddCheck<SystemServiceHealth>("System Services Health Check", tags: ["System"]);
             if (!String.IsNullOrWhiteSpace(gclSettings.ConnectionStringForWriting))
             {
-                services.AddHealthChecks().AddMySql(gclSettings.ConnectionString, name: "MySqlWrite", tags: ["Database"]);
+                healthChecks.AddMySql(gclSettings.ConnectionString, name: "MySqlRead", tags: ["Database"])
+                    .AddCheck<WtsHealthService>("WTS Health Check", HealthStatus.Degraded, ["WTS", "Wiser Task Scheduler"])
+                    .AddCheck<DatabaseHealthService>("Database Health Check", tags: ["Database"]);
             }
 
             // Set default settings for JSON.NET.
