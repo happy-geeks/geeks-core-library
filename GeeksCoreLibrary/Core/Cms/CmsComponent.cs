@@ -238,7 +238,7 @@ public abstract class CmsComponent<T, T2> : ViewComponent
     {
         if (String.IsNullOrWhiteSpace(queryToUse))
         {
-            WriteToTrace("Query for component is empty!");
+            Logger.LogWarning("Query for component '{Id}' is empty!", ComponentId);
             return new DataTable();
         }
 
@@ -258,25 +258,6 @@ public abstract class CmsComponent<T, T2> : ViewComponent
         }
 
         return await DatabaseConnection.GetAsync(queryToUse, skipCache);
-    }
-
-    /// <summary>
-    /// This is just a wrapper around The default logger.
-    /// It adds the current class name and the ComponentId before every trace, so we can see which traces come from this component.
-    /// </summary>
-    /// <param name="message">The message to write to trace.</param>
-    /// <param name="showAsWarning">Optional: Indicate whether to show the message as a warning/error. Default is <see langword="false"/>.</param>
-    protected void WriteToTrace(string message, bool showAsWarning = false)
-    {
-        message = $"{GetType().Name} ({ComponentId}) - {message}";
-        if (showAsWarning)
-        {
-            Logger.LogWarning(message);
-        }
-        else
-        {
-            Logger.LogTrace(message);
-        }
     }
 
     /// <summary>
