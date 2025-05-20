@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Web;
 using GeeksCoreLibrary.Components.Account.Interfaces;
@@ -19,6 +18,7 @@ using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
+using PrecompiledFilterRegexes = GeeksCoreLibrary.Components.Filter.Helpers.PrecompiledRegexes;
 
 namespace GeeksCoreLibrary.Components.Pagination;
 
@@ -160,7 +160,7 @@ public class Pagination : CmsComponent<PaginationCmsSettingsModel, Pagination.Co
 
             if (parsedQuery.Contains("{filters(", StringComparison.OrdinalIgnoreCase))
             {
-                parsedQuery = Regex.Replace(parsedQuery, @"{filters\((.*?),(.*?)\)}", (await filtersService.GetFilterQueryPartAsync(productJoinPart: "$1", categoryJoinPart: "$2")).JoinPart.ToString());
+                parsedQuery = PrecompiledFilterRegexes.FilterJoinRegex.Replace(parsedQuery, (await filtersService.GetFilterQueryPartAsync(productJoinPart: "$1", categoryJoinPart: "$2")).JoinPart.ToString());
             }
 
             // Perform replacements on the query.
@@ -511,6 +511,6 @@ public class Pagination : CmsComponent<PaginationCmsSettingsModel, Pagination.Co
         // Turn the builder into a string and return it.
         return uriBuilder.Uri.ToString();
     }
-
+    
     #endregion
 }

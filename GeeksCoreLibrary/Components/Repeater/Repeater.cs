@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Components.Account.Interfaces;
 using GeeksCoreLibrary.Components.Filter.Interfaces;
@@ -21,6 +20,8 @@ using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+
+using PrecompiledFilterRegexes = GeeksCoreLibrary.Components.Filter.Helpers.PrecompiledRegexes;
 
 namespace GeeksCoreLibrary.Components.Repeater;
 
@@ -303,7 +304,7 @@ public class Repeater : CmsComponent<RepeaterCmsSettingsModel, Repeater.LegacyCo
 
                 if (query.Contains("{filters(", StringComparison.OrdinalIgnoreCase))
                 {
-                    query = Regex.Replace(query, @"{filters\((.*?),(.*?)\)}", (await filtersService.GetFilterQueryPartAsync(productJoinPart: "$1", categoryJoinPart: "$2")).JoinPart.ToString());
+                    query = PrecompiledFilterRegexes.FilterJoinRegex.Replace(query, (await filtersService.GetFilterQueryPartAsync(productJoinPart: "$1", categoryJoinPart: "$2")).JoinPart.ToString());
                 }
 
                 // Replace the {page_limit} variable for paging.
@@ -628,6 +629,6 @@ public class Repeater : CmsComponent<RepeaterCmsSettingsModel, Repeater.LegacyCo
 
         return html.ToString();
     }
-
+    
     #endregion
 }

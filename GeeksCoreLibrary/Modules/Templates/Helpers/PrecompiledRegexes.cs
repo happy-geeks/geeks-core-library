@@ -25,4 +25,19 @@ public static partial class PrecompiledRegexes
 
     [GeneratedRegex("""<svg(?:[^>]*)>(?:\s*)<use(?:[^>]*)xlink:href="([^>"]*)#(?:[^>"]*)"(?:[^>]*)>""", RegexOptions.IgnoreCase, Constants.DefaultRegexTimeoutInMilliseconds)]
     public static partial Regex SvgTagRegex { get; }
+    
+    [GeneratedRegex(@"\[{seomodule_content}\|(.*?)\]", RegexOptions.None, Constants.DefaultRegexTimeoutInMilliseconds, Constants.DefaultRegexCulture)]
+    public static partial Regex SeoModuleContentReplacementRegex { get; }
+    
+    [GeneratedRegex(@"\[{seomodule_h1header}\|(.*?)\]", RegexOptions.None, Constants.DefaultRegexTimeoutInMilliseconds, Constants.DefaultRegexCulture)]
+    public static partial Regex SeoModuleH1ReplacementRegex { get; }
+    
+    [GeneratedRegex(@"\[{seomodule_h2header}\|(.*?)\]", RegexOptions.None, Constants.DefaultRegexTimeoutInMilliseconds, Constants.DefaultRegexCulture)]
+    public static partial Regex SeoModuleH2ReplacementRegex { get; }
+    
+    [GeneratedRegex(@"\[{seomodule_h3header}\|(.*?)\]", RegexOptions.None, Constants.DefaultRegexTimeoutInMilliseconds, Constants.DefaultRegexCulture)]
+    public static partial Regex SeoModuleH3ReplacementRegex { get; }
+    
+    [GeneratedRegex(@"\[{seomodule_.*?}\|(.*?)\]", RegexOptions.None, Constants.DefaultRegexTimeoutInMilliseconds, Constants.DefaultRegexCulture)]
+    public static partial Regex SeoModuleLeftOverReplacementRegex { get; }
 }

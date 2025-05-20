@@ -13,4 +13,19 @@ public static partial class PrecompiledRegexes
     
     [GeneratedRegex("""<div[^<>]*?(?:class=['"]dynamic-content['"][^<>]*?)?(entity-block-item-id)=['"](?<itemId>\d+)['"]([^<>]*?)?>[^<>]*?<h2>[^<>]*?(?<title>[^<>]*?)<\/h2>[^<>]*?<\/div>""", RegexOptions.IgnoreCase | RegexOptions.Singleline, 180_000)]
     public static partial Regex EntityBlockTemplateRegex { get; }
+    
+    [GeneratedRegex("gcl_clear.*?cache", RegexOptions.IgnoreCase,  Constants.DefaultRegexTimeoutInMilliseconds, Constants.DefaultRegexCulture)]
+    public static partial Regex CacheQueryParamRegex { get; }
+    
+    [GeneratedRegex("^clear(?<area>.+?)cache$", RegexOptions.None, Constants.DefaultRegexTimeoutInMilliseconds, Constants.DefaultRegexCulture)]
+    public static partial Regex CacheAreaRegex { get; }
+    
+    [GeneratedRegex("\\p{IsCyrillic}", RegexOptions.None, Constants.DefaultRegexTimeoutInMilliseconds)]
+    public static partial Regex IsCyrillicRegex { get; }
+    
+    [GeneratedRegex("""<img.*?src=["'](http:\/\/.*?)["']""", RegexOptions.IgnoreCase | RegexOptions.Singleline,  Constants.DefaultRegexTimeoutInMilliseconds, Constants.DefaultRegexCulture)]
+    public static partial Regex ImgTagRegex { get; }
+    
+    [GeneratedRegex("""<source.*?srcset=["'](http:\/\/.*?)["']""", RegexOptions.IgnoreCase | RegexOptions.Singleline,  Constants.DefaultRegexTimeoutInMilliseconds, Constants.DefaultRegexCulture)]
+    public static partial Regex SourceTagRegex { get; }
 }

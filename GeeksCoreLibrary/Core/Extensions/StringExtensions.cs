@@ -5,7 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.RegularExpressions;
 using GeeksCoreLibrary.Core.Enums;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Models;
@@ -15,6 +14,9 @@ namespace GeeksCoreLibrary.Core.Extensions;
 
 public static class StringExtensions
 {
+    private static HashSet<char> invalidFileCharacters = Path.GetInvalidFileNameChars().ToHashSet();
+    private static HashSet<char> invalidPathCharacters = Path.GetInvalidFileNameChars().ToHashSet();
+    
     /// <summary>
     /// URL encode a string to make it safe to use in an URL.
     /// </summary>
@@ -86,7 +88,7 @@ public static class StringExtensions
         var stringBuilder = new StringBuilder();
 
         // Some characters need remapping because they don't have a "normal" equivalent.
-        var specialCharacterMappings = new SortedList<char, string>
+        var specialCharacterMappings = new Dictionary<char, string>
         {
             {'ß', "ss"},
             {'æ', "ae"},
@@ -103,7 +105,7 @@ public static class StringExtensions
 
         foreach (var c in normalizedString)
         {
-            if (Regex.IsMatch(c.ToString(), "\\p{IsCyrillic}"))
+            if (PrecompiledRegexes.IsCyrillicRegex.IsMatch([c]))
             {
                 continue;
             }
@@ -126,9 +128,9 @@ public static class StringExtensions
                 case UnicodeCategory.LowercaseLetter:
                 case UnicodeCategory.UppercaseLetter:
                 case UnicodeCategory.DecimalDigitNumber:
-                    if (specialCharacterMappings.ContainsKey(c))
+                    if (specialCharacterMappings.TryGetValue(c, out var mapping))
                     {
-                        stringBuilder.Append(specialCharacterMappings[c]);
+                        stringBuilder.Append(mapping);
                     }
                     else
                     {
@@ -760,10 +762,18 @@ public static class StringExtensions
             return input;
         }
 
-        var regexSearch = Path.GetInvalidFileNameChars().ToString();
-        var regex = new Regex($"[{Regex.Escape(regexSearch!)}]", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-        var output = regex.Replace(input, "");
-        return output.Replace("&", "_").Replace("+", "_");
+        var builder =  new StringBuilder(input.Length);
+        foreach (var c in input)
+        {
+            if (invalidFileCharacters.Contains(c))
+            {
+                continue;
+            }
+            
+            var characterToAdd = c is '&' or '+' ? '_' : c;
+            builder.Append(characterToAdd);
+        }
+        return builder.ToString();
     }
 
     /// <summary>
@@ -773,9 +783,18 @@ public static class StringExtensions
     /// <returns>A string that can be safely used as a directory name on the machine that this application runs on.</returns>
     public static string StripIllegalPathCharacters(this string input)
     {
-        var regexSearch = Path.GetInvalidPathChars().ToString();
-        var regex = new Regex($"[{Regex.Escape(regexSearch!)}]", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-        var output = regex.Replace(input, "");
-        return output.Replace("&", "_").Replace("+", "_");
+        ArgumentException.ThrowIfNullOrEmpty(input);
+        var builder =  new StringBuilder(input.Length);
+        foreach (var c in input)
+        {
+            if (invalidPathCharacters.Contains(c))
+            {
+                continue;
+            }
+            
+            var characterToAdd = c is '&' or '+' ? '_' : c;
+            builder.Append(characterToAdd);
+        }
+        return builder.ToString();
     }
 }

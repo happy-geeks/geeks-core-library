@@ -3952,12 +3952,12 @@ public class WiserItemsService(
         }
 
         // Replace with HTTPS
-        foreach (Match imageMatch in Regex.Matches(output, """<img.*?src=["'](http:\/\/.*?)["']""", RegexOptions.Singleline | RegexOptions.IgnoreCase))
+        foreach (Match imageMatch in PrecompiledRegexes.ImgTagRegex.Matches(output))
         {
             output = output.Replace(imageMatch.Groups[1].Value, imageMatch.Groups[1].Value.Replace("http://", "//"));
         }
 
-        foreach (Match imageMatch in Regex.Matches(output, """<source.*?srcset=["'](http:\/\/.*?)["']""", RegexOptions.Singleline | RegexOptions.IgnoreCase))
+        foreach (Match imageMatch in PrecompiledRegexes.SourceTagRegex.Matches(output))
         {
             output = output.Replace(imageMatch.Groups[1].Value, imageMatch.Groups[1].Value.Replace("http://", "//"));
         }
@@ -4994,6 +4994,6 @@ public class WiserItemsService(
 
         return (useLongValueColumn, valueChanged, deleteValue, alsoSaveSeoValue, seoValueItemDetailId);
     }
-
+    
     #endregion
 }

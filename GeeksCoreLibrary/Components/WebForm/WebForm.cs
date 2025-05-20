@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using GeeksCoreLibrary.Components.WebForm.Helpers;
 using GeeksCoreLibrary.Components.WebForm.Models;
 using GeeksCoreLibrary.Core.Cms;
 using GeeksCoreLibrary.Core.Cms.Attributes;
@@ -184,7 +185,7 @@ public class WebForm : CmsComponent<WebFormCmsSettingsModel, WebForm.ComponentMo
     /// <returns>The input HTML with the reCAPTCHA variable replaced.</returns>
     private async Task<string> PlaceReCaptchaInHtml(string input)
     {
-        var regexMatches = Regex.Matches(input, @"\{recaptcha_v(?<version>\d)\}");
+        var regexMatches = PrecompiledRegexes.RecaptchaReplacementRegex.Matches(input);
         if (regexMatches.Count == 0)
         {
             Logger.LogWarning("Couldn't place reCAPTCHA in the form. The variable is malformed.");
@@ -460,6 +461,8 @@ public class WebForm : CmsComponent<WebFormCmsSettingsModel, WebForm.ComponentMo
             ? Newtonsoft.Json.JsonConvert.SerializeObject(WebFormLegacySettingsModel.FromSettingsModel(Settings))
             : Newtonsoft.Json.JsonConvert.SerializeObject(Settings);
     }
+
+
 
     #endregion
 }

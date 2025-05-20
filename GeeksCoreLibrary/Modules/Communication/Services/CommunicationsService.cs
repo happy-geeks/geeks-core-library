@@ -7,7 +7,6 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Net.Mail;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
@@ -719,7 +718,7 @@ public class CommunicationsService : ICommunicationsService, IScopedService
         }
 
         // Now "sanitize" the phone number by removing all whitespace characters and hyphens.
-        receiverPhoneNumber = Regex.Replace(receiverPhoneNumber, @"\D+", "");
+        receiverPhoneNumber = PrecompiledRegexes.NumbersOnlyRegex.Replace(receiverPhoneNumber, "");
         // The regex will remove the + symbol as well, so it needs to be put back.
         receiverPhoneNumber = receiverPhoneNumber.Insert(0, "+");
 

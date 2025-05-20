@@ -11,6 +11,9 @@ using Microsoft.Extensions.Logging;
 using GeeksCoreLibrary.Modules.Redirect.Interfaces;
 using Microsoft.Extensions.Options;
 
+using CoreRegexes = GeeksCoreLibrary.Core.Helpers.PrecompiledRegexes;
+using PrecompiledRegexes = GeeksCoreLibrary.Modules.Redirect.Helpers.PrecompiledRegexes;
+
 namespace GeeksCoreLibrary.Modules.Redirect.Middlewares;
 
 public class RedirectMiddleWare(RequestDelegate next, ILogger<RedirectMiddleWare> logger)
@@ -41,7 +44,7 @@ public class RedirectMiddleWare(RequestDelegate next, ILogger<RedirectMiddleWare
         var redirectPermanent = true;
 
         // Redirect module.
-        if (!PrecompiledRegexes.UrlsToSkipForMiddlewaresRegex.IsMatch(oldUrl.ToString()))
+        if (!CoreRegexes.UrlsToSkipForMiddlewaresRegex.IsMatch(oldUrl.ToString()))
         {
             var redirectRule = await redirectService.GetRedirectAsync(oldUrl);
             if (!String.IsNullOrEmpty(redirectRule.NewUrl))
@@ -105,13 +108,13 @@ public class RedirectMiddleWare(RequestDelegate next, ILogger<RedirectMiddleWare
                 var original = newUrl;
 
                 // Group number/index matches.
-                foreach (Match subMatch in Regex.Matches(original, @"\[(\d+?)\]"))
+                foreach (Match subMatch in PrecompiledRegexes.GroupIndexRegex.Matches(original))
                 {
                     newUrl = newUrl.Replace(subMatch.Value, match.Groups[Int32.Parse(subMatch.Groups[1].Value)].Value);
                 }
 
                 // Group name matches.
-                foreach (Match subMatch in Regex.Matches(original, @"\[(.+?)\]"))
+                foreach (Match subMatch in PrecompiledRegexes.GroupNameRegex.Matches(original))
                 {
                     newUrl = newUrl.Replace(subMatch.Value, match.Groups[subMatch.Groups[1].Value].Value);
                 }

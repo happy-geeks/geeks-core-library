@@ -34,7 +34,7 @@ using PrecompiledRegexes = GeeksCoreLibrary.Modules.Templates.Helpers.Precompile
 
 namespace GeeksCoreLibrary.Modules.Templates.Services;
 
-public class PagesService(
+public partial class PagesService(
     IOptions<GclSettings> gclSettings,
     ILogger<PagesService> logger,
     IObjectsService objectsService,
@@ -509,41 +509,41 @@ public class PagesService(
             {
                 if (String.IsNullOrWhiteSpace(viewModel.MetaData?.SeoText))
                 {
-                    bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_content}\|(.*?)\]", "$1");
+                    bodyHtml = PrecompiledRegexes.SeoModuleContentReplacementRegex.Replace(bodyHtml, "$1");
                 }
                 else
                 {
-                    bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_content}\|(.*?)\]", viewModel.MetaData.SeoText);
+                    bodyHtml = PrecompiledRegexes.SeoModuleContentReplacementRegex.Replace(bodyHtml, viewModel.MetaData.SeoText);
                     bodyHtml = bodyHtml.Replace("[{seomodule_content}]", viewModel.MetaData.SeoText, StringComparison.OrdinalIgnoreCase);
                 }
 
                 if (String.IsNullOrWhiteSpace(viewModel.MetaData?.H1Text))
                 {
-                    bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_h1header}\|(.*?)\]", "$1");
+                    bodyHtml = PrecompiledRegexes.SeoModuleH1ReplacementRegex.Replace(bodyHtml, "$1");
                 }
                 else
                 {
-                    bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_h1header}\|(.*?)\]", viewModel.MetaData.H1Text);
+                    bodyHtml = PrecompiledRegexes.SeoModuleH1ReplacementRegex.Replace(bodyHtml, viewModel.MetaData.H1Text);
                     bodyHtml = bodyHtml.Replace("[{seomodule_h1header}]", viewModel.MetaData.H1Text, StringComparison.OrdinalIgnoreCase);
                 }
 
                 if (String.IsNullOrWhiteSpace(viewModel.MetaData?.H2Text))
                 {
-                    bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_h2header}\|(.*?)\]", "$1");
+                    bodyHtml = PrecompiledRegexes.SeoModuleH2ReplacementRegex.Replace(bodyHtml, "$1");
                 }
                 else
                 {
-                    bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_h2header}\|(.*?)\]", viewModel.MetaData.H2Text);
+                    bodyHtml = PrecompiledRegexes.SeoModuleH2ReplacementRegex.Replace(bodyHtml, viewModel.MetaData.H2Text);
                     bodyHtml = bodyHtml.Replace("[{seomodule_h2header}]", viewModel.MetaData.H2Text, StringComparison.OrdinalIgnoreCase);
                 }
 
                 if (String.IsNullOrWhiteSpace(viewModel.MetaData?.H3Text))
                 {
-                    bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_h3header}\|(.*?)\]", "$1");
+                    bodyHtml = PrecompiledRegexes.SeoModuleH3ReplacementRegex.Replace(bodyHtml, "$1");
                 }
                 else
                 {
-                    bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_h3header}\|(.*?)\]", viewModel.MetaData.H3Text);
+                    bodyHtml = PrecompiledRegexes.SeoModuleH3ReplacementRegex.Replace(bodyHtml, viewModel.MetaData.H3Text);
                     bodyHtml = bodyHtml.Replace("[{seomodule_h3header}]", viewModel.MetaData.H3Text, StringComparison.OrdinalIgnoreCase);
                 }
             }
@@ -553,7 +553,7 @@ public class PagesService(
         if (useGeneralLayout && bodyHtml.Contains("[{seomodule_"))
         {
             bodyHtml = bodyHtml.Replace("[{seomodule_content}]", "", StringComparison.OrdinalIgnoreCase);
-            bodyHtml = Regex.Replace(bodyHtml, @"\[{seomodule_.*?}\|(.*?)\]", "$1");
+            bodyHtml = PrecompiledRegexes.SeoModuleLeftOverReplacementRegex.Replace(bodyHtml, "$1");
         }
 
         // Check if some component is adding external JavaScript libraries to the page.
@@ -1013,10 +1013,13 @@ public class PagesService(
         {
             if (wiserSearchScript.StartsWith("<script", StringComparison.OrdinalIgnoreCase))
             {
-                wiserSearchScript = Regex.Replace(wiserSearchScript, "^<script.*?>(?<script>.*?)</script>", "${script}", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+                wiserSearchScript = MyRegex().Replace(wiserSearchScript, "${script}");
             }
 
             viewModel.Javascript.PagePluginInlineJavascriptSnippets.Add(wiserSearchScript);
         }
     }
+
+    [GeneratedRegex("^<script.*?>(?<script>.*?)</script>", RegexOptions.IgnoreCase | RegexOptions.Singleline, "nl-NL")]
+    private static partial Regex MyRegex();
 }

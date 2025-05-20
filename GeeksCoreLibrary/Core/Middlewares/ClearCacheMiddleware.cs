@@ -31,7 +31,7 @@ public class ClearCacheMiddleware(RequestDelegate next, ILogger<RewriteUrlToOrde
         }
 
         // Try to get the parameter that is the clear cache parameter.
-        var clearCacheParameter = context.Request.Query.Keys.FirstOrDefault(key => Regex.IsMatch(key, "gcl_clear.*?cache", RegexOptions.IgnoreCase));
+        var clearCacheParameter = context.Request.Query.Keys.FirstOrDefault(key => PrecompiledRegexes.CacheQueryParamRegex.IsMatch(key));
         if (clearCacheParameter == null || !context.Request.Query[clearCacheParameter].ToString().InList("1", "true"))
         {
             await next.Invoke(context);
@@ -43,7 +43,7 @@ public class ClearCacheMiddleware(RequestDelegate next, ILogger<RewriteUrlToOrde
 
         // Check if there's a specific area that should be cleared.
         var cacheArea = CacheAreas.Unknown;
-        var regex = Regex.Match(cachePart, "^clear(?<area>.+?)cache$");
+        var regex = PrecompiledRegexes.CacheAreaRegex.Match(cachePart);
         if (regex.Success)
         {
             var areaValue = regex.Groups["area"].Value;

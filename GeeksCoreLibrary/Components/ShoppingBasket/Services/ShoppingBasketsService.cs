@@ -1137,12 +1137,12 @@ public class ShoppingBasketsService(
         logger.LogTrace("GCL ShoppingBasket: End replace main variables");
 
         // Replace calculated variables on basket level.
-        foreach (Match countMatch in Regex.Matches(template, "{count~(.*?)}", RegexOptions.Singleline))
+        foreach (Match countMatch in PrecompiledRegexes.CountReplacementRegex.Matches(template))
         {
             template = template.Replace(countMatch.Value, GetLines(basketLines, countMatch.Groups[1].Value).Count.ToString());
         }
 
-        foreach (Match totalCountMatch in Regex.Matches(template, "{totalcount~(.*?)}", RegexOptions.Singleline))
+        foreach (Match totalCountMatch in PrecompiledRegexes.TotalCountReplacementRegex.Matches(template))
         {
             template = template.Replace(totalCountMatch.Value, GetTotalQuantity(basketLines, totalCountMatch.Groups[1].Value).ToString(CultureInfo.InvariantCulture));
         }
@@ -1150,7 +1150,7 @@ public class ShoppingBasketsService(
         logger.LogTrace("GCL ShoppingBasket: End replace calculated variables on basket level");
 
         // Replace all price types on basket level.
-        foreach (Match priceMatch in Regex.Matches(template, "{price~(.*?)}", RegexOptions.Singleline))
+        foreach (Match priceMatch in PrecompiledRegexes.FormattedPriceReplacementRegex.Matches(template))
         {
             var suffixArray = priceMatch.Groups[1].Value.Split('~');
             var lineTypes = suffixArray[0].Split(',');
@@ -1209,7 +1209,7 @@ public class ShoppingBasketsService(
                 var vatTemplate = settings.VatPercentageTemplate;
 
                 // Format {price~<numberFormat>~<culture>} or just {price}.
-                foreach (Match priceMatch in Regex.Matches(vatTemplate, "{price~?(.*?)}", RegexOptions.Singleline))
+                foreach (Match priceMatch in PrecompiledRegexes.PriceReplacementRegex.Matches(vatTemplate))
                 {
                     var numberFormat = "N2";
                     var localCultureName = cultureName;
@@ -1228,7 +1228,7 @@ public class ShoppingBasketsService(
                 }
 
                 // Format {percentage~<numberFormat>~<culture>} or just {percentage}.
-                foreach (Match priceMatch in Regex.Matches(vatTemplate, "{price~?(.*?)}", RegexOptions.Singleline))
+                foreach (Match priceMatch in PrecompiledRegexes.PercentageReplacementRegex.Matches(vatTemplate))
                 {
                     var numberFormat = "N2";
                     var localCultureName = cultureName;
@@ -2872,7 +2872,7 @@ public class ShoppingBasketsService(
         html = await stringReplacementsService.DoAllReplacementsAsync(html, null, settings.HandleRequest, settings.EvaluateIfElseInTemplates, settings.RemoveUnknownVariables);
         html = stringReplacementsService.EvaluateTemplate(html);
 
-        return settings.RemoveUnknownVariables ? Regex.Replace(html, "{[^\\]}\\s]*}", "") : html;
+        return settings.RemoveUnknownVariables ? PrecompiledRegexes.VariableRegex.Replace(html, "") : html;
     }
 
     #region Private functions (helper functions)

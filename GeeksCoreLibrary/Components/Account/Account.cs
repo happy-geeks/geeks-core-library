@@ -30,6 +30,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Constants = GeeksCoreLibrary.Components.Account.Models.Constants;
+using PrecompiledRegexes = GeeksCoreLibrary.Components.Account.Helpers.PrecompiledRegexes;
 using QueryHelpers = Microsoft.AspNetCore.WebUtilities.QueryHelpers;
 
 namespace GeeksCoreLibrary.Components.Account;
@@ -1124,7 +1125,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
             dataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
             resultHtml = resultHtml.Replace("{amountOfSubAccounts}", dataTable.Rows.Count.ToString(), StringComparison.OrdinalIgnoreCase);
 
-            foreach (Match match in PrecompiledRegexes.SubAccountsRepeaterRegex.Matches(resultHtml))
+            foreach (Match match in PrecompiledRegexes.SubAccountRepeatRegex.Matches(resultHtml))
             {
                 if (dataTable.Rows.Count == 0)
                 {
