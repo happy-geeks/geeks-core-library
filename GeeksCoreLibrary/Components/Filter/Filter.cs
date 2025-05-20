@@ -196,7 +196,8 @@ public class Filter : CmsComponent<FilterCmsSettingsModel, Filter.ComponentModes
                 if (set404)
                 {
                     WriteToTrace("GCL 404 Because filters not in alphabetical order", true);
-                    HttpContextHelpers.Return404(httpContext);
+                    HttpContextHelpers.ForceNotFoundStatus(httpContext);
+                    return String.Empty;
                 }
             }
         }

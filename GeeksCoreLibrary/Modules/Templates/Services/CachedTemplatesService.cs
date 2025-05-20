@@ -22,6 +22,7 @@ using GeeksCoreLibrary.Modules.Templates.Models;
 using LazyCache;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
@@ -63,13 +64,22 @@ public class CachedTemplatesService(
 
         // Cache the template settings in memory.
         var cacheName = $"Template_{languagesService.CurrentLanguageCode ?? ""}_{id}_{name}_{parentId}_{parentName}_{includeContent}_{branchesService.GetDatabaseNameFromCookie()}";
-        var template = await cache.GetOrAddAsync(cacheName,
-            async cacheEntry =>
-            {
-                cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
-                return await templatesService.GetTemplateAsync(id, name, type, parentId, parentName, includeContent, skipPermissions: true);
-            },
-            cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
+        var template = await cache.GetAsync<Template>(cacheName);
+        if (template != null)
+        {
+            return template;
+        }
+
+        template = await templatesService.GetTemplateAsync(id, name, type, parentId, parentName, includeContent, skipPermissions: true);
+        if (HttpContextHelpers.NotFoundStatusWasForced(httpContextAccessor?.HttpContext))
+        {
+            // Don't cache the content if a 404 was forced.
+            return template;
+        }
+
+        var memoryCacheEntryOptions = cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates);
+        memoryCacheEntryOptions.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
+        cache.Add(cacheName, template, memoryCacheEntryOptions);
 
         return ObjectCloner.ObjectCloner.DeepClone(template);
     }
@@ -77,27 +87,40 @@ public class CachedTemplatesService(
     /// <inheritdoc />
     public async Task<Template> GetTemplateContentAsync(int id = 0, string name = "", TemplateTypes? type = null, int parentId = 0, string parentName = "")
     {
-        var cacheKey = $"GetTemplateContent_{id}_{name}_{type}_{parentId}_{parentName}_{branchesService.GetDatabaseNameFromCookie()}";
-        return await cache.GetOrAddAsync(cacheKey,
-            async cacheEntry =>
-            {
-                cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
-                return await templatesService.GetTemplateContentAsync(id, name, type, parentId, parentName);
-            },
-            cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
+        var cacheName = $"GetTemplateContent_{id}_{name}_{type}_{parentId}_{parentName}_{branchesService.GetDatabaseNameFromCookie()}";
+        var template = await cache.GetAsync<Template>(cacheName);
+        if (template != null)
+        {
+            return template;
+        }
+
+        template = await templatesService.GetTemplateContentAsync(id, name, type, parentId, parentName);
+        if (HttpContextHelpers.NotFoundStatusWasForced(httpContextAccessor?.HttpContext))
+        {
+            // Don't cache the content if a 404 was forced.
+            return template;
+        }
+
+        var memoryCacheEntryOptions = cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates);
+        memoryCacheEntryOptions.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
+        cache.Add(cacheName, template, memoryCacheEntryOptions);
+
+        return ObjectCloner.ObjectCloner.DeepClone(template);
     }
 
     /// <inheritdoc />
     public async Task<Template> GetTemplateCacheSettingsAsync(int id = 0, string name = "", int parentId = 0, string parentName = "")
     {
         var cacheName = $"TemplateCacheSettings_{id}_{name}_{parentId}_{parentName}_{branchesService.GetDatabaseNameFromCookie()}";
-        return await cache.GetOrAddAsync(cacheName,
+        var template = await cache.GetOrAddAsync(cacheName,
             async cacheEntry =>
             {
                 cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
                 return await templatesService.GetTemplateCacheSettingsAsync(id, name, parentId, parentName);
             },
             cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
+
+        return ObjectCloner.ObjectCloner.DeepClone(template);
     }
 
     /// <inheritdoc />
@@ -249,14 +272,24 @@ public class CachedTemplatesService(
         }
 
         var cacheName = $"DynamicContentData_{contentId}_{branchesService.GetDatabaseNameFromCookie()}";
+        var dynamicContent = await cache.GetAsync<DynamicContent>(cacheName);
+        if (dynamicContent != null)
+        {
+            return dynamicContent;
+        }
 
-        return await cache.GetOrAddAsync(cacheName,
-            async cacheEntry =>
-            {
-                cacheEntry.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
-                return await templatesService.GetDynamicContentData(contentId);
-            },
-            cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
+        dynamicContent = await templatesService.GetDynamicContentData(contentId);
+        if (HttpContextHelpers.NotFoundStatusWasForced(httpContextAccessor?.HttpContext))
+        {
+            // Don't cache the content if a 404 was forced.
+            return dynamicContent;
+        }
+
+        var memoryCacheEntryOptions = cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates);
+        memoryCacheEntryOptions.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
+        cache.Add(cacheName, dynamicContent, memoryCacheEntryOptions);
+
+        return ObjectCloner.ObjectCloner.DeepClone(dynamicContent);
     }
 
     /// <inheritdoc />
@@ -360,30 +393,41 @@ public class CachedTemplatesService(
 
         object content = null;
         var addedToCache = false;
-        
+
         // Check how long this template should be cached:
-        TimeSpan cacheMinutes;
+        TimeSpan cacheTimeSpan;
         if (settings.CacheMinutes == -1)
         {
-            cacheMinutes = TimeSpan.Zero;
+            cacheTimeSpan = TimeSpan.Zero;
         }
         else
         {
-            cacheMinutes = settings.CacheMinutes == 0 ? gclSettings.DefaultTemplateCacheDuration : TimeSpan.FromMinutes(settings.CacheMinutes);
+            cacheTimeSpan = settings.CacheMinutes == 0 ? gclSettings.DefaultTemplateCacheDuration : TimeSpan.FromMinutes(settings.CacheMinutes);
         }
-        
+
+        var memoryCacheEntryOptions = cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates);
+        memoryCacheEntryOptions.AbsoluteExpirationRelativeToNow = cacheTimeSpan;
+
         switch (settings.CachingLocation)
         {
             case TemplateCachingLocations.InMemory:
             {
-                content = await cache.GetOrAddAsync(cacheName.ToString(),
-                    async cacheEntry =>
-                    {
-                        addedToCache = true;
-                        cacheEntry.AbsoluteExpirationRelativeToNow = cacheMinutes;
-                        return await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
-                    },
-                    cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
+                content = await cache.GetAsync<object>(cacheName.ToString());
+                if (content != null)
+                {
+                    return content;
+                }
+
+                content = await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
+                if (HttpContextHelpers.NotFoundStatusWasForced(httpContextAccessor?.HttpContext))
+                {
+                    // Don't cache the content if a 404 was forced.
+                    break;
+                }
+
+                addedToCache = true;
+                cache.Add(cacheName.ToString(), content, memoryCacheEntryOptions);
+
                 break;
             }
             case TemplateCachingLocations.OnDisk:
@@ -398,16 +442,21 @@ public class CachedTemplatesService(
                     var fileName = $"{cacheName}.html";
                     var fullCachePath = Path.Combine(cacheFolder, Constants.ComponentsCacheRootDirectoryName, dynamicContent.Name.StripIllegalPathCharacters(), $"{dynamicContent.Title.StripIllegalPathCharacters()} ({dynamicContent.Id})", fileName);
 
-                    content = await fileCacheService.GetTextAsync(fullCachePath, cacheMinutes);
+                    content = await fileCacheService.GetTextAsync(fullCachePath, cacheTimeSpan);
 
                     if (content is null)
                     {
                         content = await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
+                        if (HttpContextHelpers.NotFoundStatusWasForced(httpContextAccessor?.HttpContext))
+                        {
+                            // Don't cache the content if a 404 was forced.
+                            break;
+                        }
 
                         if (content is string contentString)
                         {
                             addedToCache = true;
-                            await fileCacheService.WriteFileIfNotExistsOrExpiredAsync(fullCachePath, contentString, cacheMinutes);
+                            await fileCacheService.WriteFileIfNotExistsOrExpiredAsync(fullCachePath, contentString, cacheTimeSpan);
                         }
                         else
                         {

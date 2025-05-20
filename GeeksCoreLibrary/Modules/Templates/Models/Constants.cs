@@ -22,4 +22,6 @@ public static class Constants
 
     public const string DynamicComponentRenderingError = "An error occurred while generating component with id";
     public const string TemplateRenderingError = "An error occurred while rendering template with id";
+
+    public const string ForceNotFoundStatusKey = "Force404";
 }
