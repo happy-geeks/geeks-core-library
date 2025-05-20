@@ -933,7 +933,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
             }
 
             // Loop through lines and replace variables.
-            foreach (Match match in Regex.Matches(resultHtml, "{repeat:fields}(.*?){/repeat:fields}", RegexOptions.Singleline))
+            foreach (Match match in PrecompiledRegexes.FieldsRepeaterRegex.Matches(resultHtml))
             {
                 if (accountDataTable.Rows.Count == 0)
                 {
@@ -1097,7 +1097,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
             }
 
             // Get available fields and values from main query. We do this last, so that this will also retrieve any newly created sub account.
-            foreach (Match match in Regex.Matches(resultHtml, "{repeat:fields}(.*?){/repeat:fields}", RegexOptions.Singleline))
+            foreach (Match match in PrecompiledRegexes.FieldsRepeaterRegex.Matches(resultHtml))
             {
                 if (fieldsDataRows.Count == 0)
                 {
@@ -1124,7 +1124,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
             dataTable = await RenderAndExecuteQueryAsync(query, skipCache: true);
             resultHtml = resultHtml.Replace("{amountOfSubAccounts}", dataTable.Rows.Count.ToString(), StringComparison.OrdinalIgnoreCase);
 
-            foreach (Match match in Regex.Matches(resultHtml, "{repeat:subAccounts}(.*?){/repeat:subAccounts}", RegexOptions.Singleline))
+            foreach (Match match in PrecompiledRegexes.SubAccountsRepeaterRegex.Matches(resultHtml))
             {
                 if (dataTable.Rows.Count == 0)
                 {
