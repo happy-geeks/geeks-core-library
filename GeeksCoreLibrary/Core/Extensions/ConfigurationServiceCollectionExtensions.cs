@@ -115,6 +115,8 @@ public static class ConfigurationServiceCollectionExtensions
 
         builder.MapControllers();
 
+        builder.UseMiddleware<Force404Middleware>();
+
         builder.MapHealthChecks("/health", new HealthCheckOptions
         {
             Predicate = _ => true,

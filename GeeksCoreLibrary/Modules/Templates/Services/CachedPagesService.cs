@@ -14,6 +14,7 @@ using GeeksCoreLibrary.Modules.Templates.Models;
 using GeeksCoreLibrary.Modules.Templates.ViewModels;
 using LazyCache;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Constants = GeeksCoreLibrary.Modules.Templates.Models.Constants;
@@ -29,7 +30,8 @@ public class CachedPagesService(
     IOptions<GclSettings> gclSettings,
     ICacheService cacheService,
     ILanguagesService languagesService,
-    IWebHostEnvironment webHostEnvironment = null)
+    IWebHostEnvironment webHostEnvironment = null,
+    IHttpContextAccessor httpContextAccessor = null)
     : IPagesService
 {
     private readonly GclSettings gclSettings = gclSettings.Value;
@@ -43,7 +45,6 @@ public class CachedPagesService(
         }
 
         Template template;
-
         if (templateContent != null)
         {
             template = await templatesService.GetTemplateAsync(id, name, type, parentId, parentName, false, skipPermissions);
@@ -67,7 +68,7 @@ public class CachedPagesService(
         {
             cacheMinutes = cacheSettings.CachingMinutes == 0 ? gclSettings.DefaultTemplateCacheDuration : TimeSpan.FromMinutes(cacheSettings.CachingMinutes);
         }
-        
+
         if (cacheMinutes.TotalMinutes > 0)
         {
             // Get folder and file name.
@@ -99,20 +100,14 @@ public class CachedPagesService(
                     else
                     {
                         // Build the cache directory, based on template type and name.
-                        fullCachePath = Path.Combine(cacheFolder, Constants.TemplateCacheRootDirectoryName,
-                            cacheSettings.Type.ToString(),
-                            $"{cacheSettings.Name.StripIllegalPathCharacters()} ({cacheSettings.Id})", cacheFileName);
-                        logger.LogDebug(
-                            $"Content cache enabled for template '{cacheSettings.Id}', cache file location: {fullCachePath}.");
+                        fullCachePath = Path.Combine(cacheFolder, Constants.TemplateCacheRootDirectoryName, cacheSettings.Type.ToString(), $"{cacheSettings.Name.StripIllegalPathCharacters()} ({cacheSettings.Id})", cacheFileName);
+                        logger.LogDebug($"Content cache enabled for template '{cacheSettings.Id}', cache file location: {fullCachePath}.");
 
-                        var fileContent =
-                            await fileCacheService.GetTextAsync(fullCachePath, cacheMinutes);
+                        var fileContent = await fileCacheService.GetTextAsync(fullCachePath, cacheMinutes);
 
                         if (!String.IsNullOrWhiteSpace(fileContent))
                         {
-                            content = cacheSettings.Type != TemplateTypes.Html
-                                ? fileContent
-                                : $"<!-- START PARTIAL TEMPLATE FROM CACHE ({cacheSettings.Id}) -->{fileContent}<!-- END PARTIAL TEMPLATE FROM CACHE ({cacheSettings.Id}) -->";
+                            content = cacheSettings.Type != TemplateTypes.Html ? fileContent : $"<!-- START PARTIAL TEMPLATE FROM CACHE ({cacheSettings.Id}) -->{fileContent}<!-- END PARTIAL TEMPLATE FROM CACHE ({cacheSettings.Id}) -->";
                         }
                     }
                     break;
@@ -133,7 +128,8 @@ public class CachedPagesService(
 
         template = await pagesService.GetRenderedTemplateAsync(id, name, type, parentId, parentName, skipPermissions, content, useAbsoluteImageUrls, removeSvgUrlsFromIcons);
 
-        if (content != null)
+        // If we already have the content, or if we forced a 404 status code, we don't need to cache it.
+        if (content != null || HttpContextHelpers.NotFoundStatusWasForced(httpContextAccessor?.HttpContext))
         {
             return ObjectCloner.ObjectCloner.DeepClone(await templatesService.CheckTemplatePermissionsAsync(template));
         }
@@ -144,12 +140,9 @@ public class CachedPagesService(
             {
                 if (!String.IsNullOrWhiteSpace(contentCacheKey))
                 {
-                    cache.GetOrAdd(contentCacheKey,
-                        cacheEntry =>
-                        {
-                            cacheEntry.AbsoluteExpirationRelativeToNow = cacheMinutes;
-                            return template;
-                        }, cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates));
+                    var memoryCacheEntryOptions = cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates);
+                    memoryCacheEntryOptions.AbsoluteExpirationRelativeToNow = gclSettings.DefaultTemplateCacheDuration;
+                    cache.Add(contentCacheKey, template, memoryCacheEntryOptions);
                 }
 
                 break;

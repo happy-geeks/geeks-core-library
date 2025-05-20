@@ -238,7 +238,7 @@ public class Pagination : CmsComponent<PaginationCmsSettingsModel, Pagination.Co
         if (lastPageNumber > 0 && currentPage > lastPageNumber)
         {
             Logger.LogWarning("GCL 404 Because trying to fetch a page that's higher than allowed");
-            HttpContextHelpers.Return404(HttpContext);
+            HttpContextHelpers.ForceNotFoundStatus(HttpContext);
             return String.Empty;
         }
 
