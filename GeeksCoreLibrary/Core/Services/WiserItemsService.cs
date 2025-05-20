@@ -4994,6 +4994,6 @@ public class WiserItemsService(
 
         return (useLongValueColumn, valueChanged, deleteValue, alsoSaveSeoValue, seoValueItemDetailId);
     }
-    
+
     #endregion
 }

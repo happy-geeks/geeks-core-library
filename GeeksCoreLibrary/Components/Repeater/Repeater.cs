@@ -629,6 +629,6 @@ public class Repeater : CmsComponent<RepeaterCmsSettingsModel, Repeater.LegacyCo
 
         return html.ToString();
     }
-    
+
     #endregion
 }

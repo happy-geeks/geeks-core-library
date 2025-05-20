@@ -40,4 +40,7 @@ public static partial class PrecompiledRegexes
     
     [GeneratedRegex(@"\[{seomodule_.*?}\|(.*?)\]", RegexOptions.None, Constants.DefaultRegexTimeoutInMilliseconds, Constants.DefaultRegexCulture)]
     public static partial Regex SeoModuleLeftOverReplacementRegex { get; }
+    
+    [GeneratedRegex("^<script.*?>(?<script>.*?)</script>", RegexOptions.IgnoreCase | RegexOptions.Singleline )]
+    public static partial Regex ScriptElementRegex { get; }
 }

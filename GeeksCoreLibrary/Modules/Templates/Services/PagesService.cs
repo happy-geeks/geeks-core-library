@@ -1013,13 +1013,10 @@ public partial class PagesService(
         {
             if (wiserSearchScript.StartsWith("<script", StringComparison.OrdinalIgnoreCase))
             {
-                wiserSearchScript = MyRegex().Replace(wiserSearchScript, "${script}");
+                wiserSearchScript = PrecompiledRegexes.ScriptElementRegex.Replace(wiserSearchScript, "${script}");
             }
 
             viewModel.Javascript.PagePluginInlineJavascriptSnippets.Add(wiserSearchScript);
         }
     }
-
-    [GeneratedRegex("^<script.*?>(?<script>.*?)</script>", RegexOptions.IgnoreCase | RegexOptions.Singleline, "nl-NL")]
-    private static partial Regex MyRegex();
 }

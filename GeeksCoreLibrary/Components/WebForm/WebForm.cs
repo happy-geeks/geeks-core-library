@@ -461,8 +461,6 @@ public class WebForm : CmsComponent<WebFormCmsSettingsModel, WebForm.ComponentMo
             ? Newtonsoft.Json.JsonConvert.SerializeObject(WebFormLegacySettingsModel.FromSettingsModel(Settings))
             : Newtonsoft.Json.JsonConvert.SerializeObject(Settings);
     }
-
-
-
+    
     #endregion
 }
