@@ -129,12 +129,10 @@ public class WebPage : CmsComponent<WebPageCmsSettingsModel, WebPage.ComponentMo
         {
             if (Settings.ReturnNotFoundStatusCodeOnNoData)
             {
-                HttpContextHelpers.Return404(httpContextAccessor?.HttpContext);
+                HttpContextHelpers.ForceNotFoundStatus(httpContextAccessor?.HttpContext);
             }
-            else
-            {
-                return "";
-            }
+
+            return String.Empty;
         }
 
         var html = getWebPageResult.Rows[0].Field<string>("html");

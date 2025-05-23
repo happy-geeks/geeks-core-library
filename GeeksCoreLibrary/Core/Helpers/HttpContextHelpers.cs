@@ -436,18 +436,26 @@ public static class HttpContextHelpers
     }
 
     /// <summary>
-    /// Returns a 404
+    /// Set the response status code to 404.
     /// </summary>
     /// <param name="httpContext">The <see cref="HttpContext"/>.</param>
-    public static void Return404(HttpContext httpContext)
+    public static void ForceNotFoundStatus(HttpContext httpContext)
     {
-        // when 404 is thrown in wiser loading of template is aborted.
-        if (httpContext.Request.Host.ToString().Contains("wiser.nl", StringComparison.OrdinalIgnoreCase))
+        if (httpContext == null)
         {
             return;
         }
 
-        httpContext.Response.StatusCode = 404;
+        httpContext.Items[Constants.ForceNotFoundStatusKey] = true;
+    }
+
+    /// <summary>
+    /// Check if the response status code was set to 404.
+    /// </summary>
+    /// <param name="httpContext">The <see cref="HttpContext"/>.</param>
+    public static bool NotFoundStatusWasForced(HttpContext httpContext)
+    {
+        return httpContext.Items.TryGetValue(Constants.ForceNotFoundStatusKey, out var forceNotFound) && forceNotFound != null && (bool) forceNotFound;
     }
 
     /// <summary>
