@@ -74,11 +74,11 @@ public class ClearCacheMiddleware(RequestDelegate next, ILogger<RewriteUrlToOrde
                 break;
         }
 
-        var wut = QueryHelpers.ParseQuery(context.Request.QueryString.Value ?? String.Empty);
-        wut.Remove(clearCacheParameter);
+        var queryString = QueryHelpers.ParseQuery(context.Request.QueryString.Value ?? String.Empty);
+        queryString.Remove(clearCacheParameter);
 
         var originalUrlPath = HttpContextHelpers.GetOriginalRequestUri(context).GetLeftPart(UriPartial.Path);
-        var newUrl = QueryHelpers.AddQueryString(originalUrlPath, wut);
+        var newUrl = QueryHelpers.AddQueryString(originalUrlPath, queryString);
 
         context.Response.Redirect(newUrl);
     }
