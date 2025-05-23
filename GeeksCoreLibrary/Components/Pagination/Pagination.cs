@@ -237,7 +237,7 @@ public class Pagination : CmsComponent<PaginationCmsSettingsModel, Pagination.Co
         // Only do this if there's at least one page. Otherwise this component will always return a 404 response on empty results, which is not always desired.
         if (lastPageNumber > 0 && currentPage > lastPageNumber)
         {
-            WriteToTrace("GCL 404 Because trying to fetch a page that's higher than allowed", true);
+            Logger.LogWarning("GCL 404 Because trying to fetch a page that's higher than allowed");
             HttpContextHelpers.Return404(HttpContext);
             return String.Empty;
         }

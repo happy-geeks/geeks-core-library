@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Data;
 using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Web;
 using GeeksCoreLibrary.Components.Account.Interfaces;
 using GeeksCoreLibrary.Components.Filter.Interfaces;
 using GeeksCoreLibrary.Components.Filter.Models;
@@ -151,8 +153,6 @@ public class Filter : CmsComponent<FilterCmsSettingsModel, Filter.ComponentModes
             throw new Exception("HttpContext is null.");
         }
 
-        WriteToTrace("Start generating filters...");
-
         // Try to use the system objects if possible, reverting back to the previous value if they don't exist (by setting them as the default result)
         var filterParameter = await objectsService.FindSystemObjectByDomainNameAsync("filterparameterwiser2", defaultResult: "filterstring");
         var filterParameterMixedMode = (await objectsService.FindSystemObjectByDomainNameAsync("filterparametermixedmodewiser2")).Equals("1");
@@ -195,7 +195,6 @@ public class Filter : CmsComponent<FilterCmsSettingsModel, Filter.ComponentModes
                 // Return a 404 if filters not alphabetical
                 if (set404)
                 {
-                    WriteToTrace("GCL 404 Because filters not in alphabetical order", true);
                     HttpContextHelpers.Return404(httpContext);
                 }
             }
@@ -214,7 +213,7 @@ public class Filter : CmsComponent<FilterCmsSettingsModel, Filter.ComponentModes
                 }
                 else
                 {
-                    WriteToTrace("No category id from query found, using category id 0", true);
+                    Logger.LogWarning("No category id from query found, using category id 0");
                 }
             }
         }
@@ -223,7 +222,7 @@ public class Filter : CmsComponent<FilterCmsSettingsModel, Filter.ComponentModes
         var filterGroups = await filterService.GetFilterGroupsAsync(categoryId, Settings.ExtraFilterProperties);
         if (filterGroups.Count == 0)
         {
-            WriteToTrace("GCL Filter: No filter groups found", true);
+            Logger.LogWarning("GCL Filter: No filter groups found");
         }
 
         // Add selected values to filter group, so selected templates will be used
@@ -241,9 +240,6 @@ public class Filter : CmsComponent<FilterCmsSettingsModel, Filter.ComponentModes
                     {
                         var curUrl = httpContext.Request.QueryString.ToString();
                         var exclude = parametersToExclude.ToLowerInvariant().Split(",");
-
-                        WriteToTrace($"GenerateFiltersAsync curUrl: {curUrl}", true);
-                        WriteToTrace($"Exclude: {parametersToExclude.ToLowerInvariant()}", true);
 
                         var tempResult = new Dictionary<string, List<string>>();
                         foreach (var item in ConvertQueryStringToDictionary(curUrl, filterParameter, parametersToExclude, filterParameterMixedMode))
@@ -293,7 +289,6 @@ public class Filter : CmsComponent<FilterCmsSettingsModel, Filter.ComponentModes
             }
         }
 
-        WriteToTrace(filterGroups.Count + " filter groups found");
         if (filterGroups.Count == 0)
         {
             return String.Empty;
@@ -407,8 +402,6 @@ public class Filter : CmsComponent<FilterCmsSettingsModel, Filter.ComponentModes
                 continue;
             }
 
-            WriteToTrace($"Add filter normal: {filterGroup} = {row[filterValueColumn]}");
-
             // Add extra details (selected with filteritems query) to the filteritem, so these details can be used as variables in templates
             var details = new SortedList<string, string>();
             foreach (DataColumn column in row.Table.Columns)
@@ -441,7 +434,6 @@ public class Filter : CmsComponent<FilterCmsSettingsModel, Filter.ComponentModes
 
             foreach (var filter in filterGroup.Value.GetAdvancedFilters)
             {
-                WriteToTrace($"Add advanced filter: {filterGroup.Key} = {filter.Key}");
                 filterGroup.Value.AddItem(filter.Key, 1);
             }
         }
@@ -554,7 +546,6 @@ public class Filter : CmsComponent<FilterCmsSettingsModel, Filter.ComponentModes
             {
                 var tempName = f.ContainsOrder ? selectedFilterItem.Split("|")[1] : selectedFilterItem.ToLower();
                 var filterItemFound = false;
-                WriteToTrace($"1 - CreateFilterURL({f.NameSeo}, {selectedFilterItem}), False");
 
                 replaceData = new Dictionary<string, string>
                 {
@@ -594,8 +585,6 @@ public class Filter : CmsComponent<FilterCmsSettingsModel, Filter.ComponentModes
                 }
             }
 
-            WriteToTrace($"2 - CreateFilterURL({f.NameSeo}, , False)");
-
             replaceData = new Dictionary<string, string>
             {
                 {"groupname", tempGroup},
@@ -612,8 +601,6 @@ public class Filter : CmsComponent<FilterCmsSettingsModel, Filter.ComponentModes
         var hasActiveFilters = filterGroups.Any(fg => fg.Value.SelectedValues.Count > 0 || !String.IsNullOrWhiteSpace(fg.Value.SelectedValueString));
         if (hasActiveFilters && filterGroups.Any(x => !x.Value.HideInSummary))
         {
-            WriteToTrace("3 - CreateFilterURL(, , False)");
-
             replaceData = new Dictionary<string, string>
             {
                 {"items", summaryGroups.ToString()},
@@ -673,19 +660,16 @@ public class Filter : CmsComponent<FilterCmsSettingsModel, Filter.ComponentModes
                 {
                     if (singleSelect)
                     {
-                        WriteToTrace($"1 - adding item to parameter list, key = {groupName.ToLower()}, value = {filter.ToLower()}");
                         parameterList.Add(groupName.ToLower(), filter.ToLower());
                     }
                     else
                     {
-                        WriteToTrace($"2 - adding item to parameter list, key = {groupName.ToLower()}, value = {f.SelectedValueString}{valueSplit}{filter.ToLower()}");
                         parameterList.Add(groupName.ToLower(), f.SelectedValueString + valueSplit + filter.ToLower());
                     }
                 }
                 else
                 {
                     // Add selected filterGroup to URL
-                    WriteToTrace($"3 - adding item to parameter list, key = {nameStr}, value = {f.SelectedValueString}");
                     parameterList.Add(nameStr, f.SelectedValueString);
                 }
             }
@@ -694,33 +678,18 @@ public class Filter : CmsComponent<FilterCmsSettingsModel, Filter.ComponentModes
             {
                 if (!parameterList.ContainsKey(groupName.ToLower()))
                 {
-                    WriteToTrace($"4 - adding item to parameter list, key = {groupName.ToLower()}, value = {filter.ToLower()}");
                     parameterList.Add(groupName.ToLower(), filter.ToLower());
                 }
             }
 
             // Generate URL
-            var tr = new StringBuilder();
-            if (parameterList.Keys.Count > 0)
+            var queryBuilder = HttpUtility.ParseQueryString(String.Empty);
+            foreach (var parameter in parameterList)
             {
-                tr.Append('?');
-
-                foreach (var p in parameterList.Keys)
-                {
-                    if (tr.Length > 1)
-                    {
-                        tr.Append('&');
-                    }
-
-                    tr.Append(p.UrlEncode());
-                    tr.Append('=');
-                    tr.Append(parameterList[p]?.HtmlDecode().UrlEncode());
-                }
+                queryBuilder.Add(parameter.Key, parameter.Value);
             }
 
-            WriteToTrace($"ADD: {groupName}-{filter}-{tr}");
-
-            return tr.ToString();
+            return queryBuilder.ToString();
         }
         catch (Exception ex)
         {
@@ -806,8 +775,6 @@ public class Filter : CmsComponent<FilterCmsSettingsModel, Filter.ComponentModes
 
                         if (filterGroup.SelectedValues.Contains(tempValue))
                         {
-                            WriteToTrace($"4 - CreateFilterURL({filterGroup.GetParamKey()}, {filterGroup.Items[k].Value})");
-
                             replaceData = new Dictionary<string, string>
                             {
                                 {"name_seo", tempValueSeo},
@@ -833,8 +800,6 @@ public class Filter : CmsComponent<FilterCmsSettingsModel, Filter.ComponentModes
                         }
                         else
                         {
-                            WriteToTrace($"5 - CreateFilterURL({filterGroup.GetParamKey()}, {filterGroup.Items[k].Value})");
-
                             replaceData = new Dictionary<string, string>
                             {
                                 {"name_seo", tempValueSeo},
@@ -879,12 +844,8 @@ public class Filter : CmsComponent<FilterCmsSettingsModel, Filter.ComponentModes
                             tempValueSeo = tempValueSeo.Split("|").Last();
                         }
 
-                        WriteToTrace("BuildFilterGroupHTML: " + filterGroup.Items[k].Value + ":" + String.Join(",", filterGroup.SelectedValues.ToArray()));
-
                         if (filterGroup.SelectedValues.Any(v => v.Equals(filterGroup.Items[k].Value, StringComparison.OrdinalIgnoreCase)))
                         {
-                            WriteToTrace("6 - CreateFilterURL(" + filterGroup.GetParamKey() + ", " + filterGroup.Items[k].Value + ")");
-
                             replaceData = new Dictionary<string, string>
                             {
                                 {"name_seo", tempValueSeo},
@@ -910,8 +871,6 @@ public class Filter : CmsComponent<FilterCmsSettingsModel, Filter.ComponentModes
                         }
                         else
                         {
-                            WriteToTrace("7 - CreateFilterURL(" + filterGroup.GetParamKey() + ", " + filterGroup.Items[k].Value + ")");
-
                             replaceData = new Dictionary<string, string>
                             {
                                 {"name_seo", tempValueSeo},
@@ -944,16 +903,13 @@ public class Filter : CmsComponent<FilterCmsSettingsModel, Filter.ComponentModes
 
             case FilterGroup.FilterGroupType.Slider:
             {
-                WriteToTrace($"1 - BuildFilterGroupHtml Slider({filterGroup.NameSeo})");
                 // Only show the slider if we can actually use them.
                 if (filterGroup.MinValue >= filterGroup.MaxValue)
                 {
-                    WriteToTrace($"Not showing slider filter '{filterGroup.Name}' because of invalid min and max values. MinValue: {filterGroup.MinValue}, MaxValue: {filterGroup.MaxValue}");
+                    Logger.LogDebug("Not showing slider filter '{FilterGroupName}' because of invalid min and max values. MinValue: {FilterGroupMinValue}, MaxValue: {FilterGroupMaxValue}", filterGroup.Name, filterGroup.MinValue, filterGroup.MaxValue);
                 }
                 else
                 {
-                    WriteToTrace($"2 - BuildFilterGroupHtml Slider({filterGroup.NameSeo})");
-
                     selectedMinValue = filterGroup.MinValue;
                     selectedMaxValue = filterGroup.MaxValue;
                     var requestParameter = "";
@@ -979,8 +935,6 @@ public class Filter : CmsComponent<FilterCmsSettingsModel, Filter.ComponentModes
                             selectedMinValue = 0;
                             selectedMaxValue = Decimal.Parse(requestParameter.Replace(",", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator).Replace(".", NumberFormatInfo.CurrentInfo.NumberDecimalSeparator));
                         }
-
-                        WriteToTrace("Set selected slider values: " + filterGroup.SelectedValueString);
                     }
 
                     replaceData = new Dictionary<string, string>

@@ -674,7 +674,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
                 }
                 catch (Exception exception)
                 {
-                    WriteToTrace($"Error while decrypting or converting user ID: {exception}", true);
+                    Logger.LogError(exception, "Error while decrypting or converting user ID");
                     resetPasswordResult = ResetOrChangePasswordResults.InvalidTokenOrUser;
                 }
             }
@@ -692,7 +692,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
                 }
                 else if (!dataTable.Columns.Contains(Constants.LoginColumn))
                 {
-                    WriteToTrace($"The ValidateResetPasswordTokenQuery did not return a column named '{Constants.LoginColumn}' and therefor returned the status 'InvalidTokenOrUser'.", true);
+                    Logger.LogWarning($"The ValidateResetPasswordTokenQuery did not return a column named '{Constants.LoginColumn}' and therefor returned the status 'InvalidTokenOrUser'.");
                     resetPasswordResult = ResetOrChangePasswordResults.InvalidTokenOrUser;
                 }
                 else
@@ -700,7 +700,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
                     userLogin = dataTable.Rows[0].Field<string>(Constants.LoginColumn);
                     if (String.IsNullOrWhiteSpace(userLogin))
                     {
-                        WriteToTrace($"The ValidateResetPasswordTokenQuery returned an empty string in the column '{Constants.LoginColumn}' and therefor returned the status 'InvalidTokenOrUser'.", true);
+                        Logger.LogWarning($"The ValidateResetPasswordTokenQuery returned an empty string in the column '{Constants.LoginColumn}' and therefor returned the status 'InvalidTokenOrUser'.");
                         resetPasswordResult = ResetOrChangePasswordResults.InvalidTokenOrUser;
                     }
                 }
@@ -755,7 +755,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
             }
 
             resultHtml = resultHtml.Replace("{errorType}", "Server", StringComparison.OrdinalIgnoreCase);
-            WriteToTrace(exception.ToString(), true);
+            Logger.LogError(exception, "An error occurred while handling the reset password mode.");
         }
 
         return AddComponentIdToForms(await TemplatesService.DoReplacesAsync(DoDefaultAccountHtmlReplacements(resultHtml), handleRequest: Settings.HandleRequest, evaluateLogicSnippets: Settings.EvaluateIfElseInTemplates, removeUnknownVariables: Settings.RemoveUnknownVariables), Constants.ComponentIdFormKey);
@@ -959,7 +959,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
         {
             resultHtml = resultHtml == null || !resultHtml.Contains("{error}", StringComparison.OrdinalIgnoreCase) ? Settings.TemplateError : resultHtml.Replace("{error}", Settings.TemplateError, StringComparison.OrdinalIgnoreCase);
             resultHtml = resultHtml.Replace("{errorType}", "Server", StringComparison.OrdinalIgnoreCase);
-            WriteToTrace(exception.ToString(), true);
+            Logger.LogError(exception, "An error occurred while handling the create or update user mode.");
         }
 
         return AddComponentIdToForms(await TemplatesService.DoReplacesAsync(DoDefaultAccountHtmlReplacements(resultHtml), dataRow: firstDataRowOfMainQuery, handleRequest: Settings.HandleRequest, evaluateLogicSnippets: Settings.EvaluateIfElseInTemplates, removeUnknownVariables: Settings.RemoveUnknownVariables), Constants.ComponentIdFormKey);
@@ -1151,7 +1151,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
             resultHtml = resultHtml == null || !resultHtml.Contains("{error}", StringComparison.OrdinalIgnoreCase) ? Settings.TemplateError : resultHtml.Replace("{error}", Settings.TemplateError, StringComparison.OrdinalIgnoreCase);
 
             resultHtml = resultHtml.Replace("{errorType}", "Server", StringComparison.OrdinalIgnoreCase);
-            WriteToTrace(exception.ToString(), true);
+            Logger.LogError(exception, "An error occurred while handling the sub account management mode.");
         }
 
         return AddComponentIdToForms(await TemplatesService.DoReplacesAsync(DoDefaultAccountHtmlReplacements(resultHtml), dataRow: firstDataRowOfMainQuery, handleRequest: Settings.HandleRequest, evaluateLogicSnippets: Settings.EvaluateIfElseInTemplates, removeUnknownVariables: Settings.RemoveUnknownVariables), Constants.ComponentIdFormKey);
@@ -1493,7 +1493,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
 
             if (dataTable.Rows.Count == 0)
             {
-                WriteToTrace("A query was entered in 'QueryPasswordForgottenEmail', but that query returned no results!", true);
+                Logger.LogWarning($"A query was entered in '{nameof(AccountCmsSettingsModel.QueryPasswordForgottenEmail)}', but that query returned no results!");
 
                 await SendNotificationMailAsync(newUserId, subject, body, receiverEmail, receiverName, bcc, senderEmail, senderName);
             }
@@ -1580,14 +1580,9 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
 
         if (String.IsNullOrWhiteSpace(receiverEmail))
         {
-            WriteToTrace("Trying to send notification e-mail, but 'NotificationsReceiver' is empty.", true);
+            Logger.LogWarning($"Trying to send notification e-mail, but '{nameof(AccountCmsSettingsModel.NotificationsReceiver)}' is empty.");
             return;
         }
-
-        WriteToTrace("Sending reset password e-mail...");
-        WriteToTrace($"receiverMail: {receiverEmail}");
-        WriteToTrace($"bodyHtml: {body}");
-        WriteToTrace($"subject: {subject}");
 
         body = body.Replace("<jform", "<form", StringComparison.OrdinalIgnoreCase)
             .Replace("</jform", "</form", StringComparison.OrdinalIgnoreCase)
@@ -1691,7 +1686,6 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
 
         if (String.IsNullOrWhiteSpace(loginValue) && String.IsNullOrWhiteSpace(encryptedUserId))
         {
-            WriteToTrace("No username or e-mail address given.");
             return (Result: LoginResults.InvalidUsernameOrPassword, UserId: 0, EmailAddress: null);
         }
 
@@ -1706,7 +1700,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
             }
             catch (Exception exception)
             {
-                WriteToTrace($"An error occurred while trying to decrypt the user ID '{encryptedUserId}'. The error was: {exception}", true);
+                Logger.LogError(exception, "An error occurred while trying to decrypt the user ID '{EncryptedUserId}'.", encryptedUserId);
             }
 
             if (decryptedUserId == 0)
@@ -1744,8 +1738,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
         // User doesn't exist.
         if (accountResult == null || accountResult.Rows.Count == 0)
         {
-            WriteToTrace($"No user found with login '{loginValue}'.");
-            return (Result: (actualComponentMode == ComponentModes.LoginMultipleSteps ? LoginResults.UserDoesNotExist : LoginResults.InvalidUsernameOrPassword), UserId: 0, EmailAddress: null);
+            return (Result: actualComponentMode == ComponentModes.LoginMultipleSteps ? LoginResults.UserDoesNotExist : LoginResults.InvalidUsernameOrPassword, UserId: 0, EmailAddress: null);
         }
 
         // Check if the user is allowed to login.
@@ -1761,8 +1754,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
 
         if (accountResult.Columns.Contains(Constants.LastLoginDateColumn))
         {
-            DateTime lastLoginDate;
-            _ = DateTime.TryParseExact(accountResult.Rows[0].Field<string>(Constants.LastLoginDateColumn), "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out lastLoginDate);
+            _ = DateTime.TryParseExact(accountResult.Rows[0].Field<string>(Constants.LastLoginDateColumn), "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out var lastLoginDate);
             if (Settings.MaximumAmountOfFailedLoginAttempts > 0 && Settings.DefaultLockoutTime is > 0 && failedLoginAttempts >= Settings.MaximumAmountOfFailedLoginAttempts && lastLoginDate.AddMinutes(Settings.DefaultLockoutTime.Value) > DateTime.Now)
             {
                 return (Result: LoginResults.TooManyAttempts, UserId: 0, EmailAddress: userEmail);
@@ -1772,8 +1764,8 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
         // Make sure we have a valid user ID.
         if (loggedInUserId <= 0)
         {
-            WriteToTrace("The login was successful, but the query returned an invalid user ID!");
-            return (Result: (actualComponentMode == ComponentModes.LoginMultipleSteps ? LoginResults.UserDoesNotExist : LoginResults.InvalidUsernameOrPassword), UserId: 0, EmailAddress: null);
+            Logger.LogWarning("The login was successful, but the query returned an invalid user ID!");
+            return (Result: actualComponentMode == ComponentModes.LoginMultipleSteps ? LoginResults.UserDoesNotExist : LoginResults.InvalidUsernameOrPassword, UserId: 0, EmailAddress: null);
         }
 
         // Login with password.
@@ -1783,7 +1775,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
             var passwordHash = accountResult.Rows[0].Field<string>(Constants.PasswordColumn);
             if (String.IsNullOrWhiteSpace(passwordHash))
             {
-                WriteToTrace("The password hash is empty.");
+                Logger.LogWarning("The password hash is empty.");
                 return (Result: LoginResults.UserNotActivated, UserId: loggedInUserId, EmailAddress: userEmail);
             }
 
@@ -1799,35 +1791,36 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
                 password = request.Form[Settings.PasswordFieldName].ToString();
             }
 
-            if (!usingGoogleAuthentication && !password.VerifySha512(passwordHash))
+            switch (usingGoogleAuthentication)
             {
-                WriteToTrace("The password hash validation failed.");
-                await AccountsService.SaveLoginAttemptAsync(false, loggedInUserId, ExtraDataForReplacements, Settings);
-                return (Result: (actualComponentMode == ComponentModes.LoginMultipleSteps ? LoginResults.InvalidPassword : LoginResults.InvalidUsernameOrPassword), UserId: 0, EmailAddress: userEmail);
-            }
-
-            // Verify 2 factor authentication, if enabled.
-            if (usingGoogleAuthentication)
-            {
-                if (String.IsNullOrWhiteSpace(googleAuthenticatorPin))
-                {
-                    WriteToTrace("No googleAuthenticationPin or googleAuthenticationVerificationId given.");
+                case false when !password.VerifySha512(passwordHash):
+                    await AccountsService.SaveLoginAttemptAsync(false, loggedInUserId, ExtraDataForReplacements, Settings);
+                    return (Result: actualComponentMode == ComponentModes.LoginMultipleSteps ? LoginResults.InvalidPassword : LoginResults.InvalidUsernameOrPassword, UserId: 0, EmailAddress: userEmail);
+                // Verify 2 factor authentication, if enabled.
+                case true when String.IsNullOrWhiteSpace(googleAuthenticatorPin):
                     return (Result: LoginResults.InvalidTwoFactorAuthentication, UserId: 0, EmailAddress: null);
-                }
-
-                var twoFactorAuthenticator = new TwoFactorAuthenticator();
-                var googleAuthenticationKey = await AccountsService.Get2FactorAuthenticationKeyAsync(loggedInUserId);
-                var result = twoFactorAuthenticator.ValidateTwoFactorPIN(googleAuthenticationKey, googleAuthenticatorPin);
-                if (!result)
+                case true:
                 {
-                    WriteToTrace("Authentication failed, codes do not match");
-                    return (Result: LoginResults.InvalidTwoFactorAuthentication, UserId: 0, EmailAddress: null);
+                    var twoFactorAuthenticator = new TwoFactorAuthenticator();
+                    var googleAuthenticationKey = await AccountsService.Get2FactorAuthenticationKeyAsync(loggedInUserId);
+                    var result = twoFactorAuthenticator.ValidateTwoFactorPIN(googleAuthenticationKey, googleAuthenticatorPin);
+                    if (!result)
+                    {
+                        return (Result: LoginResults.InvalidTwoFactorAuthentication, UserId: 0, EmailAddress: null);
+                    }
+
+                    break;
                 }
-            }
-            else if (Settings.EnableGoogleAuthenticator)
-            {
-                session.SetString($"{Constants.UserIdSessionKey}_{ComponentId}", loggedInUserId.ToString());
-                return (Result: LoginResults.TwoFactorAuthenticationRequired, UserId: loggedInUserId, EmailAddress: userEmail);
+                default:
+                {
+                    if (Settings.EnableGoogleAuthenticator)
+                    {
+                        session.SetString($"{Constants.UserIdSessionKey}_{ComponentId}", loggedInUserId.ToString());
+                        return (Result: LoginResults.TwoFactorAuthenticationRequired, UserId: loggedInUserId, EmailAddress: userEmail);
+                    }
+
+                    break;
+                }
             }
         }
 
@@ -1928,7 +1921,7 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
 
             if (result.Rows.Count == 0)
             {
-                WriteToTrace("A query was entered in 'QueryPasswordForgottenEmail', but that query returned no results!", true);
+                Logger.LogWarning($"A query was entered in '{nameof(AccountCmsSettingsModel.QueryPasswordForgottenEmail)}', but that query returned no results!");
             }
             else
             {
@@ -1975,15 +1968,6 @@ public class Account : CmsComponent<AccountCmsSettingsModel, Account.ComponentMo
         queryString[Constants.UserIdQueryStringKey] = userId.ToString().EncryptWithAes(gclSettings.AccountUserIdEncryptionKey);
         queryString[Constants.ResetPasswordTokenQueryStringKey] = token;
         uriBuilder.Query = queryString.ToString() ?? "";
-
-        WriteToTrace("Sending reset password e-mail...");
-        WriteToTrace($"senderName: {senderName}");
-        WriteToTrace($"senderEmail: {senderEmail}");
-        WriteToTrace($"receiverMail: {emailAddress}");
-        WriteToTrace($"bodyHtml: {body}");
-        WriteToTrace($"subject: {subject}");
-        WriteToTrace($"token: {token}");
-        WriteToTrace($"url: {uriBuilder}");
 
         body = body.Replace("{url}", uriBuilder.ToString(), StringComparison.OrdinalIgnoreCase).Replace("<jform", "<form", StringComparison.OrdinalIgnoreCase).Replace("</jform", "</form", StringComparison.OrdinalIgnoreCase).Replace("<jhtml", "<html").Replace("</jhtml", "</html", StringComparison.OrdinalIgnoreCase)
             .Replace("<jhead", "<head", StringComparison.OrdinalIgnoreCase).Replace("</jhead", "</head", StringComparison.OrdinalIgnoreCase).Replace("<jtitle", "<title", StringComparison.OrdinalIgnoreCase).Replace("</jtitle", "</title", StringComparison.OrdinalIgnoreCase).Replace("<jbody", "<body", StringComparison.OrdinalIgnoreCase)
