@@ -26,6 +26,26 @@ public interface IDatabaseConnection : IAsyncDisposable, IDisposable
     Task<DbDataReader> GetReaderAsync(string query);
 
     /// <summary>
+    /// Executes the query, and returns the first column of the first row in the resultset returned by the query. Extra columns or rows are ignored.
+    /// </summary>
+    /// <param name="query">The query to execute and get the result of.</param>
+    /// <param name="skipCache">Optional: Set to true to skip the query cache. Queries that get data, will get cached by default, based on a hash of the query and all parameters.</param>
+    /// <param name="cleanUp">Optional: Clean up after the query has been completed.</param>
+    /// <param name="useWritingConnectionIfAvailable">Optional: Use the writing connection to get information, if there is one available. If we detect that your query contains a database modification, then we will always use the write connection string, no matter what you enter here.</param>
+    /// <returns>The first column of the first row in the resultset.</returns>
+    Task<T> ExecuteScalarAsync<T>(string query, bool skipCache = false, bool cleanUp = true, bool useWritingConnectionIfAvailable = false);
+
+    /// <summary>
+    /// Executes the query, and returns the first column of the first row in the resultset returned by the query. Extra columns or rows are ignored.
+    /// </summary>
+    /// <param name="query">The query to execute and get the result of.</param>
+    /// <param name="skipCache">Optional: Set to true to skip the query cache. Queries that get data, will get cached by default, based on a hash of the query and all parameters.</param>
+    /// <param name="cleanUp">Optional: Clean up after the query has been completed.</param>
+    /// <param name="useWritingConnectionIfAvailable">Optional: Use the writing connection to get information, if there is one available. If we detect that your query contains a database modification, then we will always use the write connection string, no matter what you enter here.</param>
+    /// <returns>The first column of the first row in the resultset.</returns>
+    Task<object> ExecuteScalarAsync(string query, bool skipCache = false, bool cleanUp = true, bool useWritingConnectionIfAvailable = false);
+
+    /// <summary>
     /// Gets results from a query as a DataTable.
     /// </summary>
     /// <param name="query">The query to execute and get the results of.</param>
@@ -139,7 +159,6 @@ public interface IDatabaseConnection : IAsyncDisposable, IDisposable
     /// <param name="newConnectionStringForWriting">The new connection string to use for writing.</param>
     /// <param name="sshSettingsForReading">Optional: If the new connection for reading requires SSH, enter the SSH details here.</param>
     /// <param name="sshSettingsForWriting">Optional: If the new connection for writing requires SSH, enter the SSH details here.</param>
-    /// <returns></returns>
     Task ChangeConnectionStringsAsync(string newConnectionStringForReading, string newConnectionStringForWriting = null, SshSettings sshSettingsForReading = null, SshSettings sshSettingsForWriting = null);
 
     /// <summary>

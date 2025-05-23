@@ -30,7 +30,7 @@ public class EntityTypesService : IEntityTypesService, IScopedService
     {
         var prefixes = new List<string>();
 
-        var query = $"SELECT DISTINCT dedicated_table_prefix FROM {WiserTableNames.WiserEntity} WHERE dedicated_table_prefix IS NOT NULL AND dedicated_table_prefix != ''";
+        const string query = $"SELECT DISTINCT dedicated_table_prefix FROM {WiserTableNames.WiserEntity} WHERE dedicated_table_prefix IS NOT NULL AND dedicated_table_prefix != ''";
         var dataTable = await databaseConnection.GetAsync(query);
 
         if (dataTable.Rows.Count <= 0)
@@ -41,7 +41,7 @@ public class EntityTypesService : IEntityTypesService, IScopedService
         foreach (DataRow dataRow in dataTable.Rows)
         {
             var tablePrefix = dataRow.Field<string>("dedicated_table_prefix");
-            if (!tablePrefix!.EndsWith("_"))
+            if (!tablePrefix!.EndsWith('_'))
             {
                 tablePrefix += "_";
             }
