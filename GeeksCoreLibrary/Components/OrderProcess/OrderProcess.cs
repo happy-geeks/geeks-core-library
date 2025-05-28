@@ -216,8 +216,8 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
             // If we have an invalid active step, return a 404.
             if (ActiveStep <= 0 || ActiveStep > steps.Count)
             {
-                HttpContextHelpers.Return404(httpContextAccessor?.HttpContext);
-                return "";
+                HttpContextHelpers.ForceNotFoundStatus(httpContextAccessor?.HttpContext);
+                return String.Empty;
             }
 
             // If we have no confirmation page and/or no payment methods, then the order process has not been fully configured and we want to throw an error.
@@ -841,12 +841,12 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
             .Replace(Constants.ErrorReplacement, errorHtml, StringComparison.OrdinalIgnoreCase);
 
         // Build the fields HTML.
-        
+
         if (!UInt64.TryParse(shoppingBasket.GetDetailValue(Constants.PaymentMethodProperty), out var paymentMethodId))
         {
             Logger.LogWarning($"{nameof(Constants.PaymentMethodProperty)} detail of shoppingbasket {shoppingBasket.Id} is not a valid Id");
         }
-        
+
         var paymentMethodsBuilder = new StringBuilder();
         foreach (var paymentMethod in paymentMethods)
         {

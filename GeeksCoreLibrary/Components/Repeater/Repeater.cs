@@ -218,12 +218,11 @@ public class Repeater : CmsComponent<RepeaterCmsSettingsModel, Repeater.LegacyCo
             // If we have no data, show the no data template or set 404
             if (Settings.Return404OnNoData)
             {
-                HttpContextHelpers.Return404(httpContextAccessor?.HttpContext);
+                HttpContextHelpers.ForceNotFoundStatus(httpContextAccessor?.HttpContext);
+                return new HtmlString(String.Empty);
             }
-            else
-            {
-                generatedHtml.Append(baseTemplate.NoDataTemplate);
-            }
+
+            generatedHtml.Append(baseTemplate.NoDataTemplate);
         }
         else
         {

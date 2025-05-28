@@ -195,7 +195,8 @@ public class Filter : CmsComponent<FilterCmsSettingsModel, Filter.ComponentModes
                 // Return a 404 if filters not alphabetical
                 if (set404)
                 {
-                    HttpContextHelpers.Return404(httpContext);
+                    HttpContextHelpers.ForceNotFoundStatus(httpContext);
+                    return String.Empty;
                 }
             }
         }
