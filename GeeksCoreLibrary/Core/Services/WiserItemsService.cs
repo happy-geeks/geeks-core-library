@@ -4850,7 +4850,7 @@ public class WiserItemsService(
                 useLongValueColumn = wiserItemDetail.Value?.ToString()?.Length > 1000;
 
                 // Check if we need to adjust the value that gets saved in the database, such as encrypting or hashing it.
-                if ((valueChanged || alwaysSaveValues) && options.Count > 0)
+                if ((valueChanged || alwaysSaveValues) && !wiserItemDetail.SaveAsIs && options.Count > 0)
                 {
                     switch (options[Constants.FieldTypeKey].ToString().ToLowerInvariant())
                     {

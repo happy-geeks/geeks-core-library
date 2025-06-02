@@ -1137,7 +1137,7 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
                                     if (itemsOfEntityType.Count != 0)
                                     {
                                         // If we already have item(s) of the given entity type, save the value there.
-                                        itemsOfEntityType.ForEach(item => item.Item.SetDetail(saveLocation.PropertyName, valueForDatabase));
+                                        itemsOfEntityType.ForEach(item => item.Item.SetDetail(saveLocation.PropertyName, valueForDatabase, saveAsIs: true));
                                     }
                                     else
                                     {
