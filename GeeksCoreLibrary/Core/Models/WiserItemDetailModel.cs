@@ -182,6 +182,12 @@ public class WiserItemDetailModel
         }
     }
 
+    /// <summary>
+    /// Gets or sets whether this detail should be saved as is, without any modifications.
+    /// This is useful for when you already hashed a password for example, then the GCL won't hash it again when saving to database.
+    /// </summary>
+    public bool SaveAsIs { get; set; }
+
     /// <inheritdoc />
     public override string ToString()
     {

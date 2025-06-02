@@ -156,6 +156,11 @@ public class ShoppingBasketsService(
         var result = new List<(WiserItemModel Main, List<WiserItemModel> Lines)>();
 
         var cookieValue = HttpContextHelpers.ReadCookie(httpContextAccessor?.HttpContext, cookieName);
+        if (String.IsNullOrWhiteSpace(cookieValue))
+        {
+            return result;
+        }
+
         var basketIds = cookieValue.DecryptWithAesWithSalt(gclSettings.ShoppingBasketEncryptionKey).Split(',', StringSplitOptions.RemoveEmptyEntries).Select(id => Convert.ToUInt64(id)).ToArray();
 
         foreach (var basketId in basketIds)

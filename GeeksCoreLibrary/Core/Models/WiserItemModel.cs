@@ -492,7 +492,8 @@ public class WiserItemModel
     /// <param name="languageCode">Optional: The language code of the detail. Default is null.</param>
     /// <param name="markChangedAsFalse">Optional: Whether or not to mark the Changed property to false, so that it won't be saved if you save this item without changing this value after calling this function.</param>
     /// <param name="format">Optional: Formatting for converting certain types (such as numbers and dates) to string. Default is null.</param>
-    public void SetDetail(string key, object value, bool append = false, bool enableReadOnly = false, string groupName = null, string languageCode = null, bool markChangedAsFalse = false, string format = null)
+    /// <param name="saveAsIs">Optional: Set to <c>true</c> to skip any conversion or hashing that the GCL might do when saving this value to the database. Such as for passwords, when you already hashed them yourself.</param>
+    public void SetDetail(string key, object value, bool append = false, bool enableReadOnly = false, string groupName = null, string languageCode = null, bool markChangedAsFalse = false, string format = null, bool saveAsIs = false)
     {
         // TODO: Add a check for read only, so that we can't use this function to update read only values?
         var detail = Details.FirstOrDefault(d => String.Equals(d.Key, key, StringComparison.OrdinalIgnoreCase) && String.Equals(d.GroupName ?? "", groupName ?? "", StringComparison.OrdinalIgnoreCase) && String.Equals(d.LanguageCode ?? "", languageCode ?? "", StringComparison.OrdinalIgnoreCase));
@@ -556,6 +557,8 @@ public class WiserItemModel
         {
             detail.Changed = false;
         }
+
+        detail.SaveAsIs = saveAsIs;
     }
 
     /// <summary>
