@@ -50,18 +50,6 @@ public class AccountsService(
             cookieName = Constants.CookieName;
         }
 
-        var httpContext = httpContextAccessor?.HttpContext;
-        if (httpContext == null)
-        {
-            throw new Exception("HttpContext is null.");
-        }
-
-        // Check if we already have the user data cached this life cycle and return it from the cache if that is the case.
-        if (httpContext.Items.ContainsKey(Constants.UserDataCachingKey + cookieName))
-        {
-            return (UserCookieDataModel) httpContext.Items[Constants.UserDataCachingKey + cookieName];
-        }
-
         var defaultAnonymousUserModel = new UserCookieDataModel();
 
         try
@@ -72,6 +60,19 @@ public class AccountsService(
             _ = UInt64.TryParse(defaultAnonymousUserIdValue, out var defaultAnonymousUserId);
             defaultAnonymousUserModel.MainUserId = defaultAnonymousUserId;
             defaultAnonymousUserModel.UserId = defaultAnonymousUserId;
+
+            var httpContext = httpContextAccessor?.HttpContext;
+            if (httpContext == null)
+            {
+                logger.LogWarning("The HttpContext is null, cannot get user data from cookie. Returning default anonymous user model.");
+                return defaultAnonymousUserModel;
+            }
+
+            // Check if we already have the user data cached this life cycle and return it from the cache if that is the case.
+            if (httpContext.Items.ContainsKey(Constants.UserDataCachingKey + cookieName))
+            {
+                return (UserCookieDataModel) httpContext.Items[Constants.UserDataCachingKey + cookieName];
+            }
 
             string cookieValue;
             // First try to get the cookie from the http context items, because it could have been added there if we just logged in via the same request.
@@ -102,19 +103,19 @@ public class AccountsService(
 
             var query = $"""
                          SELECT 
-                                                             user_id, 
-                                                             main_user_id,
-                                                             hashed_validator,
-                                                             login_date,
-                                                             expires,
-                                                             ip_address,
-                                                             user_agent,
-                                                             role,
-                                                             main_user_entity_type
-                                                         FROM {Constants.AuthenticationTokensTableName}
-                                                         WHERE selector = ?selector
-                                                         AND entity_type = ?entityType
-                                                         AND expires > NOW()
+                             user_id, 
+                             main_user_id,
+                             hashed_validator,
+                             login_date,
+                             expires,
+                             ip_address,
+                             user_agent,
+                             role,
+                             main_user_entity_type
+                         FROM {Constants.AuthenticationTokensTableName}
+                         WHERE selector = ?selector
+                         AND entity_type = ?entityType
+                         AND expires > NOW()
                          """;
 
             databaseConnection.AddParameter("selector", cookieValueParts[0]);
@@ -189,11 +190,11 @@ public class AccountsService(
                 }
                 catch (Exception exception)
                 {
-                    logger.LogError($"An error occurred while getting extra data for logged in user: {exception}", true);
+                    logger.LogError(exception, "An error occurred while getting extra data for logged in user.");
                 }
             }
 
-            logger.LogTrace($"Gotten user information in Account and saved it to lifecycle cache: {JsonConvert.SerializeObject(output)}");
+            logger.LogTrace("Gotten user information in Account and saved it to lifecycle cache: {SerializeObject}", JsonConvert.SerializeObject(output));
 
             // Save to http context (caching during lifecycle).
             httpContext.Items.Add(Constants.UserDataCachingKey + cookieName, output);
@@ -202,7 +203,7 @@ public class AccountsService(
         }
         catch (Exception exception)
         {
-            logger.LogError($"Account - Exception occurred in GetUserIdFromCookie: {exception}");
+            logger.LogError(exception, "Account - Exception occurred in GetUserIdFromCookie.");
             return defaultAnonymousUserModel;
         }
     }
@@ -443,7 +444,7 @@ public class AccountsService(
         }
 
         // Turn the retrieved role IDs into a List of integers.
-        var userRoles = rolesData.Rows.Cast<DataRow>().Select(dataRow => (RoleId: Convert.ToInt32(dataRow["role_id"]), IpAddresses: dataRow.IsNull("ip_addresses") ? null : JsonConvert.DeserializeObject<List<string>>(dataRow.Field<string>("ip_addresses")))).ToList();
+        var userRoles = rolesData.Rows.Cast<DataRow>().Select(dataRow => (RoleId: Convert.ToInt32(dataRow["role_id"]), IpAddresses: dataRow.IsNull("ip_addresses") ? [] : JsonConvert.DeserializeObject<List<string>>(dataRow.Field<string>("ip_addresses")))).ToList();
         var userIpAddress = HttpContextHelpers.GetUserIpAddress(httpContextAccessor?.HttpContext);
 
         // Retrieve all rows.
