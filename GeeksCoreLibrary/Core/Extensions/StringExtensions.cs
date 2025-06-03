@@ -17,7 +17,7 @@ namespace GeeksCoreLibrary.Core.Extensions;
 public static class StringExtensions
 {
     /// <summary>
-    /// URL encode a string to make it safe to use in an URL.
+    /// URL encode a string to make it safe to use in a URL.
     /// </summary>
     /// <param name="input">The string to URL encode.</param>
     /// <returns>The URL encoded string.</returns>
@@ -73,7 +73,7 @@ public static class StringExtensions
     /// This will make the string lower case, replace spaces with dashes (-) and remove all kinds of special characters.
     /// </summary>
     /// <param name="input">The string to convert.</param>
-    /// <returns>The string that can be used in an URL.</returns>
+    /// <returns>The string that can be used in a URL.</returns>
     public static string ConvertToSeo(this string input)
     {
         if (String.IsNullOrEmpty(input))
@@ -127,9 +127,9 @@ public static class StringExtensions
                 case UnicodeCategory.LowercaseLetter:
                 case UnicodeCategory.UppercaseLetter:
                 case UnicodeCategory.DecimalDigitNumber:
-                    if (specialCharacterMappings.ContainsKey(c))
+                    if (specialCharacterMappings.TryGetValue(c, out var mapping))
                     {
-                        stringBuilder.Append(specialCharacterMappings[c]);
+                        stringBuilder.Append(mapping);
                     }
                     else
                     {
@@ -162,7 +162,7 @@ public static class StringExtensions
     /// Converts a string to a string that can be safely used in a MySQL query to avoid SQL injections.
     /// </summary>
     /// <param name="input">The string to convert.</param>
-    /// <param name="encloseInQuotes">Whether the value should be enclosed in quotes. You should never set this to <see langword="false"/>, unless you add quotes manually in your query! Otherwise SQL injection will still be possible!</param>
+    /// <param name="encloseInQuotes">Whether the value should be enclosed in quotes. You should never set this to <see langword="false"/>, unless you add quotes manually in your query. Otherwise, SQL injection will still be possible!</param>
     /// <returns>The converted string that can be safely used in a query, as long as quotes are added around it.</returns>
     public static string ToMySqlSafeValue(this string input, bool encloseInQuotes)
     {
@@ -180,7 +180,7 @@ public static class StringExtensions
     /// </summary>
     /// <param name="input">The string to encrypt.</param>
     /// <param name="key">Optional: The encryption key to use. Default value is the value of "ExpiringEncryptionKey" (if withDateTime = true) or "DefaultEncryptionKey" (if withDateTime = false) from the app settings.</param>
-    /// <param name="withDateTime">Optional: Whether to add a timestamp to the encrypted value, so that the the value can have an expire date. The decrypt method decides how long the value is valid.</param>
+    /// <param name="withDateTime">Optional: Whether to add a timestamp to the encrypted value, so that the value can have an expiry date. The decrypt method decides how long the value is valid.</param>
     /// <param name="useSlowerButMoreSecureMethod">Optional: Whether to use a more secure encryption, but that method is a lot slower. This method will use the code from this article: https://docs.microsoft.com/en-us/dotnet/standard/security/vulnerabilities-cbc-mode</param>
     /// <returns>The encrypted string.</returns>
     public static string EncryptWithAes(this string input, string key = "", bool withDateTime = false, bool useSlowerButMoreSecureMethod = false)
@@ -227,7 +227,7 @@ public static class StringExtensions
         if (useSlowerButMoreSecureMethod)
         {
             // Salt of at least 8 bytes is required to derive key.
-            // If no salt is set in the appsettings, a basic 0-salt will be used.
+            // If no salt is set in the app settings, a basic 0-salt will be used.
             var saltString = GclRequestContext.CurrentDefaultEncryptionSalt ?? GclSettings.Current.DefaultEncryptionSalt;
             var salt = !String.IsNullOrWhiteSpace(saltString) ? Encoding.UTF8.GetBytes(saltString) : [];
 
@@ -240,7 +240,7 @@ public static class StringExtensions
         else
         {
             // Salt of at least 8 bytes is required to derive key.
-            // If no salt is set in the appsettings, a basic 0-salt will be used.
+            // If no salt is set in the app settings, a basic 0-salt will be used.
             var saltString = GclRequestContext.CurrentDefaultEncryptionSalt ?? GclSettings.Current.DefaultEncryptionSalt;
             var salt = !String.IsNullOrWhiteSpace(saltString) ? Encoding.UTF8.GetBytes(saltString) : new byte[8];
 
@@ -280,7 +280,7 @@ public static class StringExtensions
     /// <param name="input">The string to decrypt.</param>
     /// <param name="key">Optional: The encryption key to use. Default value is the value of "ExpiringEncryptionKey" (if withDateTime = true) or "DefaultEncryptionKey" (if withDateTime = false) from the app settings.</param>
     /// <param name="withDateTime">Optional: Set the <see langword="true"/> if the value contains a validation date and time. Default is <see langword="false"/>.</param>
-    /// <param name="minutesValidOverride">Optional: If you want the encryption to be valid for a different amount of time than what it set in the appsettings, you can change that here.</param>
+    /// <param name="minutesValidOverride">Optional: If you want the encryption to be valid for a different amount of time than what it set in the app settings, you can change that here.</param>
     /// <param name="useSlowerButMoreSecureMethod">Optional: Whether to use a more secure encryption, but that method is a lot slower. This method will use the code from this article: https://docs.microsoft.com/en-us/dotnet/standard/security/vulnerabilities-cbc-mode</param>
     /// <returns>The decrypted string.</returns>
     public static string DecryptWithAes(this string input, string key = "", bool withDateTime = false, int minutesValidOverride = 0, bool useSlowerButMoreSecureMethod = false)
@@ -323,7 +323,7 @@ public static class StringExtensions
         if (useSlowerButMoreSecureMethod)
         {
             // Salt of at least 8 bytes is required to derive key.
-            // If no salt is set in the appsettings, a basic 0-salt will be used.
+            // If no salt is set in the app settings, a basic 0-salt will be used.
             var saltString = GclRequestContext.CurrentDefaultEncryptionSalt ?? GclSettings.Current.DefaultEncryptionSalt;
             var salt = !String.IsNullOrWhiteSpace(saltString) ? Encoding.UTF8.GetBytes(saltString) : [];
             var inputBytes = Convert.FromBase64String(input);
@@ -334,7 +334,7 @@ public static class StringExtensions
         else
         {
             // Salt of at least 8 bytes is required to derive key.
-            // If no salt is set in the appsettings, a basic 0-salt will be used.
+            // If no salt is set in the app settings, a basic 0-salt will be used.
             var saltString = GclRequestContext.CurrentDefaultEncryptionSalt ?? GclSettings.Current.DefaultEncryptionSalt;
             var salt = !String.IsNullOrWhiteSpace(saltString) ? Encoding.UTF8.GetBytes(saltString) : new byte[8];
 
@@ -403,7 +403,7 @@ public static class StringExtensions
     /// </summary>
     /// <param name="input">The value to encrypt.</param>
     /// <param name="key">Optional: The encryption key to use. Default value is the value of "ExpiringEncryptionKey" (if withDateTime = true) or "DefaultEncryptionKey" (if withDateTime = false) from the app settings.</param>
-    /// <param name="withDateTime">Optional: Whether to add a timestamp to the encrypted value, so that the the value can have an expire date. The decrypt method decides how long the value is valid.</param>
+    /// <param name="withDateTime">Optional: Whether to add a timestamp to the encrypted value, so that the value can have an expiry date. The decrypt method decides how long the value is valid.</param>
     /// <param name="useSlowerButMoreSecureMethod">Optional: Whether to use a more secure encryption, but that method is a lot slower. This method will use the code from this article: https://docs.microsoft.com/en-us/dotnet/standard/security/vulnerabilities-cbc-mode</param>
     /// <returns>The encrypted value with the salt prepended to it.</returns>
     public static string EncryptWithAesWithSalt(this string input, string key = "", bool withDateTime = false, bool useSlowerButMoreSecureMethod = false)
@@ -503,7 +503,7 @@ public static class StringExtensions
     /// <param name="input">The string to decrypt.</param>
     /// <param name="key">Optional: The encryption key to use. Default value is the value of "ExpiringEncryptionKey" (if withDateTime = true) or "DefaultEncryptionKey" (if withDateTime = false) from the app settings.</param>
     /// <param name="withDateTime">Optional: Set the <see langword="true"/> if the value contains a validation date and time. Default is <see langword="false"/>.</param>
-    /// <param name="minutesValidOverride">Optional: If you want the encryption to be valid for a different amount of time than what it set in the appsettings, you can change that here.</param>
+    /// <param name="minutesValidOverride">Optional: If you want the encryption to be valid for a different amount of time than what it set in the app settings, you can change that here.</param>
     /// <param name="useSlowerButMoreSecureMethod">Optional: Whether to use a more secure encryption, but that method is a lot slower. This method will use the code from this article: https://docs.microsoft.com/en-us/dotnet/standard/security/vulnerabilities-cbc-mode</param>
     /// <returns>The decrypted string.</returns>
     public static string DecryptWithAesWithSalt(this string input, string key = "", bool withDateTime = false, int minutesValidOverride = 0, bool useSlowerButMoreSecureMethod = false)
@@ -672,7 +672,7 @@ public static class StringExtensions
     /// </summary>
     /// <param name="input">The plain-text string to validate.</param>
     /// <param name="hash">A Base64 string containing the SHA512 hash of a password + salt, appended with the same salt.</param>
-    /// <returns>Whether or not the input contains the same password as the one in the hash.</returns>
+    /// <returns>Whether the input contains the same password as the one in the hash.</returns>
     public static bool VerifySha512(this string input, string hash)
     {
         // Convert base64-encoded hash value into a byte array.
@@ -708,7 +708,7 @@ public static class StringExtensions
     /// <param name="input">The string to check.</param>
     /// <param name="comparer">The <see cref="StringComparer"/> that will be used when comparing values.</param>
     /// <param name="values">The array of values to check against.</param>
-    /// <returns>Whether or not the one of the values is the same as the input.</returns>
+    /// <returns>Whether the one of the values is the same as the input.</returns>
     public static bool InList(this string input, StringComparer comparer, params string[] values)
     {
         return values.Contains(input, comparer);
@@ -719,7 +719,7 @@ public static class StringExtensions
     /// </summary>
     /// <param name="input">The string to check.</param>
     /// <param name="values">The array of values to check against.</param>
-    /// <returns>Whether or not the one of the values is the same as the input.</returns>
+    /// <returns>Whether the one of the values is the same as the input.</returns>
     public static bool InList(this string input, params string[] values)
     {
         return input.InList(StringComparer.Ordinal, values);
