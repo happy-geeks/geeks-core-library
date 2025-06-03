@@ -99,7 +99,7 @@ public class GclSettings
     public Environments Environment { get; set; } = Environments.Live;
 
     /// <summary>
-    /// The encryption key key used for AES encryption.
+    /// The encryption key used for AES encryption.
     /// </summary>
     public string DefaultEncryptionKey { get; set; }
 
@@ -111,7 +111,7 @@ public class GclSettings
     public string DefaultEncryptionSalt { get; set; }
 
     /// <summary>
-    /// The encryption key key used for triple DES encryption.
+    /// The encryption key used for triple DES encryption.
     /// </summary>
     public string DefaultEncryptionKeyTripleDes { get; set; }
 
@@ -166,7 +166,7 @@ public class GclSettings
     public int TemporaryEncryptionHoursValid { get; set; } = 24;
 
     /// <summary>
-    /// Whether or not this site uses URL segments to indicate the selected language. For example: https://example.com/fr/.
+    /// Whether this site uses URL segments to indicate the selected language. For example: https://example.com/fr/.
     /// </summary>
     public bool MultiLanguageBasedOnUrlSegments { get; set; }
 

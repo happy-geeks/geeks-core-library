@@ -7,6 +7,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using GeeksCoreLibrary.Core.Enums;
+using GeeksCoreLibrary.Core.Exceptions;
 using GeeksCoreLibrary.Core.Helpers;
 using GeeksCoreLibrary.Core.Models;
 using Microsoft.AspNetCore.Cryptography.KeyDerivation;
@@ -187,24 +188,35 @@ public static class StringExtensions
         string encryptionKey;
         var stringToEncrypt = new StringBuilder(input);
 
+        // ReSharper disable once ConvertIfStatementToSwitchStatement
         if (!String.IsNullOrWhiteSpace(key))
         {
             // Custom secret key passed in the parameters.
             encryptionKey = key;
         }
+        else if (withDateTime && !String.IsNullOrWhiteSpace(GclRequestContext.CurrentExpiringEncryptionKey))
+        {
+            // Per-request secret key for values that expire after a set time.
+            encryptionKey = GclRequestContext.CurrentExpiringEncryptionKey;
+        }
         else if (withDateTime && !String.IsNullOrWhiteSpace(GclSettings.Current.ExpiringEncryptionKey))
         {
-            // Secret key for values that expire after a set time.
+            // App-wide secret key for values that expire after a set time.
             encryptionKey = GclSettings.Current.ExpiringEncryptionKey;
+        }
+        else if (!String.IsNullOrWhiteSpace(GclRequestContext.CurrentDefaultEncryptionKey))
+        {
+            // Per-request default secret key.
+            encryptionKey = GclRequestContext.CurrentDefaultEncryptionKey;
         }
         else if (!String.IsNullOrWhiteSpace(GclSettings.Current.DefaultEncryptionKey))
         {
-            // Default secret key from app settings.
+            // App-wide default secret key.
             encryptionKey = GclSettings.Current.DefaultEncryptionKey;
         }
         else
         {
-            throw new Exception("EncryptWithAes: No AES secret key set.");
+            throw new MissingEncryptionKeyException($"No AES secret key set in {nameof(EncryptWithAes)}.");
         }
 
         if (withDateTime)
@@ -216,7 +228,7 @@ public static class StringExtensions
         {
             // Salt of at least 8 bytes is required to derive key.
             // If no salt is set in the appsettings, a basic 0-salt will be used.
-            var saltString = GclSettings.Current.DefaultEncryptionSalt;
+            var saltString = GclRequestContext.CurrentDefaultEncryptionSalt ?? GclSettings.Current.DefaultEncryptionSalt;
             var salt = !String.IsNullOrWhiteSpace(saltString) ? Encoding.UTF8.GetBytes(saltString) : [];
 
             var keyBytes = KeyDerivation.Pbkdf2(encryptionKey, salt, KeyDerivationPrf.HMACSHA512, 100000, 256 / 8);
@@ -229,7 +241,7 @@ public static class StringExtensions
         {
             // Salt of at least 8 bytes is required to derive key.
             // If no salt is set in the appsettings, a basic 0-salt will be used.
-            var saltString = GclSettings.Current.DefaultEncryptionSalt;
+            var saltString = GclRequestContext.CurrentDefaultEncryptionSalt ?? GclSettings.Current.DefaultEncryptionSalt;
             var salt = !String.IsNullOrWhiteSpace(saltString) ? Encoding.UTF8.GetBytes(saltString) : new byte[8];
 
             // Salt must be at least 8 bytes.
@@ -242,22 +254,20 @@ public static class StringExtensions
 
             var passwordBytes = Encoding.UTF8.GetBytes(encryptionKey);
             using var deriveBytes = new Rfc2898DeriveBytes(passwordBytes, salt, 2, HashAlgorithmName.SHA1);
-            const int KeySize = 256;
-            const int BlockSize = 128;
+            const int keySize = 256;
+            const int blockSize = 128;
             using var aesManaged = Aes.Create();
-            aesManaged.KeySize = KeySize;
-            aesManaged.BlockSize = BlockSize;
-            aesManaged.Key = deriveBytes.GetBytes(Convert.ToInt32(KeySize / 8));
-            aesManaged.IV = deriveBytes.GetBytes(Convert.ToInt32(BlockSize / 8));
+            aesManaged.KeySize = keySize;
+            aesManaged.BlockSize = blockSize;
+            aesManaged.Key = deriveBytes.GetBytes(Convert.ToInt32(keySize / 8));
+            aesManaged.IV = deriveBytes.GetBytes(Convert.ToInt32(blockSize / 8));
             using var encryptor = aesManaged.CreateEncryptor(aesManaged.Key, aesManaged.IV);
-            using var ms = new MemoryStream();
-            using (var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write))
-            {
-                using var sw = new StreamWriter(cs);
-                sw.Write(stringToEncrypt.ToString());
-            }
+            using var memoryStream = new MemoryStream();
+            using var cryptoStream = new CryptoStream(memoryStream, encryptor, CryptoStreamMode.Write);
+            using var streamWriter = new StreamWriter(cryptoStream);
+            streamWriter.Write(stringToEncrypt.ToString());
 
-            var encryptedBytes = ms.ToArray();
+            var encryptedBytes = memoryStream.ToArray();
 
             return Convert.ToBase64String(encryptedBytes);
         }
@@ -275,24 +285,36 @@ public static class StringExtensions
     public static string DecryptWithAes(this string input, string key = "", bool withDateTime = false, int minutesValidOverride = 0, bool useSlowerButMoreSecureMethod = false)
     {
         string encryptionKey;
+
+        // ReSharper disable once ConvertIfStatementToSwitchStatement
         if (!String.IsNullOrWhiteSpace(key))
         {
             // Custom secret key passed in the parameters.
             encryptionKey = key;
         }
+        else if (withDateTime && !String.IsNullOrWhiteSpace(GclRequestContext.CurrentExpiringEncryptionKey))
+        {
+            // Per-request secret key for values that expire after a set time.
+            encryptionKey = GclRequestContext.CurrentExpiringEncryptionKey;
+        }
         else if (withDateTime && !String.IsNullOrWhiteSpace(GclSettings.Current.ExpiringEncryptionKey))
         {
-            // Secret key for values that expire after a set time.
+            // App-wide secret key for values that expire after a set time.
             encryptionKey = GclSettings.Current.ExpiringEncryptionKey;
+        }
+        else if (!String.IsNullOrWhiteSpace(GclRequestContext.CurrentDefaultEncryptionKey))
+        {
+            // Per-request default secret key.
+            encryptionKey = GclRequestContext.CurrentDefaultEncryptionKey;
         }
         else if (!String.IsNullOrWhiteSpace(GclSettings.Current.DefaultEncryptionKey))
         {
-            // Default secret key from app settings.
+            // App-wide default secret key.
             encryptionKey = GclSettings.Current.DefaultEncryptionKey;
         }
         else
         {
-            throw new Exception("DecryptWithAes: No AES secret key set.");
+            throw new MissingEncryptionKeyException($"No AES secret key set in {nameof(DecryptWithAes)}.");
         }
 
         string output;
@@ -301,7 +323,7 @@ public static class StringExtensions
         {
             // Salt of at least 8 bytes is required to derive key.
             // If no salt is set in the appsettings, a basic 0-salt will be used.
-            var saltString = GclSettings.Current.DefaultEncryptionSalt;
+            var saltString = GclRequestContext.CurrentDefaultEncryptionSalt ?? GclSettings.Current.DefaultEncryptionSalt;
             var salt = !String.IsNullOrWhiteSpace(saltString) ? Encoding.UTF8.GetBytes(saltString) : [];
             var inputBytes = Convert.FromBase64String(input);
             var keyBytes = KeyDerivation.Pbkdf2(encryptionKey, salt, KeyDerivationPrf.HMACSHA512, 100000, 256 / 8);
@@ -312,7 +334,7 @@ public static class StringExtensions
         {
             // Salt of at least 8 bytes is required to derive key.
             // If no salt is set in the appsettings, a basic 0-salt will be used.
-            var saltString = GclSettings.Current.DefaultEncryptionSalt;
+            var saltString = GclRequestContext.CurrentDefaultEncryptionSalt ?? GclSettings.Current.DefaultEncryptionSalt;
             var salt = !String.IsNullOrWhiteSpace(saltString) ? Encoding.UTF8.GetBytes(saltString) : new byte[8];
 
             // Salt must be at least 8 bytes.
@@ -327,21 +349,19 @@ public static class StringExtensions
             var inputBytes = Convert.FromBase64String(input);
 
             using var deriveBytes = new Rfc2898DeriveBytes(passwordBytes, salt, 2, HashAlgorithmName.SHA1);
-            const int KeySize = 256;
-            const int BlockSize = 128;
+            const int keySize = 256;
+            const int blockSize = 128;
 
             using var aesManaged = Aes.Create();
-            aesManaged.KeySize = KeySize;
-            aesManaged.BlockSize = BlockSize;
-            aesManaged.Key = deriveBytes.GetBytes(Convert.ToInt32(KeySize / 8));
-            aesManaged.IV = deriveBytes.GetBytes(Convert.ToInt32(BlockSize / 8));
+            aesManaged.KeySize = keySize;
+            aesManaged.BlockSize = blockSize;
+            aesManaged.Key = deriveBytes.GetBytes(Convert.ToInt32(keySize / 8));
+            aesManaged.IV = deriveBytes.GetBytes(Convert.ToInt32(blockSize / 8));
             using var decryptor = aesManaged.CreateDecryptor(aesManaged.Key, aesManaged.IV);
-            using var ms = new MemoryStream(inputBytes);
-            using (var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Read))
-            {
-                using var sr = new StreamReader(cs);
-                output = sr.ReadToEnd();
-            }
+            using var memoryStream = new MemoryStream(inputBytes);
+            using var cryptoStream = new CryptoStream(memoryStream, decryptor, CryptoStreamMode.Read);
+            using var streamReader = new StreamReader(cryptoStream);
+            output = streamReader.ReadToEnd();
         }
 
         if (!withDateTime)
@@ -350,14 +370,14 @@ public static class StringExtensions
         }
 
         // Contains a date time restriction.
-        if (!output.Contains("~"))
+        if (!output.Contains('~'))
         {
             throw new Exception("GCL DecryptWithAes: Expected encrypted value with datetime.");
         }
 
-        var separatorIndex = output.LastIndexOf("~", StringComparison.Ordinal);
+        var separatorIndex = output.LastIndexOf('~');
         var date = DateTime.ParseExact(output[(separatorIndex + 1)..], "yyyyMMddHHmmss", CultureInfo.InvariantCulture);
-        var hoursValid = GclSettings.Current.TemporaryEncryptionHoursValid;
+        var hoursValid = GclRequestContext.CurrentTemporaryEncryptionHoursValid ?? GclSettings.Current.TemporaryEncryptionHoursValid;
         var minutesValid = minutesValidOverride;
         if (minutesValid <= 0 && hoursValid > 0)
         {
@@ -390,24 +410,35 @@ public static class StringExtensions
         string encryptionKey;
         var stringToEncrypt = new StringBuilder(input);
 
+        // ReSharper disable once ConvertIfStatementToSwitchStatement
         if (!String.IsNullOrWhiteSpace(key))
         {
             // Custom secret key passed in the parameters.
             encryptionKey = key;
         }
+        else if (withDateTime && !String.IsNullOrWhiteSpace(GclRequestContext.CurrentExpiringEncryptionKey))
+        {
+            // Per-request secret key for values that expire after a set time.
+            encryptionKey = GclRequestContext.CurrentExpiringEncryptionKey;
+        }
         else if (withDateTime && !String.IsNullOrWhiteSpace(GclSettings.Current.ExpiringEncryptionKey))
         {
-            // Wiser 2.0 secret key for customer.
+            // App-wide secret key for values that expire after a set time.
             encryptionKey = GclSettings.Current.ExpiringEncryptionKey;
+        }
+        else if (!String.IsNullOrWhiteSpace(GclRequestContext.CurrentDefaultEncryptionKey))
+        {
+            // Per-request default secret key.
+            encryptionKey = GclRequestContext.CurrentDefaultEncryptionKey;
         }
         else if (!String.IsNullOrWhiteSpace(GclSettings.Current.DefaultEncryptionKey))
         {
-            // Custom secret key set in the app settings.
+            // App-wide default secret key.
             encryptionKey = GclSettings.Current.DefaultEncryptionKey;
         }
         else
         {
-            throw new Exception("EncryptWithAesWithSalt: No AES secret key set.");
+            throw new MissingEncryptionKeyException($"No AES secret key set in {nameof(EncryptWithAesWithSalt)}.");
         }
 
         if (withDateTime)
@@ -439,10 +470,8 @@ public static class StringExtensions
             var random = new Random();
             var saltSize = random.Next(8, 12);
             var saltBytes = new byte[saltSize];
-            using (var rng = RandomNumberGenerator.Create())
-            {
-                rng.GetBytes(saltBytes);
-            }
+            using var randomNumberGenerator = RandomNumberGenerator.Create();
+            randomNumberGenerator.GetBytes(saltBytes);
 
             using var aes = Aes.Create();
             aes.Mode = CipherMode.CBC;
@@ -480,24 +509,35 @@ public static class StringExtensions
     {
         string encryptionKey;
 
+        // ReSharper disable once ConvertIfStatementToSwitchStatement
         if (!String.IsNullOrWhiteSpace(key))
         {
             // Custom secret key passed in the parameters.
             encryptionKey = key;
         }
+        else if (withDateTime && !String.IsNullOrWhiteSpace(GclRequestContext.CurrentExpiringEncryptionKey))
+        {
+            // Per-request secret key for values that expire after a set time.
+            encryptionKey = GclRequestContext.CurrentExpiringEncryptionKey;
+        }
         else if (withDateTime && !String.IsNullOrWhiteSpace(GclSettings.Current.ExpiringEncryptionKey))
         {
-            // Wiser 2.0 secret key for customer.
+            // App-wide secret key for values that expire after a set time.
             encryptionKey = GclSettings.Current.ExpiringEncryptionKey;
+        }
+        else if (!String.IsNullOrWhiteSpace(GclRequestContext.CurrentDefaultEncryptionKey))
+        {
+            // Per-request default secret key.
+            encryptionKey = GclRequestContext.CurrentDefaultEncryptionKey;
         }
         else if (!String.IsNullOrWhiteSpace(GclSettings.Current.DefaultEncryptionKey))
         {
-            // Custom secret key set in the app settings.
+            // App-wide default secret key.
             encryptionKey = GclSettings.Current.DefaultEncryptionKey;
         }
         else
         {
-            throw new Exception("DecryptWithAesWithSalt: No AES secret key set.");
+            throw new MissingEncryptionKeyException($"No AES secret key set in {nameof(DecryptWithAesWithSalt)}.");
         }
 
         string output;
@@ -555,14 +595,14 @@ public static class StringExtensions
         }
 
         // Contains a date time restriction.
-        if (!output.Contains("~"))
+        if (!output.Contains('~'))
         {
             throw new Exception("GCL DecryptWithAes: Expected encrypted value with datetime.");
         }
 
-        var separatorIndex = output.LastIndexOf("~", StringComparison.Ordinal);
+        var separatorIndex = output.LastIndexOf('~');
         var date = DateTime.ParseExact(output[(separatorIndex + 1)..], "yyyyMMddHHmmss", CultureInfo.InvariantCulture);
-        var hoursValid = GclSettings.Current.TemporaryEncryptionHoursValid;
+        var hoursValid = GclRequestContext.CurrentTemporaryEncryptionHoursValid ?? GclSettings.Current.TemporaryEncryptionHoursValid;
         var minutesValid = minutesValidOverride;
         if (minutesValid <= 0 && hoursValid > 0)
         {
@@ -590,8 +630,6 @@ public static class StringExtensions
     /// <returns>The Base64 string containing the SHA512 hash of the input + salt and the salt appended to it.</returns>
     public static string ToSha512ForPasswords(this string input, byte[] saltBytes = null)
     {
-        using var sha512Hasher = SHA512.Create();
-
         var inputBytes = Encoding.UTF8.GetBytes(input);
 
         if (saltBytes == null)
@@ -607,7 +645,7 @@ public static class StringExtensions
         Buffer.BlockCopy(inputBytes, 0, inputWithSaltBytes, 0, inputBytes.Length);
         Buffer.BlockCopy(saltBytes, 0, inputWithSaltBytes, inputBytes.Length, saltBytes.Length);
 
-        var hashedBytes = sha512Hasher.ComputeHash(inputWithSaltBytes);
+        var hashedBytes = SHA512.HashData(inputWithSaltBytes);
 
         // Add the salt to the hashed bytes.
         var outputBytes = new byte[hashedBytes.Length + saltBytes.Length];
@@ -639,8 +677,8 @@ public static class StringExtensions
         // Convert base64-encoded hash value into a byte array.
         var hashWithSaltBytes = Convert.FromBase64String(hash);
 
-        // We must know size of hash (without salt).
-        var hashSizeInBytes = 64;
+        // We must know the size of hash (without salt).
+        const int hashSizeInBytes = 64;
 
         // Make sure that the specified hash value is long enough.
         if (hashWithSaltBytes.Length < hashSizeInBytes)
