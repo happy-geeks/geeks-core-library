@@ -263,12 +263,13 @@ public static class StringExtensions
             aesManaged.IV = deriveBytes.GetBytes(Convert.ToInt32(blockSize / 8));
             using var encryptor = aesManaged.CreateEncryptor(aesManaged.Key, aesManaged.IV);
             using var memoryStream = new MemoryStream();
-            using var cryptoStream = new CryptoStream(memoryStream, encryptor, CryptoStreamMode.Write);
-            using var streamWriter = new StreamWriter(cryptoStream);
-            streamWriter.Write(stringToEncrypt.ToString());
+            using (var cryptoStream = new CryptoStream(memoryStream, encryptor, CryptoStreamMode.Write))
+            {
+                using var streamWriter = new StreamWriter(cryptoStream);
+                streamWriter.Write(stringToEncrypt.ToString());
+            }
 
             var encryptedBytes = memoryStream.ToArray();
-
             return Convert.ToBase64String(encryptedBytes);
         }
     }
