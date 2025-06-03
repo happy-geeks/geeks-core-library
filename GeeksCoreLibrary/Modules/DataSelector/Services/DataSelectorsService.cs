@@ -751,7 +751,8 @@ public class DataSelectorsService(IOptions<GclSettings> gclSettings, IDatabaseCo
                         queryPart.Append(" OR ");
                     }
 
-                    queryPart.Append(await CreateHavingRowQueryPart(row, row.Key.FieldName));
+                    var selectAlias = GetFullSelectAlias(itemsRequest, row.Key.FieldName);
+                    queryPart.Append(await CreateHavingRowQueryPart(row, selectAlias));
                 }
 
                 // Add group to having part.
@@ -1759,7 +1760,7 @@ public class DataSelectorsService(IOptions<GclSettings> gclSettings, IDatabaseCo
 
     private async Task<string> CreateHavingRowQueryPart(HavingRow havingRow, string selectAlias)
     {
-        var formattedField = GetFormattedField(havingRow.Key, $"`{selectAlias}`");
+        var formattedField = GetFormattedField(havingRow.Key, selectAlias);
 
         if (havingRow.Value is JArray array)
         {
