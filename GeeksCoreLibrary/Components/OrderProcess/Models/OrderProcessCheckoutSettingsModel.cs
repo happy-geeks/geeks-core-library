@@ -31,13 +31,13 @@ internal class OrderProcessCheckoutSettingsModel
     [DefaultValue("""
                   <div class='error'>
                       [if({errorType}=Client)]
-                      <p>[T{Niet alle gegevens zijn correct ingevuld, controleer de gegevens en probeer het opnieuw.}]</p>
+                      <p>Niet alle gegevens zijn correct ingevuld, controleer de gegevens en probeer het opnieuw.</p>
                       [endif]
                       [if({errorType}=Server)]
-                      <p>[T{Er is een onbekende fout opgetreden. Probeer het a.u.b. nogmaals of neem contact op met ons.}]</p>
+                      <p>Er is een onbekende fout opgetreden. Probeer het a.u.b. nogmaals of neem contact op met ons.</p>
                       [endif]
                       [if({errorType}=Payment)]
-                      <p>[T{Er is iets fout gegaan met de betaling. Selecteer eventueel een andere betaalmethode en probeer het nogmaals, of neem contact op met ons.}]</p>
+                      <p>Er is iets fout gegaan met de betaling. Selecteer eventueel een andere betaalmethode en probeer het nogmaals, of neem contact op met ons.</p>
                       [endif]
                   </div>
                   """)]
@@ -63,7 +63,7 @@ internal class OrderProcessCheckoutSettingsModel
                   """)]
     internal string TemplatePaymentMethodsGroup { get; }
 
-    [DefaultValue(@"<span class='field-error'>[if({errorMessage}=)][T{Vul a.u.b. een geldige waarde in}][else]{errorMessage}[endif]</span>")]
+    [DefaultValue(@"<span class='field-error'>[if({errorMessage}=)]Vul a.u.b. een geldige waarde in[else]{errorMessage}[endif]</span>")]
     internal string TemplateFieldError { get; }
 
     [DefaultValue("""
