@@ -269,7 +269,7 @@ public class StringExtensionsTests
     [TestCase(TestValue, TestValue)]
     [TestCase("Test+test2", "Test_test2")]
     [TestCase("this&test2", "this_test2")]
-    [TestCase(@"this+&!@#$%^&*()/\<>;:'test2", @"this__!@#$%^_*()/\<>;:'test2")]
+    [TestCase(@"this+&!@#$%^&*()/\<>;:'test2", @"this__!@#$%^_();'test2")]
     public void StripIllegalFilenameCharacters_DifferentStrings_ReturnsValidPathNames(string input, string expected)
     {
         // Act
@@ -284,7 +284,7 @@ public class StringExtensionsTests
     [TestCase(TestValue, TestValue)]
     [TestCase("Test+test2", "Test_test2")]
     [TestCase("this&test2", "this_test2")]
-    [TestCase(@"this+&!@#$%^&*()/\<>;:'test2", @"this__!@#$%^_*()/\<>;:'test2")]
+    [TestCase(@"this+&!@#$%^&*()/\<>;:'test2", @"this__!@#$%^_();'test2")]
     public void StripIllegalPathCharacters_DifferentStrings_ReturnsValidPathNames(string input, string expected)
     {
         // Act

@@ -760,7 +760,7 @@ public static class StringExtensions
             return input;
         }
 
-        var regexSearch = Path.GetInvalidFileNameChars().ToString();
+        var regexSearch = String.Join("", Path.GetInvalidFileNameChars());
         var regex = new Regex($"[{RegexHelpers.Escape(regexSearch!)}]", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
         var output = regex.Replace(input, "");
         return output.Replace("&", "_").Replace("+", "_");
@@ -773,7 +773,7 @@ public static class StringExtensions
     /// <returns>A string that can be safely used as a directory name on the machine that this application runs on.</returns>
     public static string StripIllegalPathCharacters(this string input)
     {
-        var regexSearch = Path.GetInvalidPathChars().ToString();
+        var regexSearch = String.Join("", Path.GetInvalidFileNameChars());
         var regex = new Regex($"[{RegexHelpers.Escape(regexSearch!)}]", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
         var output = regex.Replace(input, "");
         return output.Replace("&", "_").Replace("+", "_");
