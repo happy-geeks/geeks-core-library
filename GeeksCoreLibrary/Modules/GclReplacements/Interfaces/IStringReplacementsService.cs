@@ -14,15 +14,15 @@ public interface IStringReplacementsService
     /// <summary>
     /// Performs all replacements based on several default functions, such as query, form and cookies.
     /// </summary>
-    /// <param name="input"></param>
-    /// <param name="dataRow"></param>
-    /// <param name="handleRequest"></param>
-    /// <param name="evaluateLogicSnippets"></param>
-    /// <param name="removeUnknownVariables"></param>
+    /// <param name="input">The input string.</param>
+    /// <param name="dataRow">The <see cref="DataRow"/> from a query result, that contains the data to use for replacements.</param>
+    /// <param name="handleRequest">Optional: Whether to also replaces values from the HTTP request. Default value is <c>true</c>.</param>
+    /// <param name="evaluateLogicSnippets">Optional: Whether to also handle our custom if-statements in the template.</param>
+    /// <param name="removeUnknownVariables">Optional: Whether to remove all variables that cannot not be replaced with any value.</param>
     /// <param name="forQuery">Optional: Set to <see langword="true"/> to make all replaced values safe against SQL injection.</param>
     /// <param name="defaultFormatter">Optional: The default formatter to use. This should be HtmlEncode for anything that gets output to the browser. Default value is "HtmlEncode".</param>
-    /// <param name="handleVariableDefaults">Optional: Handle variable defaults (such as {name~Bob}, which will place the value "Bob" on that position, if the name variable is empty or doesn't exist. Default is true.</param>
-    /// <returns></returns>
+    /// <param name="handleVariableDefaults">Optional: Handle variable defaults (such as {name~Bob}), which will place the value "Bob" on that position, if the name variable is empty or doesn't exist. Default is true.</param>
+    /// <returns>The original string with all replacements done.</returns>
     Task<string> DoAllReplacementsAsync(string input, DataRow dataRow = null, bool handleRequest = true, bool evaluateLogicSnippets = true, bool removeUnknownVariables = true, bool forQuery = false, string defaultFormatter = "HtmlEncode", bool handleVariableDefaults = true);
 
     /// <summary>
@@ -31,7 +31,7 @@ public interface IStringReplacementsService
     /// <param name="input"></param>
     /// <param name="forQuery">Optional: Set to <see langword="true"/> to make all replaced values safe against SQL injection.</param>
     /// <param name="defaultFormatter">Optional: The default formatter to use. This should be HtmlEncode for anything that gets output to the browser. Default value is "HtmlEncode".</param>
-    /// <returns></returns>
+    /// <returns>The original string with all HTTP request replacements done.</returns>
     string DoHttpRequestReplacements(string input, bool forQuery = false, string defaultFormatter = "HtmlEncode");
 
     /// <summary>
@@ -40,7 +40,7 @@ public interface IStringReplacementsService
     /// <param name="input"></param>
     /// <param name="forQuery">Optional: Set to <see langword="true"/> to make all replaced values safe against SQL injection.</param>
     /// <param name="defaultFormatter">Optional: The default formatter to use. This should be HtmlEncode for anything that gets output to the browser. Default value is "HtmlEncode".</param>
-    /// <returns></returns>
+    /// <returns>The original string with all session replacements done.</returns>
     string DoSessionReplacements(string input, bool forQuery = false, string defaultFormatter = "HtmlEncode");
 
     /// <summary>
@@ -50,7 +50,7 @@ public interface IStringReplacementsService
     /// <param name="input">The string to do replacements on.</param>
     /// <param name="replaceData">The data that needs to be used for the replacements.</param>
     /// <param name="forQuery">Optional: Set to true to make all replaced values safe against SQL injection. You should only set this to true for SQL queries. Default is false.</param>
-    /// <param name="caseSensitive">Optional: Whether the variable names in the replacement data dictionary should be case sensitive. Default is true.</param>
+    /// <param name="caseSensitive">Optional: Whether the variable names in the replacement data dictionary should be case-sensitive. Default is true.</param>
     /// <param name="prefix">Optional: The string that is used as the prefix for every variable that needs to be replaced. Default value is "{".</param>
     /// <param name="suffix">Optional: The string that is used as the suffix for every variable that needs to be replaced. Default value is "}".</param>
     /// <param name="defaultFormatter">Optional: The default formatter to use. This should be HtmlEncode for anything that gets output to the browser. Default value is "HtmlEncode".</param>
@@ -64,7 +64,7 @@ public interface IStringReplacementsService
     /// <param name="input">The string to do replacements on.</param>
     /// <param name="replaceData">The data that needs to be used for the replacements.</param>
     /// <param name="forQuery">Optional: Set to true to make all replaced values safe against SQL injection. You should only set this to true for SQL queries. Default is false.</param>
-    /// <param name="caseSensitive">Optional: Whether the variable names in the replacement data dictionary should be case sensitive. Default is true.</param>
+    /// <param name="caseSensitive">Optional: Whether the variable names in the replacement data dictionary should be case-sensitive. Default is true.</param>
     /// <param name="prefix">Optional: The string that is used as the prefix for every variable that needs to be replaced. Default value is "{".</param>
     /// <param name="suffix">Optional: The string that is used as the suffix for every variable that needs to be replaced. Default value is "}".</param>
     /// <param name="defaultFormatter">Optional: The default formatter to use. This should be HtmlEncode for anything that gets output to the browser. Default value is "HtmlEncode".</param>
@@ -77,7 +77,7 @@ public interface IStringReplacementsService
     /// <param name="input">The string to do replacements on.</param>
     /// <param name="replaceData">The data that needs to be used for the replacements.</param>
     /// <param name="forQuery">Optional: Set to true to make all replaced values safe against SQL injection. You should only set this to true for SQL queries. Default is false.</param>
-    /// <param name="caseSensitive">Optional: Whether the variable names in the replacement data dictionary should be case sensitive. Default is true.</param>
+    /// <param name="caseSensitive">Optional: Whether the variable names in the replacement data dictionary should be case-sensitive. Default is true.</param>
     /// <param name="prefix">Optional: The string that is used as the prefix for every variable that needs to be replaced. Default value is "{".</param>
     /// <param name="suffix">Optional: The string that is used as the suffix for every variable that needs to be replaced. Default value is "}".</param>
     /// <param name="defaultFormatter">Optional: The default formatter to use. This should be HtmlEncode for anything that gets output to the browser. Default value is "HtmlEncode".</param>
@@ -106,7 +106,7 @@ public interface IStringReplacementsService
     /// <param name="input">The string to do replacements on.</param>
     /// <param name="replaceData">The data that needs to be used for the replacements.</param>
     /// <param name="forQuery">Optional: Set to true to make all replaced values safe against SQL injection. You should only set this to true for SQL queries. Default is false.</param>
-    /// <param name="caseSensitive">Optional: Whether the variable names in the replacement data dictionary should be case sensitive. Default is true.</param>
+    /// <param name="caseSensitive">Optional: Whether the variable names in the replacement data dictionary should be case-sensitive. Default is true.</param>
     /// <param name="prefix">Optional: The string that is used as the prefix for every variable that needs to be replaced. Default value is "{".</param>
     /// <param name="suffix">Optional: The string that is used as the suffix for every variable that needs to be replaced. Default value is "}".</param>
     /// <param name="defaultFormatter">Optional: The default formatter to use. This should be HtmlEncode for anything that gets output to the browser. Default value is "HtmlEncode".</param>
@@ -120,7 +120,7 @@ public interface IStringReplacementsService
     /// <param name="input">The string to do replacements on.</param>
     /// <param name="replaceData">The data that needs to be used for the replacements.</param>
     /// <param name="forQuery">Optional: Set to true to make all replaced values safe against SQL injection. You should only set this to true for SQL queries. Default is false.</param>
-    /// <param name="caseSensitive">Optional: Whether the variable names in the replacement data dictionary should be case sensitive. Default is true.</param>
+    /// <param name="caseSensitive">Optional: Whether the variable names in the replacement data dictionary should be case-sensitive. Default is true.</param>
     /// <param name="prefix">Optional: The string that is used as the prefix for every variable that needs to be replaced. Default value is "{".</param>
     /// <param name="suffix">Optional: The string that is used as the suffix for every variable that needs to be replaced. Default value is "}".</param>
     /// <param name="defaultFormatter">Optional: The default formatter to use. This should be HtmlEncode for anything that gets output to the browser. Default value is "HtmlEncode".</param>
@@ -134,7 +134,7 @@ public interface IStringReplacementsService
     /// <param name="input">The string to do replacements on.</param>
     /// <param name="replaceData">The data that needs to be used for the replacements.</param>
     /// <param name="forQuery">Optional: Set to true to make all replaced values safe against SQL injection. You should only set this to true for SQL queries. Default is false.</param>
-    /// <param name="caseSensitive">Optional: Whether the variable names in the replacement data dictionary should be case sensitive. Default is true.</param>
+    /// <param name="caseSensitive">Optional: Whether the variable names in the replacement data dictionary should be case-sensitive. Default is true.</param>
     /// <param name="prefix">Optional: The string that is used as the prefix for every variable that needs to be replaced. Default value is "{".</param>
     /// <param name="suffix">Optional: The string that is used as the suffix for every variable that needs to be replaced. Default value is "}".</param>
     /// <param name="defaultFormatter">Optional: The default formatter to use. This should be HtmlEncode for anything that gets output to the browser. Default value is "HtmlEncode".</param>
@@ -147,7 +147,7 @@ public interface IStringReplacementsService
     /// <param name="input">The string to do replacements on.</param>
     /// <param name="replaceData">The data that needs to be used for the replacements.</param>
     /// <param name="forQuery">Optional: Set to true to make all replaced values safe against SQL injection. You should only set this to true for SQL queries. Default is false.</param>
-    /// <param name="caseSensitive">Optional: Whether the variable names in the replacement data dictionary should be case sensitive. Default is true.</param>
+    /// <param name="caseSensitive">Optional: Whether the variable names in the replacement data dictionary should be case-sensitive. Default is true.</param>
     /// <param name="prefix">Optional: The string that is used as the prefix for every variable that needs to be replaced. Default value is "{".</param>
     /// <param name="suffix">Optional: The string that is used as the suffix for every variable that needs to be replaced. Default value is "}".</param>
     /// <param name="defaultFormatter">Optional: The default formatter to use. This should be HtmlEncode for anything that gets output to the browser. Default value is "HtmlEncode".</param>
@@ -185,16 +185,24 @@ public interface IStringReplacementsService
 
     /// <summary>
     /// Removes any template variables that are present in the input string.
+    /// This will remove all variable types that are used in the GeeksCoreLibrary (e.g. '{x}', '[T{x}]', etc.).
     /// </summary>
-    /// <param name="input"></param>
-    /// <param name="prefix">Optional: The string that is used as the prefix for every variable that needs to be removed. Default value is "{".</param>
-    /// <param name="suffix">Optional: The string that is used as the suffix for every variable that needs to be removed. Default value is "}".</param>
+    /// <param name="input">The input string.</param>
     /// <returns>The original string without variables.</returns>
-    string RemoveTemplateVariables(string input, string prefix = "{", string suffix = "}");
+    string RemoveTemplateVariables(string input);
+
+    /// <summary>
+    /// Removes any template variables that are present in the input string.
+    /// </summary>
+    /// <param name="input">The input string.</param>
+    /// <param name="prefix">The string that is used as the prefix for every variable that needs to be removed.</param>
+    /// <param name="suffix">The string that is used as the suffix for every variable that needs to be removed.</param>
+    /// <returns>The original string without variables.</returns>
+    string RemoveTemplateVariables(string input, string prefix, string suffix);
 
     /// <summary>
     /// Replace variables in a string based on JSON data.
-    /// Example: {customer.address.streetline1} or {orderid}.
+    /// Example: {customer.address.street} or {orderId}.
     /// </summary>
     /// <param name="input">The <see cref="JToken"/> instance to be used for the data.</param>
     /// <param name="inputString">The template.</param>
@@ -205,7 +213,7 @@ public interface IStringReplacementsService
 
     /// <summary>
     /// Replace variables in a string based on JSON data.
-    /// Example: {customer.address.streetline1} or {orderid}.
+    /// Example: {customer.address.street} or {orderId}.
     /// </summary>
     /// <param name="input">The <see cref="JToken"/> instance to be used for the data.</param>
     /// <param name="inputString">The template.</param>

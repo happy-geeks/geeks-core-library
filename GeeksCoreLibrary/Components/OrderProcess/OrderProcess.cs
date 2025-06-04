@@ -220,22 +220,22 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
                 return String.Empty;
             }
 
-            // If we have no confirmation page and/or no payment methods, then the order process has not been fully configured and we want to throw an error.
+            // If we have no confirmation page and/or no payment methods, then the order process has not been fully configured, and we want to throw an error.
             if (steps.All(step => step.Type != OrderProcessStepTypes.OrderConfirmation))
             {
-                throw new Exception($"There is no step with type '{OrderProcessStepTypes.OrderConfirmation.ToString()}' configured yet, therefor we cannot proceed with the order process.");
+                throw new Exception($"There is no step with type '{nameof(OrderProcessStepTypes.OrderConfirmation)}' configured yet, therefor we cannot proceed with the order process.");
             }
 
             if (steps.All(step => step.Groups.All(group => group.Type != OrderProcessGroupTypes.PaymentMethods)))
             {
-                throw new Exception($"There is no group with type '{OrderProcessGroupTypes.PaymentMethods.ToString()}' configured yet, therefor we cannot proceed with the order process.");
+                throw new Exception($"There is no group with type '{nameof(OrderProcessGroupTypes.PaymentMethods)}' configured yet, therefor we cannot proceed with the order process.");
             }
 
             // Get the active basket, if any.
             var shoppingBasketSettings = await shoppingBasketsService.GetSettingsAsync();
             var (shoppingBasket, shoppingBasketLines, _, _) = await shoppingBasketsService.LoadAsync(shoppingBasketSettings);
 
-            // Get the logged in user, if any.
+            // Get the logged-in user, if any.
             var loggedInUser = await AccountsService.GetUserDataFromCookieAsync();
             WiserItemModel userData;
             if (loggedInUser.UserId > 0)
@@ -309,7 +309,7 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
             // Get the active step. The active step number starts with 1, so we subtract one to get the correct index.
             var step = steps[ActiveStep - 1];
 
-            // Do all validation and saving first, so that we don't have to render the entire HTML of this step, if we are going to to send someone to the next step anyway.
+            // Do all validation and saving first, so that we don't have to render the entire HTML of this step, if we are going to send someone to the next step anyway.
             if (isPostBack)
             {
                 var retries = 0;
@@ -418,6 +418,7 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
             var stepHtml = StringReplacementsService.DoReplacements(Settings.TemplateStep, replaceData);
             stepHtml = stepHtml.Replace(Constants.HeaderReplacement, orderProcessSettings.Header + step.Header, StringComparison.OrdinalIgnoreCase)
                 .Replace(Constants.FooterReplacement, step.Footer + orderProcessSettings.Footer, StringComparison.OrdinalIgnoreCase);
+            stepHtml = await TemplatesService.DoReplacesAsync(stepHtml, removeUnknownVariables: false, evaluateLogicSnippets: false, handleRequest: false);
 
             // Build the groups HTML.
             var groupsBuilder = new StringBuilder();
@@ -468,14 +469,15 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
 
                     break;
                 case OrderProcessStepTypes.Summary:
-                    //var summaryHtml = ReplaceEntityDataInTemplate(shoppingBasket, currentItems, step, steps, paymentMethods);
                     var summaryHtml = step.Template;
+                    summaryHtml = await TemplatesService.DoReplacesAsync(summaryHtml, removeUnknownVariables: false, evaluateLogicSnippets: false, handleRequest: false);
+                    summaryHtml = ReplaceEntityDataInTemplate(shoppingBasket, currentItems, summaryHtml, steps, paymentMethods);
                     groupsBuilder.AppendLine(summaryHtml);
                     break;
                 case OrderProcessStepTypes.OrderConfirmation:
                 case OrderProcessStepTypes.OrderPending:
-                    var order = new WiserItemModel();
                     var errorMessage = "";
+                    var order = new WiserItemModel();
                     if (httpContextAccessor?.HttpContext == null || !httpContextAccessor.HttpContext.Request.Query.ContainsKey("order"))
                     {
                         errorMessage = "Order not found, please contact us";
@@ -499,14 +501,15 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
                             catch (Exception exception)
                             {
                                 errorMessage = "Order not found, please contact us";
-                                Logger.LogError($"Failed to get the order by ID during the confirmation step in the order process due to exception while processing encrypted ID '{encryptedOrderId}': {exception}");
+                                Logger.LogError(exception, "Failed to get the order by ID during the confirmation step in the order process due to exception while processing encrypted ID '{EncryptedOrderId}'", encryptedOrderId);
                             }
                         }
                     }
 
-                    //var confirmationHtml = ReplaceEntityDataInTemplate(order, currentItems, step, steps, paymentMethods);
                     var confirmationHtml = step.Template;
                     confirmationHtml = confirmationHtml.Replace("{loadOrderError}", await languagesService.GetTranslationAsync(errorMessage));
+                    confirmationHtml = await TemplatesService.DoReplacesAsync(confirmationHtml, removeUnknownVariables: false, evaluateLogicSnippets: false, handleRequest: false);
+                    confirmationHtml = ReplaceEntityDataInTemplate(order, currentItems, confirmationHtml, steps, paymentMethods);
                     groupsBuilder.AppendLine(confirmationHtml);
 
                     // Empty the shopping basket.
@@ -533,6 +536,7 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
                 resultHtml = Settings.Template;
             }
 
+            resultHtml = await TemplatesService.DoReplacesAsync(resultHtml, removeUnknownVariables: false, evaluateLogicSnippets: false, handleRequest: false);
             resultHtml = resultHtml.Replace(Constants.StepReplacement, stepHtml, StringComparison.OrdinalIgnoreCase);
 
             // Build the HTML for the steps progress.
@@ -544,47 +548,40 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
 
             if (fieldErrorsOccurred)
             {
-                resultHtml = AddStepErrorToResult(resultHtml, "Client");
+                resultHtml = await AddStepErrorToResultAsync(resultHtml, "Client");
             }
 
             if (String.Equals(HttpContextHelpers.GetRequestValue(httpContext, Constants.ErrorFromPaymentOutRequestKey), "true", StringComparison.OrdinalIgnoreCase))
             {
-                resultHtml = AddStepErrorToResult(resultHtml, "Payment");
+                resultHtml = await AddStepErrorToResultAsync(resultHtml, "Payment");
             }
 
             resultHtml = resultHtml.Replace("{activeStep}", ActiveStep.ToString(), StringComparison.OrdinalIgnoreCase);
-
-
-            // Do all generic replacement last and then return the final HTML.
-            resultHtml = await TemplatesService.DoReplacesAsync(resultHtml, removeUnknownVariables: false);
-
-            if (step.Type is OrderProcessStepTypes.Summary or OrderProcessStepTypes.OrderConfirmation or OrderProcessStepTypes.OrderPending)
-            {
-                resultHtml = ReplaceEntityDataInTemplate(shoppingBasket, currentItems, resultHtml, steps, paymentMethods);
-            }
         }
         catch (ThreadAbortException)
         {
-            // Ignore ThreadAbortExceptions, these always occur when we do a redirect and we don't need to see them in the logs or anything.
+            // Ignore ThreadAbortExceptions, these always occur when we do a redirect, and we don't need to see them in the logs or anything.
         }
         catch (Exception exception)
         {
             await DatabaseConnection.RollbackTransactionAsync(false);
-            resultHtml = AddStepErrorToResult(resultHtml, "Server");
+            resultHtml = await AddStepErrorToResultAsync(resultHtml, "Server");
             resultHtml = await TemplatesService.DoReplacesAsync(resultHtml);
-            Logger.LogError(exception.ToString());
+            Logger.LogError(exception, "An error occurred while rendering the order process component with ID {I} and mode {SettingsComponentMode}.", ComponentId, Settings.ComponentMode);
         }
 
-        return AddComponentIdToForms(StringReplacementsService.RemoveTemplateVariables(resultHtml), Constants.ComponentIdFormKey);
+        resultHtml = StringReplacementsService.RemoveTemplateVariables(resultHtml);
+        resultHtml = StringReplacementsService.EvaluateTemplate(resultHtml);
+        return AddComponentIdToForms(resultHtml, Constants.ComponentIdFormKey);
     }
 
     /// <summary>
     /// Replaces data from the user and their shopping basket in a template. This uses the prefixes "basket", "order" and "account".
-    /// Examples: {order.Id}, {account.firstName}
+    /// Examples: {order.id}, {account.firstName}
     /// </summary>
     /// <param name="shoppingBasket">The active basket of the user.</param>
     /// <param name="currentItems">The data of the user and other entities.</param>
-    /// <param name="step">The data/settings of the current step.</param>
+    /// <param name="stepTemplateContent">The contents of the current step.</param>
     /// <param name="allSteps">The date/settings of all steps.</param>
     /// <param name="paymentMethods">All available payment methods.</param>
     private string ReplaceEntityDataInTemplate(WiserItemModel shoppingBasket, List<(LinkSettingsModel LinkSettings, WiserItemModel Item)> currentItems, string stepTemplateContent, List<OrderProcessStepModel> allSteps, List<PaymentMethodSettingsModel> paymentMethods)
@@ -757,7 +754,7 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
     /// Renders the HTML for a group.
     /// </summary>
     /// <param name="group">The group to render.</param>
-    /// <param name="loggedInUser">The data of the logged in user or an empty object if the user is not logged in.</param>
+    /// <param name="loggedInUser">The data of the logged-in user or an empty object if the user is not logged in.</param>
     /// <param name="shoppingBasket">The basket of the user.</param>
     /// <param name="currentItems">The data of the user and other items associated with the user or basket (such as address).</param>
     /// <param name="paymentMethods">The list of available payment methods for the current order process.</param>
@@ -777,7 +774,7 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
     /// Renders the HTML for a group of type "Fields".
     /// </summary>
     /// <param name="group">The group to render.</param>
-    /// <param name="loggedInUser">The data of the logged in user or an empty object if the user is not logged in.</param>
+    /// <param name="loggedInUser">The data of the logged-in user or an empty object if the user is not logged in.</param>
     /// <param name="shoppingBasket">The basket of the user.</param>
     /// <param name="currentItems">The data of the user and other items associated with the user or basket (such as address).</param>
     /// <returns>The HTML for the group.</returns>
@@ -1062,7 +1059,9 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
             progressBuilder.AppendLine(progressStepHtml);
         }
 
-        return Settings.TemplateProgress.Replace(Constants.StepsReplacement, progressBuilder.ToString(), StringComparison.OrdinalIgnoreCase);
+        var result = Settings.TemplateProgress.Replace(Constants.StepsReplacement, progressBuilder.ToString(), StringComparison.OrdinalIgnoreCase);
+        result = await TemplatesService.DoReplacesAsync(result, removeUnknownVariables: false, evaluateLogicSnippets: false, handleRequest: false);
+        return result;
     }
 
     #endregion
@@ -1075,7 +1074,7 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
     /// </summary>
     /// <param name="orderProcessSettings">The settings of the orde process.</param>
     /// <param name="step">The currently active step.</param>
-    /// <param name="loggedInUser">The <see cref="UserCookieDataModel"/> of the logged in user, or empty object if they're not logged in.</param>
+    /// <param name="loggedInUser">The <see cref="UserCookieDataModel"/> of the logged-in user, or empty object if they're not logged in.</param>
     /// <param name="request">The current <see cref="HttpRequest"/>.</param>
     /// <param name="shoppingBasket">The basket of the user.</param>
     /// <param name="shoppingBasketLines">The shopping basket lines to use for the event.</param>
@@ -1177,7 +1176,7 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
                         }
                     }
 
-                    // If there are exactly 2 fields of type "password", we assume that this is for creating a new account and we'll check if both values are the same.
+                    // If there are exactly 2 fields of type "password", we assume that this is for creating a new account, and we'll check if both values are the same.
                     var passwordFields = group.Fields.Where(field => field.InputFieldType == OrderProcessInputTypes.Password).ToList();
                     if (passwordFields.Count == 2)
                     {
@@ -1260,15 +1259,17 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
     /// <param name="resultHtml">The result HTML.</param>
     /// <param name="errorType">The type of error (Server or Client).</param>
     /// <returns>The result HTML with the error.</returns>
-    private string AddStepErrorToResult(string resultHtml, string errorType)
+    private async Task<string> AddStepErrorToResultAsync(string resultHtml, string errorType)
     {
+        var errorTemplate = await TemplatesService.DoReplacesAsync(Settings.TemplateStepError, removeUnknownVariables: false, evaluateLogicSnippets: false, handleRequest: false);
+
         if (String.IsNullOrEmpty(resultHtml) || !resultHtml.Contains(Constants.ErrorReplacement))
         {
-            resultHtml = Settings.TemplateStepError;
+            resultHtml = errorTemplate;
         }
         else
         {
-            resultHtml = resultHtml.Replace(Constants.ErrorReplacement, Settings.TemplateStepError, StringComparison.OrdinalIgnoreCase);
+            resultHtml = resultHtml.Replace(Constants.ErrorReplacement, errorTemplate, StringComparison.OrdinalIgnoreCase);
         }
 
         resultHtml = resultHtml.Replace(Constants.ErrorTypeReplacement, errorType, StringComparison.OrdinalIgnoreCase);

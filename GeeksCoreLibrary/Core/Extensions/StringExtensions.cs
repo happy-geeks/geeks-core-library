@@ -761,7 +761,7 @@ public static class StringExtensions
         }
 
         var regexSearch = Path.GetInvalidFileNameChars().ToString();
-        var regex = new Regex($"[{Regex.Escape(regexSearch!)}]", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+        var regex = new Regex($"[{RegexHelpers.Escape(regexSearch!)}]", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
         var output = regex.Replace(input, "");
         return output.Replace("&", "_").Replace("+", "_");
     }
@@ -774,7 +774,7 @@ public static class StringExtensions
     public static string StripIllegalPathCharacters(this string input)
     {
         var regexSearch = Path.GetInvalidPathChars().ToString();
-        var regex = new Regex($"[{Regex.Escape(regexSearch!)}]", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+        var regex = new Regex($"[{RegexHelpers.Escape(regexSearch!)}]", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
         var output = regex.Replace(input, "");
         return output.Replace("&", "_").Replace("+", "_");
     }

@@ -34,7 +34,7 @@ public class ReplacementsMediator(
     IHttpContextAccessor httpContextAccessor = null)
     : IReplacementsMediator, IScopedService
 {
-    private static readonly FrozenDictionary<string, MethodInfo> Formatters = 
+    private static readonly FrozenDictionary<string, MethodInfo> Formatters =
         typeof(StringReplacementsExtensions).GetMethods(BindingFlags.Static | BindingFlags.Public)
             .Select(m => new KeyValuePair<string, MethodInfo>(m.Name, m))
             .ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
@@ -385,7 +385,7 @@ public class ReplacementsMediator(
         {
             return input;
         }
-        
+
         // We already check for an if statement to short-circuit templates without if statements
         // so we can pass in the found index into EvaluateTemplateInternal as an optimisation
         var firstIfIndex = input.IndexOf("[if(", StringComparison.Ordinal);
@@ -420,7 +420,7 @@ public class ReplacementsMediator(
 
             templateBuilder.Append(input[..ifIndex]);
             input = input[ifIndex..];
-            
+
             var parts = FindConditionalParts(input);
 
             var conditionPasses = false;
@@ -470,7 +470,7 @@ public class ReplacementsMediator(
                 conditionalPart = parts.FalseBranchValue;
                 nextFoundIndex = parts.NextFoundFalseBranchIfIndex;
             }
-            
+
             if (nextFoundIndex != -1)
             {
                 templateBuilder = EvaluateTemplateInternal(conditionalPart, templateBuilder, nextFoundIndex);
@@ -511,7 +511,7 @@ public class ReplacementsMediator(
         // 3. Extract the condition text inside the tag.
         // For example, for "[if(1=1)]" this yields "1=1".
         var conditionContent = input.Slice(
-            ifStart + "[if(".Length, 
+            ifStart + "[if(".Length,
             conditionEnd - ifStart - "[if(".Length);
 
         // 4. Parse the condition into left operand, operator, and right operand.
@@ -537,19 +537,19 @@ public class ReplacementsMediator(
         foreach (var ifPartMatch in PrecompiledRegexes.ConditionalParts.EnumerateMatches(contentSpan))
         {
             var foundPart = contentSpan.Slice(ifPartMatch.Index, ifPartMatch.Length);
-            
+
             switch (foundPart)
             {
                 case "[if(":
                 {
                     // A nested if: increase depth.
                     depth++;
-                
+
                     // We've encountered an if statement so save it for the next scan
                     if (elseIndex == -1 && parts.NextFoundTrueBranchIfIndex == -1)
                     {
                         parts.NextFoundTrueBranchIfIndex = ifPartMatch.Index;
-                    } 
+                    }
                     else if (elseIndex != -1 && parts.NextFoundFalseBranchIfIndex == -1)
                     {
                         parts.NextFoundFalseBranchIfIndex = ifPartMatch.Index - (elseIndex + "[else]".Length);
@@ -588,9 +588,9 @@ public class ReplacementsMediator(
         if (endifIndex == -1)
         {
             logger.LogWarning("Invalid conditional: missing closing [endif].");
-            
+
             parts.Operator = default;
-            
+
             if (parts.NextFoundTrueBranchIfIndex > -1)
             {
                 parts.ScannedUntil = parts.NextFoundTrueBranchIfIndex;
@@ -603,11 +603,11 @@ public class ReplacementsMediator(
             {
                 parts.ScannedUntil = contentSpan.Length;
             }
-            
+
             parts.ScannedUntil += contentStart;
             return parts;
         }
-    
+
         // 6. Slice out the true and false parts.
         if (elseIndex != -1)
         {
@@ -622,18 +622,18 @@ public class ReplacementsMediator(
             // No [else] token: the true branch extends all the way to the [endif].
             parts.TrueBranchValue = contentSpan[..endifIndex];
         }
-        
+
         parts.ScannedUntil = contentStart + endifIndex + "[endif]".Length;
-    
+
         return parts;
     }
 
     /// <summary>
     /// Parses the condition inside the [if(…)] tag into left operand, operator, and right operand.
     /// </summary>
-    private void ParseCondition(ReadOnlySpan<char> condition, 
-        out ReadOnlySpan<char> left, 
-        out ReadOnlySpan<char> @operator, 
+    private void ParseCondition(ReadOnlySpan<char> condition,
+        out ReadOnlySpan<char> left,
+        out ReadOnlySpan<char> @operator,
         out ReadOnlySpan<char> right)
     {
         // First, check for longer operators (HTML encoded)
@@ -688,15 +688,32 @@ public class ReplacementsMediator(
     }
 
     /// <inheritdoc />
-    public string RemoveTemplateVariables(string input, string prefix = "{", string suffix = "}")
+    public string RemoveTemplateVariables(string input)
     {
         if (String.IsNullOrWhiteSpace(input))
         {
             return input;
         }
 
-        prefix = Regex.Escape(prefix);
-        suffix = Regex.Escape(suffix);
+        var output = RemoveTemplateVariables(input, "[SO{", "}]");
+        output = RemoveTemplateVariables(output, "[O{", "}]");
+        output = RemoveTemplateVariables(output, "[T{", "}]");
+        output = RemoveTemplateVariables(output, "[{", "}]");
+        output = RemoveTemplateVariables(output, "{", "}");
+        return output;
+    }
+
+    /// <inheritdoc />
+    public string RemoveTemplateVariables(string input, string prefix, string suffix)
+    {
+        if (String.IsNullOrWhiteSpace(input))
+        {
+            return input;
+        }
+
+        // For some reason, Regex.Escape does not escape "}" and "]" characters, so we need to do that manually.
+        prefix = RegexHelpers.Escape(prefix);
+        suffix = RegexHelpers.Escape(suffix);
 
         var regex = new Regex($@"{prefix}[^\]{suffix}\s]*{suffix}", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
 
@@ -711,8 +728,8 @@ public class ReplacementsMediator(
             return [];
         }
 
-        prefix = Regex.Escape(prefix);
-        suffix = Regex.Escape(suffix);
+        prefix = RegexHelpers.Escape(prefix);
+        suffix = RegexHelpers.Escape(suffix);
 
         var regex = new Regex($@"{prefix}(?<field>[^\{{\}}]+?){suffix}", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
 
@@ -909,21 +926,21 @@ public class ReplacementsMediator(
         // GET variables.
         if (httpContextAccessor.HttpContext.Items.ContainsKey(Constants.WiserUriOverrideForReplacements) && httpContextAccessor.HttpContext.Items[Constants.WiserUriOverrideForReplacements] is Uri wiserUriOverride)
         {
-            input = DoReplacements(input, QueryHelpers.ParseQuery(wiserUriOverride.Query), forQuery, defaultFormatter: defaultFormatter);
+            input = DoReplacements(input, QueryHelpers.ParseQuery(wiserUriOverride.Query), forQuery, defaultFormatter: String.Empty, unsafeSource: UnsafeSources.HttpRequest);
         }
         else
         {
-            input = DoReplacements(input, httpContextAccessor.HttpContext.Request.Query, forQuery, defaultFormatter: defaultFormatter);
+            input = DoReplacements(input, httpContextAccessor.HttpContext.Request.Query, forQuery, defaultFormatter: String.Empty, unsafeSource: UnsafeSources.HttpRequest);
         }
 
         // POST variables.
         if (httpContextAccessor.HttpContext.Request.HasFormContentType)
         {
-            input = DoReplacements(input, httpContextAccessor.HttpContext.Request.Form, forQuery, defaultFormatter: defaultFormatter);
+            input = DoReplacements(input, httpContextAccessor.HttpContext.Request.Form, forQuery, defaultFormatter: String.Empty, unsafeSource: UnsafeSources.HttpRequest);
         }
 
         // Cookies.
-        input = DoReplacements(input, httpContextAccessor.HttpContext.Request.Cookies, forQuery, defaultFormatter: defaultFormatter);
+        input = DoReplacements(input, httpContextAccessor.HttpContext.Request.Cookies, forQuery, defaultFormatter: String.Empty, unsafeSource: UnsafeSources.HttpRequest);
 
         // Request cache.
         input = DoReplacements(input, httpContextAccessor.HttpContext.Items.Select(x => new KeyValuePair<string, string>(x.Key?.ToString(), x.Value?.ToString())), forQuery, defaultFormatter: defaultFormatter);
