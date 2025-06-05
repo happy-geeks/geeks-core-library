@@ -1159,7 +1159,7 @@ public class WiserTableDefinitions
 
                 new ColumnSettingsModel("linked_object_id_original", MySqlDbType.UInt64, notNull: true, defaultValue: "0", comment: "Some tables/objects are linked to other objects, such as permissions that are linked to queries, items, etc. This will contain the ID of the linked object in the branch database."),
                 new ColumnSettingsModel("linked_object_id_mapped", MySqlDbType.UInt64, notNull: true, defaultValue: "0", comment: "Same as `linked_object_id_original`, but then for the production database."),
-                new ColumnSettingsModel("link_table_name", MySqlDbType.VarChar, 64, notNull: true, defaultValue: "", comment: "The table name of the linked object, that should contain the linked_object_id value."),
+                new ColumnSettingsModel("linked_object_table_name", MySqlDbType.VarChar, 64, notNull: true, defaultValue: "", comment: "The table name of the linked object, that should contain the linked_object_id value."),
 
                 new ColumnSettingsModel("used_merge_settings", MySqlDbType.JSON, comment: "The merge settings that were used for this specific action/object."),
                 new ColumnSettingsModel("used_conflict_settings", MySqlDbType.JSON, comment: "The conflict settings that were used for this specific action/object."),
