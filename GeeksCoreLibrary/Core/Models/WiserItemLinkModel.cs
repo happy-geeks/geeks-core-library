@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace GeeksCoreLibrary.Core.Models;
 
-public class WiserItemLinkModel
+public class WiserItemLinkModel : WiserItemBaseModel
 {
     /// <summary>
     /// Gets or sets the ID.
@@ -34,11 +34,6 @@ public class WiserItemLinkModel
     /// Gets or sets the date and time that this link was created.
     /// </summary>
     public DateTime AddedOn { get; set; }
-
-    /// <summary>
-    /// Gets or sets the details for this item link.
-    /// </summary>
-    public List<WiserItemDetailModel> Details { get; set; } = [];
 
     /// <summary>
     /// Gets or sets whether to use the column parent_item_id from wiser_item to link, instead of using the table wiser_itemlink.

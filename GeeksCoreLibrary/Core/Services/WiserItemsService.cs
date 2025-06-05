@@ -782,7 +782,7 @@ public class WiserItemsService(
                                 Key = propertyName
                             };
 
-                            wiserItem.Details.Add(itemDetail);
+                            wiserItem.SetDetail(itemDetail);
                         }
 
                         itemDetail.Value = previousValue + 1;
@@ -4638,7 +4638,7 @@ public class WiserItemsService(
             return;
         }
 
-        wiserItem.Details.Add(new WiserItemDetailModel
+        wiserItem.SetDetail(new WiserItemDetailModel
         {
             Key = key,
             Value = dataRow["value"],
