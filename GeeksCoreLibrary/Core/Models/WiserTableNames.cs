@@ -264,7 +264,7 @@ public class WiserTableNames
     /// This table is used by the RequestLoggingMiddleware to log all incoming requests, if enabled.
     /// </summary>
     public const string GclRequestLog = "gcl_request_log";
-    
+
     /// <summary>
     /// This table is used by the products api to store all the product api results
     /// </summary>

@@ -16,6 +16,31 @@ public interface IDatabaseHelpersService
     List<WiserTableDefinitionModel> ExtraWiserTableDefinitions { get; set; }
 
     /// <summary>
+    /// Get all columns for specific tables.
+    /// </summary>
+    /// <param name="tableNames">The tables to get the columns for.</param>
+    /// <param name="databaseName">Optional: The name of the database schema that the tables belong to. Leave empty to use the database schema from the connection string.</param>
+    /// <returns>A <see cref="Dictionary{T,T}"/> where the key is the name of the table and the value is a <see cref="List{t}"/> of <see cref="ColumnSettingsModel"/> with all columns of that table.</returns>
+    Task<Dictionary<string, List<ColumnSettingsModel>>> GetColumnsAsync(List<string> tableNames, string databaseName = null);
+
+    /// <summary>
+    /// Get all columns for a specific table.
+    /// </summary>
+    /// <param name="tableName">The name of the table to get the columns for.</param>
+    /// <param name="databaseName">Optional: The name of the database schema that the tables belong to. Leave empty to use the database schema from the connection string.</param>
+    /// <returns>A <see cref="List{T}"/> of <see cref="ColumnSettingsModel"/> with all columns of that table.</returns>
+    Task<List<ColumnSettingsModel>> GetColumnsAsync(string tableName, string databaseName = null);
+
+    /// <summary>
+    /// Get all columns for a specific table.
+    /// </summary>
+    /// <param name="databaseHelpersService">The <see cref="IDatabaseHelpersService"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to other methods of the same service.</param>
+    /// <param name="tableName">The name of the table to get the columns for.</param>
+    /// <param name="databaseName">Optional: The name of the database schema that the tables belong to. Leave empty to use the database schema from the connection string.</param>
+    /// <returns>A <see cref="List{T}"/> of <see cref="ColumnSettingsModel"/> with all columns of that table.</returns>
+    Task<List<ColumnSettingsModel>> GetColumnsAsync(IDatabaseHelpersService databaseHelpersService, string tableName, string databaseName = null);
+
+    /// <summary>
     /// Check whether or not a column exists in a specific table.
     /// </summary>
     /// <param name="tableName">The name of the table.</param>
@@ -120,6 +145,31 @@ public interface IDatabaseHelpersService
     Task DuplicateTableAsync(string tableToDuplicate, string newTableName, bool includeData = true, string sourceDatabaseName = null, string destinationDatabaseName = null);
 
     /// <summary>
+    /// Get all indexes for specific tables.
+    /// </summary>
+    /// <param name="tableNames">The tables to get the indexes for.</param>
+    /// <param name="databaseName">Optional: The name of the database schema that the tables belong to. Leave empty to use the database schema from the connection string.</param>
+    /// <returns>A <see cref="Dictionary{T,T}"/> where the key is the name of the table and the value is a <see cref="List{t}"/> of <see cref="IndexSettingsModel"/> with all indexes of that table.</returns>
+    Task<Dictionary<string, List<IndexSettingsModel>>> GetIndexesAsync(List<string> tableNames, string databaseName = null);
+
+    /// <summary>
+    /// Get all indexes for a specific table.
+    /// </summary>
+    /// <param name="tableName">The name of the table to get the indexes for.</param>
+    /// <param name="databaseName">Optional: The name of the database schema that the tables belong to. Leave empty to use the database schema from the connection string.</param>
+    /// <returns>A <see cref="List{T}"/> of <see cref="IndexSettingsModel"/> with all indexes of that table.</returns>
+    Task<List<IndexSettingsModel>> GetIndexesAsync(string tableName, string databaseName = null);
+
+    /// <summary>
+    /// Get all indexes for a specific table.
+    /// </summary>
+    /// <param name="databaseHelpersService">The <see cref="IDatabaseHelpersService"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to other methods of the same service.</param>
+    /// <param name="tableName">The name of the table to get the indexes for.</param>
+    /// <param name="databaseName">Optional: The name of the database schema that the tables belong to. Leave empty to use the database schema from the connection string.</param>
+    /// <returns>A <see cref="List{T}"/> of <see cref="IndexSettingsModel"/> with all indexes of that table.</returns>
+    Task<List<IndexSettingsModel>> GetIndexesAsync(IDatabaseHelpersService databaseHelpersService, string tableName, string databaseName = null);
+
+    /// <summary>
     /// Creates or updates one or more indexes. This method will check if an index with the given name already exists,
     /// if it doesn't it will create that index, otherwise it will check if the index has been changed.
     /// If it has been changed, then the index will be dropped and recreated.
@@ -127,6 +177,16 @@ public interface IDatabaseHelpersService
     /// <param name="indexes">A list with one or more <see cref="IndexSettingsModel"/>.</param>
     /// <param name="databaseName">Optional: The name of the database schema. Leave empty to use the database from the connection string. Default value is <see langword="null"/>.</param>
     Task CreateOrUpdateIndexesAsync(List<IndexSettingsModel> indexes, string databaseName = null);
+
+    /// <summary>
+    /// Creates or updates one or more indexes. This method will check if an index with the given name already exists,
+    /// if it doesn't it will create that index, otherwise it will check if the index has been changed.
+    /// If it has been changed, then the index will be dropped and recreated.
+    /// </summary>
+    /// <param name="databaseHelpersService">The <see cref="IDatabaseHelpersService"/> to use, to prevent duplicate code while using caching with the decorator pattern, while still being able to use caching in calls to other methods of the same service.</param>
+    /// <param name="indexes">A list with one or more <see cref="IndexSettingsModel"/>.</param>
+    /// <param name="databaseName">Optional: The name of the database schema. Leave empty to use the database from the connection string. Default value is <see langword="null"/>.</param>
+    Task CreateOrUpdateIndexesAsync(IDatabaseHelpersService databaseHelpersService, List<IndexSettingsModel> indexes, string databaseName = null);
 
     /// <summary>
     /// Create a new database if it doesn't exist yet.

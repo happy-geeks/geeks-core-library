@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Extensions;
 using GeeksCoreLibrary.Core.Models;
+using GeeksCoreLibrary.Modules.Databases.Enums;
 using GeeksCoreLibrary.Modules.Databases.Exceptions;
 using GeeksCoreLibrary.Modules.Databases.Extensions;
 using GeeksCoreLibrary.Modules.Databases.Helpers;
@@ -33,6 +34,161 @@ public class MySqlDatabaseHelpersService : IDatabaseHelpersService, IScopedServi
     }
 
     public List<WiserTableDefinitionModel> ExtraWiserTableDefinitions { get; set; }
+
+    /// <inheritdoc />
+    public async Task<Dictionary<string, List<ColumnSettingsModel>>> GetColumnsAsync(List<string> tableNames, string databaseName = null)
+    {
+        if (tableNames == null || tableNames.Count == 0)
+        {
+            throw new ArgumentNullException(nameof(tableNames));
+        }
+
+        await databaseConnection.EnsureOpenConnectionForReadingAsync();
+        if (String.IsNullOrWhiteSpace(databaseName))
+        {
+            databaseName = databaseConnection.ConnectedDatabase;
+        }
+
+        // Add parameters for the database name and all table names.
+        databaseConnection.AddParameter("databaseName", databaseName);
+        for (var index = 0; index < tableNames.Count; index++)
+        {
+            databaseConnection.AddParameter($"tableName{index}", tableNames[index]);
+        }
+
+        // Get the indexes of all specified tables from the database.
+        var query = $"""
+                     SELECT
+                         TABLE_NAME,
+                         COLUMN_NAME,
+                         COLUMN_DEFAULT,
+                         IS_NULLABLE,
+                         DATA_TYPE,
+                         COLUMN_TYPE,
+                         CHARACTER_MAXIMUM_LENGTH,
+                         NUMERIC_PRECISION,
+                         NUMERIC_SCALE,
+                         CHARACTER_SET_NAME,
+                         COLLATION_NAME,
+                         COLUMN_KEY,
+                         EXTRA
+                     FROM INFORMATION_SCHEMA.`COLUMNS`
+                     WHERE TABLE_SCHEMA = ?databaseName
+                     AND TABLE_NAME IN ({String.Join(",", tableNames.Select((_, index) => $"?tableName{index}"))})
+                     ORDER BY ORDINAL_POSITION ASC
+                     """;
+
+        var results = new Dictionary<string, List<ColumnSettingsModel>>();
+        var dataTable = await databaseConnection.GetAsync(query);
+        foreach (DataRow dataRow in dataTable.Rows)
+        {
+            var tableName = dataRow.Field<string>("TABLE_NAME");
+            var dataType = dataRow.Field<string>("DATA_TYPE");
+            var columnType = dataRow.Field<string>("COLUMN_TYPE") ?? String.Empty;
+            var extra = dataRow.Field<string>("EXTRA") ?? String.Empty;
+            var numericScale = dataRow.ConvertValueIfColumnExists<int>("NUMERIC_SCALE");
+            var isUnsigned = columnType.Contains("unsigned", StringComparison.OrdinalIgnoreCase);
+            var length = 0;
+            if (!dataRow.IsNull("NUMERIC_PRECISION"))
+            {
+                length = dataRow.ConvertValueIfColumnExists<int>("NUMERIC_PRECISION");
+            }
+            else if (!dataRow.IsNull("CHARACTER_MAXIMUM_LENGTH") && String.Equals(dataType, "varchar", StringComparison.OrdinalIgnoreCase))
+            {
+                length = dataRow.ConvertValueIfColumnExists<int>("CHARACTER_MAXIMUM_LENGTH");
+            }
+
+            // Add the table to the dictionary, if it doesn't exist yet.
+            if (!results.TryGetValue(tableName, out var columns))
+            {
+                columns = [];
+                results.Add(tableName, columns);
+            }
+
+            // Add the index to the list of indexes for this table, if it doesn't exist yet.
+            var columnSettings = new ColumnSettingsModel
+            {
+                Name = dataRow.Field<string>("COLUMN_NAME"),
+                AutoIncrement = extra.Contains("auto_increment", StringComparison.OrdinalIgnoreCase),
+                CharacterSet = dataRow.Field<string>("CHARACTER_SET_NAME"),
+                Collation = dataRow.Field<string>("COLLATION_NAME"),
+                Length = length,
+                Decimals = numericScale,
+                IsPrimaryKey = String.Equals(dataRow.Field<string>("COLUMN_TYPE"), "PRI", StringComparison.OrdinalIgnoreCase),
+                NotNull = String.Equals(dataRow.Field<string>("IS_NULLABLE"), "NO", StringComparison.OrdinalIgnoreCase),
+                DefaultValue = dataRow.Field<string>("COLUMN_DEFAULT"),
+                UpdateTimeStampOnChange = extra.Contains("on update CURRENT_TIMESTAMP", StringComparison.OrdinalIgnoreCase),
+                Type = dataType.ToUpperInvariant() switch
+                {
+                    "TINYINT" when length == 1 && !isUnsigned => MySqlDbType.Bool,
+                    "TINYINT" => isUnsigned ? MySqlDbType.UByte : MySqlDbType.Byte,
+                    "SMALLINT" => isUnsigned ? MySqlDbType.UInt16 : MySqlDbType.Int16,
+                    "MEDIUMINT" => isUnsigned ? MySqlDbType.UInt24 : MySqlDbType.Int24,
+                    "INT" => isUnsigned ? MySqlDbType.UInt32 : MySqlDbType.Int32,
+                    "BIGINT" => isUnsigned ? MySqlDbType.UInt64 : MySqlDbType.Int64,
+                    "DECIMAL" => isUnsigned ? MySqlDbType.NewDecimal : MySqlDbType.Decimal,
+                    "FLOAT" => MySqlDbType.Float,
+                    "DOUBLE" => MySqlDbType.Double,
+                    "TIMESTAMP" => MySqlDbType.Timestamp,
+                    "DATE" => MySqlDbType.Date,
+                    "TIME" => MySqlDbType.Time,
+                    "DATETIME" => MySqlDbType.DateTime,
+                    "YEAR" => MySqlDbType.Year,
+                    "BIT" => MySqlDbType.Bit,
+                    "JSON" => MySqlDbType.JSON,
+                    "ENUM" => MySqlDbType.Enum,
+                    "SET" => MySqlDbType.Set,
+                    "TINYBLOB" => MySqlDbType.TinyBlob,
+                    "MEDIUMBLOB" => MySqlDbType.MediumBlob,
+                    "LONGBLOB" => MySqlDbType.LongBlob,
+                    "BLOB" => MySqlDbType.Blob,
+                    "VARCHAR" => MySqlDbType.VarChar,
+                    "CHAR" => MySqlDbType.String,
+                    "GEOMETRY" => MySqlDbType.Geometry,
+                    "BINARY" => MySqlDbType.Binary,
+                    "VARBINARY" => MySqlDbType.VarBinary,
+                    "TINYTEXT" => MySqlDbType.TinyText,
+                    "MEDIUMTEXT" => MySqlDbType.MediumText,
+                    "LONGTEXT" => MySqlDbType.LongText,
+                    "TEXT" => MySqlDbType.Text,
+                    "GUID" => MySqlDbType.Guid,
+                    _ => throw new ArgumentOutOfRangeException(nameof(dataType), dataType, null)
+                }
+            };
+
+            if (columnSettings.Type == MySqlDbType.Enum)
+            {
+                // Check if the column name contains a list of enums (e.g. "enum('a','b','c')").
+                var subPartStart = columnType.LastIndexOf('(');
+                var subPartEnd = columnType.LastIndexOf(')');
+
+                // Check if the field contains both opening and closing parentheses and if the closing parenthesis comes after the opening parenthesis.
+                if (subPartStart != -1 && subPartEnd != -1 && subPartStart <= subPartEnd)
+                {
+                    var columnProperties = columnType[(subPartStart + 1)..subPartEnd];
+                    var enumValues = columnProperties.Split(',').Select(x => x.Trim('\''));
+                    columnSettings.EnumValues = enumValues.ToList();
+                }
+            }
+
+            columns.Add(columnSettings);
+        }
+
+        return results;
+    }
+
+    /// <inheritdoc />
+    public async Task<List<ColumnSettingsModel>> GetColumnsAsync(string tableName, string databaseName = null)
+    {
+        return await GetColumnsAsync(this, tableName, databaseName);
+    }
+
+    /// <inheritdoc />
+    public async Task<List<ColumnSettingsModel>> GetColumnsAsync(IDatabaseHelpersService databaseHelpersService, string tableName, string databaseName = null)
+    {
+        var results = await databaseHelpersService.GetColumnsAsync([tableName], databaseName);
+        return results.SingleOrDefault().Value ?? [];
+    }
 
     /// <inheritdoc />
     public async Task<bool> ColumnExistsAsync(string tableName, string columnName, string databaseName = null)
@@ -287,9 +443,111 @@ public class MySqlDatabaseHelpersService : IDatabaseHelpersService, IScopedServi
     }
 
     /// <inheritdoc />
+    public async Task<Dictionary<string, List<IndexSettingsModel>>> GetIndexesAsync(List<string> tableNames, string databaseName = null)
+    {
+        if (tableNames == null || tableNames.Count == 0)
+        {
+            throw new ArgumentNullException(nameof(tableNames));
+        }
+
+        await databaseConnection.EnsureOpenConnectionForReadingAsync();
+        if (String.IsNullOrWhiteSpace(databaseName))
+        {
+            databaseName = databaseConnection.ConnectedDatabase;
+        }
+
+        // Add parameters for the database name and all table names.
+        databaseConnection.AddParameter("databaseName", databaseName);
+        for (var index = 0; index < tableNames.Count; index++)
+        {
+            databaseConnection.AddParameter($"tableName{index}", tableNames[index]);
+        }
+
+        // Get the indexes of all specified tables from the database.
+        var query = $"""
+                     SELECT
+                         TABLE_NAME,
+                         INDEX_NAME,
+                         NON_UNIQUE,
+                         SEQ_IN_INDEX,
+                         COLUMN_NAME,
+                         SUB_PART,
+                         INDEX_COMMENT,
+                         IS_VISIBLE
+                     FROM INFORMATION_SCHEMA.STATISTICS
+                     WHERE TABLE_SCHEMA = ?databaseName
+                     AND TABLE_NAME IN ({String.Join(",", tableNames.Select((_, index) => $"?tableName{index}"))})
+                     ORDER BY TABLE_NAME ASC, INDEX_NAME ASC, SEQ_IN_INDEX ASC
+                     """;
+
+        var results = new Dictionary<string, List<IndexSettingsModel>>();
+        var dataTable = await databaseConnection.GetAsync(query);
+        foreach (DataRow dataRow in dataTable.Rows)
+        {
+            var tableName = dataRow.Field<string>("TABLE_NAME");
+            var indexName = dataRow.Field<string>("INDEX_NAME");
+
+            // Add the table to the dictionary, if it doesn't exist yet.
+            if (!results.TryGetValue(tableName, out var indexes))
+            {
+                indexes = [];
+                results.Add(tableName, indexes);
+            }
+
+            // Add the index to the list of indexes for this table, if it doesn't exist yet.
+            var existingIndex = indexes.FirstOrDefault(i => i.Name == indexName);
+            if (existingIndex == null)
+            {
+                existingIndex = new IndexSettingsModel
+                {
+                    TableName = tableName,
+                    Name = indexName,
+                    Type = Convert.ToInt32(dataRow["NON_UNIQUE"]) > 0 ? IndexTypes.Normal : IndexTypes.Unique,
+                    Columns = [],
+                    Comment = dataRow.Field<string>("INDEX_COMMENT"),
+                    IsVisible = String.Equals(dataRow.Field<string>("IS_VISIBLE"), "YES", StringComparison.OrdinalIgnoreCase)
+                };
+
+                indexes.Add(existingIndex);
+            }
+
+            // Add the column to the index.
+            var indexColumn = new IndexColumnModel
+            {
+                Name = dataRow.Field<string>("COLUMN_NAME"),
+                Length = dataRow.Field<long?>("SUB_PART"),
+                Sequence = dataRow.Field<uint>("SEQ_IN_INDEX")
+            };
+
+            existingIndex.Columns.Add(indexColumn);
+        }
+
+        return results;
+    }
+
+    /// <inheritdoc />
+    public async Task<List<IndexSettingsModel>> GetIndexesAsync(string tableName, string databaseName = null)
+    {
+        return await GetIndexesAsync(this, tableName, databaseName);
+    }
+
+    /// <inheritdoc />
+    public async Task<List<IndexSettingsModel>> GetIndexesAsync(IDatabaseHelpersService databaseHelpersService, string tableName, string databaseName = null)
+    {
+        var results = await databaseHelpersService.GetIndexesAsync([tableName], databaseName);
+        return results.SingleOrDefault().Value ?? [];
+    }
+
+    /// <inheritdoc />
     public async Task CreateOrUpdateIndexesAsync(List<IndexSettingsModel> indexes, string databaseName = null)
     {
-        if (indexes == null || !indexes.Any())
+        await CreateOrUpdateIndexesAsync(this, indexes, databaseName);
+    }
+
+    /// <inheritdoc />
+    public async Task CreateOrUpdateIndexesAsync(IDatabaseHelpersService databaseHelpersService, List<IndexSettingsModel> indexes, string databaseName = null)
+    {
+        if (indexes == null || indexes.Count == 0)
         {
             throw new ArgumentNullException(nameof(indexes));
         }
@@ -300,66 +558,48 @@ public class MySqlDatabaseHelpersService : IDatabaseHelpersService, IScopedServi
             databaseName = databaseConnection.ConnectedDatabase;
         }
 
-        var oldIndexes = new Dictionary<string, List<(string Name, List<string> Columns)>>();
+        var tableNames = indexes.Select(index => index.TableName).Distinct().ToList();
+        var existingIndexes = await databaseHelpersService.GetIndexesAsync(tableNames, databaseName);
 
-        foreach (var index in indexes.Where(index => !String.IsNullOrWhiteSpace(index.Name) && index.Fields != null && index.Fields.Any()))
+        foreach (var index in indexes.Where(index => !String.IsNullOrWhiteSpace(index.Name) && index.Columns is {Count: > 0}))
         {
-            // Create a list of the fields. This is to ensure the sub-part (length or expression) is handled correctly and not considered as part of the field's name.
-            var fields = new List<string>(index.Fields.Count);
-            foreach (var field in index.Fields)
-            {
-                var subPartStart = field.LastIndexOf('(');
-                var subPartEnd = field.LastIndexOf(')');
-                // Check if the field contains both opening and closing parentheses and if the closing parenthesis comes after the opening parenthesis.
-                if (subPartStart == -1 || subPartEnd == -1 || subPartStart > subPartEnd)
-                {
-                    // Either the '(' or ')' is missing, or '(' comes after ')'.
-                    fields.Add($"`{field.ToMySqlSafeValue(false)}`");
-                    continue;
-                }
-
-                fields.Add($"`{field[..subPartStart].ToMySqlSafeValue(false)}`{field[subPartStart..].ToMySqlSafeValue(false)}");
-            }
-
-            var commentPart = String.IsNullOrWhiteSpace(index.Comment) ? String.Empty : $" COMMENT '{index.Comment.ToMySqlSafeValue(false)}'";
-            var createIndexQuery = $"ALTER TABLE `{databaseName.ToMySqlSafeValue(false)}`.`{index.TableName.ToMySqlSafeValue(false)}` ADD {index.Type.ToMySqlString()} INDEX `{index.Name.ToMySqlSafeValue(false)}` ({String.Join(",", fields)}){commentPart}";
-
             databaseConnection.AddParameter("indexName", index.Name);
 
-            if (!oldIndexes.ContainsKey(index.TableName))
+            var recreateIndex = true;
+            IndexSettingsModel existingIndex = null;
+            if (existingIndexes.TryGetValue(index.TableName, out var indexesForTable))
             {
-                oldIndexes.Add(index.TableName, []);
-                var dataTable = await databaseConnection.GetAsync($"SHOW INDEX FROM `{databaseName.ToMySqlSafeValue(false)}`.`{index.TableName.ToMySqlSafeValue(false)}`", true);
-                foreach (var dataRow in dataTable.Rows.Cast<DataRow>().OrderBy(row => row.Field<string>("key_name")).ThenBy(row => Convert.ToInt32(row["seq_in_index"])))
-                {
-                    var indexName = dataRow.Field<string>("key_name");
-                    var oldIndex = oldIndexes[index.TableName].FirstOrDefault(i => i.Name == indexName);
-                    if (oldIndex.Name == null)
-                    {
-                        oldIndex = (indexName, []);
-                        oldIndexes[index.TableName].Add(oldIndex);
-                    }
+                // Check if an index with the same name or the same columns already exists.
+                existingIndex = indexesForTable.FirstOrDefault(i => String.Equals(i.Name, index.Name, StringComparison.OrdinalIgnoreCase) || String.Equals(String.Join(",", i.Columns.Select(c => c.Name).Order()), String.Join(",", index.Columns.Select(c => c.Name).Order()), StringComparison.OrdinalIgnoreCase));
 
-                    var columnName = dataRow.Field<string>("column_name");
-                    oldIndex.Columns.Add(columnName);
-                }
+                // Check if the index is still the same, or if we have to recreate it.
+                recreateIndex = existingIndex?.Name == null || existingIndex.Type != index.Type || !String.Equals(String.Join(",", existingIndex.Columns.OrderBy(c => c.Sequence).Select(c => $"{c.Name}({c.Length ?? 0})")), String.Join(",", index.Columns.OrderBy(c => c.Sequence).Select(c => $"{c.Name}({c.Length ?? 0})")), StringComparison.OrdinalIgnoreCase);
             }
 
-            var existingIndex = oldIndexes[index.TableName].FirstOrDefault(i => String.Equals(i.Name, index.Name, StringComparison.OrdinalIgnoreCase) || String.Equals(String.Join(",", i.Columns.OrderBy(c => c)), String.Join(",", index.Fields.OrderBy(f => f)), StringComparison.OrdinalIgnoreCase));
-            var recreateIndex = existingIndex.Name == null || String.Join(",", existingIndex.Columns) != String.Join(",", index.Fields);
             if (!recreateIndex)
             {
                 // Index has not been changed, so do nothing.
                 continue;
             }
 
-            if (existingIndex.Name != null)
+            if (existingIndex?.Name != null)
             {
-                // If an index with this name already exists, but the new one if different, drop the old index first.
-                await databaseConnection.ExecuteAsync($"ALTER TABLE `{databaseName.ToMySqlSafeValue(false)}`.`{index.TableName.ToMySqlSafeValue(false)}` DROP INDEX `{existingIndex.Name.ToMySqlSafeValue(false)}`");
+                // If an index with this name already exists, but the new one is different, drop the old index first.
+                var dropIndexQuery = $"""
+                                      ALTER TABLE `{databaseName.ToMySqlSafeValue(false)}`.`{index.TableName.ToMySqlSafeValue(false)}`
+                                      DROP INDEX `{existingIndex.Name.ToMySqlSafeValue(false)}`
+                                      """;
+                await databaseConnection.ExecuteAsync(dropIndexQuery);
             }
 
             // Create the new index.
+            var createIndexQuery = $"""
+                                    ALTER TABLE `{databaseName.ToMySqlSafeValue(false)}`.`{index.TableName.ToMySqlSafeValue(false)}`
+                                    ADD {index.Type.ToMySqlString()} INDEX `{index.Name.ToMySqlSafeValue(false)}`
+                                    ({String.Join(",", index.Columns.Select(c => $"`{c.Name.ToMySqlSafeValue(false)}`{(!c.Length.HasValue ? String.Empty : $"({c.Length.Value})")}"))})
+                                    {(index.IsVisible ?  " VISIBLE" : "INVISIBLE")}
+                                    {(String.IsNullOrWhiteSpace(index.Comment) ? String.Empty : $" COMMENT '{index.Comment.ToMySqlSafeValue(false)}'")}
+                                    """;
             await databaseConnection.ExecuteAsync(createIndexQuery);
         }
     }
@@ -532,7 +772,7 @@ public class MySqlDatabaseHelpersService : IDatabaseHelpersService, IScopedServi
 
                     // Archive tables.
                     await CreateOrUpdateTableAsync($"{tablePrefix}{tableName}{WiserTableNames.ArchiveSuffix}", tableDefinition.Columns, tableDefinition.CharacterSet, tableDefinition.Collation, databaseName);
-                    if (tableDefinition.Indexes != null && tableDefinition.Indexes.Any())
+                    if (tableDefinition.Indexes != null && tableDefinition.Indexes.Count != 0)
                     {
                         tableDefinition.Indexes.ForEach(index => index.TableName = $"{tablePrefix}{index.TableName}{WiserTableNames.ArchiveSuffix}");
                         await CreateOrUpdateIndexesAsync(tableDefinition.Indexes, databaseName);
@@ -816,7 +1056,7 @@ public class MySqlDatabaseHelpersService : IDatabaseHelpersService, IScopedServi
         {
             return;
         }
-        
+
         await databaseConnection.ExecuteAsync($"OPTIMIZE TABLE {String.Join(',', tableNames.Select(tableName => $"`{tableName.ToMySqlSafeValue(false)}`"))}");
     }
 }

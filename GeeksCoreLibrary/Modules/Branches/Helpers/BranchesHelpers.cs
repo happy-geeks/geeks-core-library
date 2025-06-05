@@ -74,6 +74,7 @@ public static class BranchesHelpers
             case "INSERT_LINK_SETTING":
             case "INSERT_API_CONNECTION":
             case "INSERT_ROLE":
+            case "CREATE_EASY_OBJECT":
                 if (wiserObject == null)
                 {
                     trackedObjects.Add(new ObjectCreatedInBranchModel {ObjectId = objectId, TableName = tableName});
@@ -94,6 +95,7 @@ public static class BranchesHelpers
             case "DELETE_LINK_SETTING":
             case "DELETE_API_CONNECTION":
             case "DELETE_ROLE":
+            case "DELETE_EASY_OBJECT":
                 if (wiserObject != null)
                 {
                     wiserObject.AlsoDeleted = true;
