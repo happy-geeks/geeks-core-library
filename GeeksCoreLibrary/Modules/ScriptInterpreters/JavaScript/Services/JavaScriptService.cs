@@ -23,7 +23,10 @@ public class JavaScriptService : IJavaScriptService, ITransientService
         engine = new Engine(new Options
         {
             Strict = true,
-            StringCompilationAllowed = false
+            Host =
+            {
+                StringCompilationAllowed = false
+            }
         });
 
         // Add GCL methods to the state.
@@ -55,23 +58,29 @@ public class JavaScriptService : IJavaScriptService, ITransientService
     /// <inheritdoc />
     public T GetValue<T>(string name)
     {
-        return (T)Convert.ChangeType(engine.GetValue(name).ToObject(), typeof(T));
+        return (T) Convert.ChangeType(engine.GetValue(name).ToObject(), typeof(T));
     }
 
     /// <inheritdoc />
-    public object ExecuteScript(string script)
+    public void Execute(string script)
+    {
+        engine.Execute(script);
+    }
+
+    /// <inheritdoc />
+    public object Evaluate(string script)
     {
         return engine.Evaluate(script).ToObject();
     }
 
     /// <inheritdoc />
-    public T ExecuteScript<T>(string script)
+    public T Evaluate<T>(string script)
     {
         object result = null;
 
         try
         {
-            result = ExecuteScript(script);
+            result = Evaluate(script);
             return result is not IConvertible ? default : (T) Convert.ChangeType(result, typeof(T));
         }
         catch (Exception exception) when (exception is InvalidCastException or FormatException)
@@ -87,20 +96,20 @@ public class JavaScriptService : IJavaScriptService, ITransientService
     }
 
     /// <inheritdoc />
-    public object ExecuteFunction(string functionName, params object[] arguments)
+    public object Invoke(string functionName, params object[] arguments)
     {
         return engine.Invoke(functionName, arguments).ToObject();
     }
 
     /// <inheritdoc />
-    public T ExecuteFunction<T>(string functionName, params object[] arguments)
+    public T Invoke<T>(string functionName, params object[] arguments)
     {
         object result = null;
 
         try
         {
-            result = ExecuteFunction(functionName, arguments);
-            return result is not IConvertible ? default : (T)Convert.ChangeType(result, typeof(T));
+            result = Invoke(functionName, arguments);
+            return result is not IConvertible ? default : (T) Convert.ChangeType(result, typeof(T));
         }
         catch (Exception exception) when (exception is InvalidCastException or FormatException)
         {
