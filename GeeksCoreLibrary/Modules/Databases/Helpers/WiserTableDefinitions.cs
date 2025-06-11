@@ -1207,6 +1207,48 @@ public class WiserTableDefinitions
                 new IndexSettingsModel(WiserTableNames.WiserProductsApi, "idx_unique", IndexTypes.Unique, ["wiser_id", "version"]),
                 new IndexSettingsModel(WiserTableNames.WiserProductsApi, "idx_wiser_id", IndexTypes.Normal, ["wiser_id", "removed"])
             ]
+        },
+
+        // wiser_communication_generated
+        new()
+        {
+            Name = WiserTableNames.WiserCommunicationGenerated,
+            LastUpdate = new DateTime(2025, 6, 2),
+            Columns =
+            [
+                new ColumnSettingsModel("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
+                new ColumnSettingsModel("item_id", MySqlDbType.UInt64, notNull: true, defaultValue: "0"),
+                new ColumnSettingsModel("communication_id", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                new ColumnSettingsModel("receiver", MySqlDbType.VarChar, 255),
+                new ColumnSettingsModel("receiver_name", MySqlDbType.VarChar, 255),
+                new ColumnSettingsModel("cc", MySqlDbType.Text),
+                new ColumnSettingsModel("bcc", MySqlDbType.Text),
+                new ColumnSettingsModel("sender", MySqlDbType.VarChar, 255),
+                new ColumnSettingsModel("sender_name", MySqlDbType.VarChar, 255),
+                new ColumnSettingsModel("reply_to", MySqlDbType.VarChar, 255),
+                new ColumnSettingsModel("reply_to_name", MySqlDbType.VarChar, 255),
+                new ColumnSettingsModel("subject", MySqlDbType.VarChar, 255),
+                new ColumnSettingsModel("content", MySqlDbType.MediumText),
+                new ColumnSettingsModel("uploaded_file", MySqlDbType.MediumBlob),
+                new ColumnSettingsModel("uploaded_filename", MySqlDbType.VarChar, 255),
+                new ColumnSettingsModel("attachment_urls", MySqlDbType.MediumText, comment: "A collection of URLs where attachments should be downloaded from and added to the email. This works only with email communication types. Multiple URLs should be separated by newline."),
+                new ColumnSettingsModel("communicationtype", MySqlDbType.Enum, enumValues: new List<string> {"email", "sms", "whatsapp", "pdf"}, notNull: true, defaultValue: "email"),
+                new ColumnSettingsModel("creation_date", MySqlDbType.DateTime, notNull: true, defaultValue: "CURRENT_TIMESTAMP"),
+                new ColumnSettingsModel("send_date", MySqlDbType.DateTime),
+                new ColumnSettingsModel("processed_date", MySqlDbType.DateTime),
+                new ColumnSettingsModel("status_code", MySqlDbType.VarChar, 30),
+                new ColumnSettingsModel("status_message", MySqlDbType.Text),
+                new ColumnSettingsModel("wiser_item_files", MySqlDbType.Text, comment: "One or more IDs from wiser_itemfile that should be sent with the communication as attachments. Only works for e-mail communications."),
+                new ColumnSettingsModel("attempt_count", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
+                new ColumnSettingsModel("last_attempt", MySqlDbType.DateTime),
+                new ColumnSettingsModel("is_internal_error_mail", MySqlDbType.Bool, notNull: true, defaultValue: "0", comment: "If the WTS was not able to send a communication after X tries, it will send an e-mail to notify us about the problem. For these e-mails, this column will be set to 1, so that we can use that to make sure we do not send too many errors.")
+            ],
+            Indexes =
+            [
+                new IndexSettingsModel(WiserTableNames.WiserCommunicationGenerated, "idx_communication_id", IndexTypes.Normal, ["communication_id"]),
+                new IndexSettingsModel(WiserTableNames.WiserCommunicationGenerated, "idx_send_processed_date", IndexTypes.Normal, ["send_date", "processed_date"]),
+                new IndexSettingsModel(WiserTableNames.WiserCommunicationGenerated, "idx_internal_error", IndexTypes.Normal, ["send_date", "is_internal_error_mail"])
+            ]
         }
     ];
 }
