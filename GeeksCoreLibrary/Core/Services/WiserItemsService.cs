@@ -2262,9 +2262,9 @@ public class WiserItemsService(
         // First check permissions based on module ID.
         var permissionsQuery = $"""
                                 SELECT permission.permissions
-                                                                    FROM {WiserTableNames.WiserUserRoles} user_role
-                                                                    LEFT JOIN {WiserTableNames.WiserPermission} permission ON permission.role_id = user_role.role_id AND permission.query_id = ?queryId
-                                                                    WHERE user_role.user_id = ?userId
+                                FROM {WiserTableNames.WiserUserRoles} user_role
+                                LEFT JOIN {WiserTableNames.WiserPermission} permission ON permission.role_id = user_role.role_id AND permission.query_id = ?queryId
+                                WHERE user_role.user_id = ?userId
                                 """;
 
         databaseConnection.AddParameter("userId", userId);
@@ -2280,13 +2280,7 @@ public class WiserItemsService(
 
         foreach (DataRow dataRow in dataTable.Rows)
         {
-            if (dataRow.IsNull("permissions"))
-            {
-                userItemPermissions = AccessRights.Nothing;
-                break;
-            }
-
-            var currentPermissions = (AccessRights) dataRow.Field<int>("permissions");
+            var currentPermissions = dataRow.IsNull("permissions") ? AccessRights.Nothing : (AccessRights) dataRow.Field<int>("permissions");
             if ((currentPermissions & AccessRights.Read) == AccessRights.Read)
             {
                 userItemPermissions |= AccessRights.Read;
