@@ -67,14 +67,14 @@ public class CachedTemplatesService(
         var template = await cache.GetAsync<Template>(cacheName);
         if (template != null)
         {
-            return template;
+            return ObjectCloner.ObjectCloner.DeepClone(template);
         }
 
         template = await templatesService.GetTemplateAsync(id, name, type, parentId, parentName, includeContent, skipPermissions: true);
         if (HttpContextHelpers.NotFoundStatusWasForced(httpContextAccessor?.HttpContext))
         {
             // Don't cache the content if a 404 was forced.
-            return template;
+            return ObjectCloner.ObjectCloner.DeepClone(template);
         }
 
         var memoryCacheEntryOptions = cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates);
@@ -91,14 +91,14 @@ public class CachedTemplatesService(
         var template = await cache.GetAsync<Template>(cacheName);
         if (template != null)
         {
-            return template;
+            return ObjectCloner.ObjectCloner.DeepClone(template);
         }
 
         template = await templatesService.GetTemplateContentAsync(id, name, type, parentId, parentName);
         if (HttpContextHelpers.NotFoundStatusWasForced(httpContextAccessor?.HttpContext))
         {
             // Don't cache the content if a 404 was forced.
-            return template;
+            return ObjectCloner.ObjectCloner.DeepClone(template);
         }
 
         var memoryCacheEntryOptions = cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates);
@@ -275,14 +275,14 @@ public class CachedTemplatesService(
         var dynamicContent = await cache.GetAsync<DynamicContent>(cacheName);
         if (dynamicContent != null)
         {
-            return dynamicContent;
+            return ObjectCloner.ObjectCloner.DeepClone(dynamicContent);
         }
 
         dynamicContent = await templatesService.GetDynamicContentData(contentId);
         if (HttpContextHelpers.NotFoundStatusWasForced(httpContextAccessor?.HttpContext))
         {
             // Don't cache the content if a 404 was forced.
-            return dynamicContent;
+            return ObjectCloner.ObjectCloner.DeepClone(dynamicContent);
         }
 
         var memoryCacheEntryOptions = cacheService.CreateMemoryCacheEntryOptions(CacheAreas.Templates);
@@ -415,7 +415,7 @@ public class CachedTemplatesService(
                 content = await cache.GetAsync<object>(cacheName.ToString());
                 if (content != null)
                 {
-                    return content;
+                    return ObjectCloner.ObjectCloner.DeepClone(content);
                 }
 
                 content = await templatesService.GenerateDynamicContentHtmlAsync(dynamicContent, forcedComponentMode, callMethod, extraData);
@@ -475,7 +475,7 @@ public class CachedTemplatesService(
         // Cache page SEO data,
         if (httpContextAccessor?.HttpContext == null)
         {
-            return content;
+            return ObjectCloner.ObjectCloner.DeepClone(content);
         }
 
         cacheName.Append($"_{Constants.PageMetaDataFromComponentKey}");
@@ -498,7 +498,7 @@ public class CachedTemplatesService(
             }
         }
 
-        return content;
+        return ObjectCloner.ObjectCloner.DeepClone(content);
     }
 
     /// <inheritdoc />
