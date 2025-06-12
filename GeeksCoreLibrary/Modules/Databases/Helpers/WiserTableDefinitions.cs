@@ -221,7 +221,7 @@ public class WiserTableDefinitions
         new()
         {
             Name = WiserTableNames.WiserEntityProperty,
-            LastUpdate = new DateTime(2022, 8, 5),
+            LastUpdate = new DateTime(2025, 6, 10),
             Columns =
             [
                 new ColumnSettingsModel("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),
@@ -232,6 +232,7 @@ public class WiserTableDefinitions
                 new ColumnSettingsModel("overview_width", MySqlDbType.Int24, notNull: true, defaultValue: "100"),
                 new ColumnSettingsModel("tab_name", MySqlDbType.VarChar, 100, notNull: true, defaultValue: ""),
                 new ColumnSettingsModel("group_name", MySqlDbType.VarChar, 100, notNull: true, defaultValue: ""),
+                new ColumnSettingsModel("group_id", MySqlDbType.Int32, notNull: true, defaultValue: "0"),
                 new ColumnSettingsModel("inputtype", MySqlDbType.Enum, notNull: true, defaultValue: "input", enumValues: new List<string> {"input", "secure-input", "textbox", "radiobutton", "checkbox", "combobox", "multiselect", "numeric-input", "file-upload", "HTMLeditor", "querybuilder", "date-time picker", "grid", "imagecoords", "button", "image-upload", "gpslocation", "daterange", "sub-entities-grid", "item-linker", "color-picker", "auto-increment", "linked-item", "action-button", "data-selector", "chart", "scheduler", "timeline", "empty", "iframe"}),
                 new ColumnSettingsModel("display_name", MySqlDbType.VarChar, 100, notNull: true, defaultValue: ""),
                 new ColumnSettingsModel("property_name", MySqlDbType.VarChar, 100, notNull: true, defaultValue: ""),
