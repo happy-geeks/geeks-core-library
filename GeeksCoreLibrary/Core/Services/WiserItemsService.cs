@@ -3818,18 +3818,18 @@ public class WiserItemsService(
         var saveImagesRelative = String.Equals(await objectsService.FindSystemObjectByDomainNameAsync("wiser_save_images_relative"), "true", StringComparison.OrdinalIgnoreCase);
         if (!allowAbsoluteImageUrls && !String.IsNullOrWhiteSpace(mainDomain) && saveImagesRelative)
         {
-            output = Regex.Replace(output, $@"src=""https?://{Regex.Escape(mainDomain)}", "src=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-            output = Regex.Replace(output, $@"src=""//{Regex.Escape(mainDomain)}", "src=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-            output = Regex.Replace(output, $@"srcset=""https?://{Regex.Escape(mainDomain)}", "srcset=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-            output = Regex.Replace(output, $@"srcset=""//{Regex.Escape(mainDomain)}", "srcset=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+            output = Regex.Replace(output, $@"src=""https?://{RegexHelpers.Escape(mainDomain)}", "src=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+            output = Regex.Replace(output, $@"src=""//{RegexHelpers.Escape(mainDomain)}", "src=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+            output = Regex.Replace(output, $@"srcset=""https?://{RegexHelpers.Escape(mainDomain)}", "srcset=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+            output = Regex.Replace(output, $@"srcset=""//{RegexHelpers.Escape(mainDomain)}", "srcset=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
         }
 
         if (!allowAbsoluteImageUrls && !String.IsNullOrWhiteSpace(mainDomainForWiser) && saveImagesRelative)
         {
-            output = Regex.Replace(output, $@"src=""https?://{Regex.Escape(mainDomainForWiser)}", "src=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-            output = Regex.Replace(output, $@"src=""//{Regex.Escape(mainDomainForWiser)}", "src=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-            output = Regex.Replace(output, $@"srcset=""https?://{Regex.Escape(mainDomainForWiser)}", "srcset=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
-            output = Regex.Replace(output, $@"srcset=""//{Regex.Escape(mainDomainForWiser)}", "srcset=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+            output = Regex.Replace(output, $@"src=""https?://{RegexHelpers.Escape(mainDomainForWiser)}", "src=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+            output = Regex.Replace(output, $@"src=""//{RegexHelpers.Escape(mainDomainForWiser)}", "src=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+            output = Regex.Replace(output, $@"srcset=""https?://{RegexHelpers.Escape(mainDomainForWiser)}", "srcset=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
+            output = Regex.Replace(output, $@"srcset=""//{RegexHelpers.Escape(mainDomainForWiser)}", "srcset=\"", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(2000));
         }
 
         // Make extra sure there's no juicedev domain saved in the image URLs.

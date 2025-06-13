@@ -16,12 +16,9 @@ using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using GeeksCoreLibrary.Modules.Languages.Interfaces;
 using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Features;
-using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json.Linq;
-using Constants = GeeksCoreLibrary.Modules.Templates.Models.Constants;
 using PrecompiledRegexes = GeeksCoreLibrary.Modules.GclReplacements.Helpers.PrecompiledRegexes;
 
 namespace GeeksCoreLibrary.Modules.GclReplacements.Services;
@@ -85,7 +82,7 @@ public class StringReplacementsService(
         if (input.Contains("[SO{"))
         {
             dataDictionary.Clear();
-            
+
             foreach (Match m in PrecompiledRegexes.SystemObjectReplacementRegex.Matches(input))
             {
                 var value = m.Groups[1].Value;
@@ -115,7 +112,7 @@ public class StringReplacementsService(
 
         // Do replacements multiple times to handle double replacements such as "{price:Currency(true,{culture})}".
         var counter = 0;
-        while (input.Contains("{") && counter < 3)
+        while (input.Contains('{') && counter < 3)
         {
             counter++;
 
@@ -128,8 +125,8 @@ public class StringReplacementsService(
             // Request replacements.
             if (handleRequest && httpContextAccessor?.HttpContext != null)
             {
-                input = DoHttpRequestReplacements(input, forQuery, defaultFormatter);
-                input = DoSessionReplacements(input, forQuery, defaultFormatter);
+                input = replacementsMediator.DoHttpRequestReplacements(input, forQuery, defaultFormatter);
+                input = replacementsMediator.DoSessionReplacements(input, forQuery, defaultFormatter);
             }
 
             // Translations.
@@ -163,58 +160,60 @@ public class StringReplacementsService(
             }
 
             // CMS objects.
-            if (input.Contains("[O{") && httpContextAccessor?.HttpContext != null)
+            if (!input.Contains("[O{") || httpContextAccessor?.HttpContext == null)
             {
-                dataDictionary.Clear();
-
-                // Try to get the type number by host name.
-                if (!Int32.TryParse(await objectsService.FindSystemObjectByDomainNameAsync(HttpContextHelpers.GetHostName(httpContextAccessor.HttpContext, includePort: false)), out var objectsTypeNumber) || objectsTypeNumber == 0)
-                {
-                    // Revert to -100 if the parsing failed or if it returned 0. This is a special value that will look through all objects, ignoring the type number completely.
-                    objectsTypeNumber = -100;
-                }
-                
-                foreach (Match m in PrecompiledRegexes.CmsObjectRegex.Matches(input))
-                {
-                    var value = m.Groups[1].Value;
-                    if (dataDictionary.ContainsKey(value))
-                    {
-                        continue;
-                    }
-
-                    // Check if there are any valid formatter functions used in the variable and if so, use the variable name without the formatter as object name.
-                    var replacementVariables = replacementsMediator.GetReplacementVariables($"{{{value}}}", defaultFormatter: defaultFormatter);
-                    foreach (var variable in replacementVariables)
-                    {
-                        if (variable.Formatters.All(f => replacementsMediator.GetFormatterMethod(f) != null))
-                        {
-                            value = variable.VariableName;
-                        }
-                    }
-
-                    dataDictionary.Add(value, await objectsService.GetObjectValueAsync(value, objectsTypeNumber));
-                }
-
-                input = replacementsMediator.DoReplacements(input, dataDictionary, "[O{", "}]", forQuery: forQuery, defaultFormatter: defaultFormatter);
+                continue;
             }
+
+            dataDictionary.Clear();
+
+            // Try to get the type number by host name.
+            if (!Int32.TryParse(await objectsService.FindSystemObjectByDomainNameAsync(HttpContextHelpers.GetHostName(httpContextAccessor.HttpContext, includePort: false)), out var objectsTypeNumber) || objectsTypeNumber == 0)
+            {
+                // Revert to -100 if the parsing failed or if it returned 0. This is a special value that will look through all objects, ignoring the type number completely.
+                objectsTypeNumber = -100;
+            }
+
+            foreach (Match match in PrecompiledRegexes.CmsObjectRegex.Matches(input))
+            {
+                var value = match.Groups[1].Value;
+                if (dataDictionary.ContainsKey(value))
+                {
+                    continue;
+                }
+
+                // Check if there are any valid formatter functions used in the variable and if so, use the variable name without the formatter as object name.
+                var replacementVariables = replacementsMediator.GetReplacementVariables($"{{{value}}}", defaultFormatter: defaultFormatter);
+                foreach (var variable in replacementVariables)
+                {
+                    if (variable.Formatters.All(f => replacementsMediator.GetFormatterMethod(f) != null))
+                    {
+                        value = variable.VariableName;
+                    }
+                }
+
+                dataDictionary.Add(value, await objectsService.GetObjectValueAsync(value, objectsTypeNumber));
+            }
+
+            input = replacementsMediator.DoReplacements(input, dataDictionary, "[O{", "}]", forQuery: forQuery, defaultFormatter: defaultFormatter);
         }
 
         // Handle variables with default values that haven't been replaced yet.
         if (handleVariableDefaults)
         {
-            input = HandleVariablesDefaultValues(input);
+            input = replacementsMediator.HandleVariablesDefaultValues(input);
         }
 
         // Whether template variables that were not replaced should be removed.
         if (removeUnknownVariables)
         {
-            input = RemoveTemplateVariables(input);
+            input = replacementsMediator.RemoveTemplateVariables(input);
         }
 
         // Evaluate the [if][endif] logic snippets.
         if (evaluateLogicSnippets)
         {
-            input = EvaluateTemplate(input);
+            input = replacementsMediator.EvaluateTemplate(input);
         }
 
         return input;
@@ -223,45 +222,13 @@ public class StringReplacementsService(
     /// <inheritdoc />
     public string DoHttpRequestReplacements(string input, bool forQuery = false, string defaultFormatter = "HtmlEncode")
     {
-        if (httpContextAccessor?.HttpContext == null)
-        {
-            return input;
-        }
-
-        // GET variables.
-        if (httpContextAccessor.HttpContext.Items.ContainsKey(Constants.WiserUriOverrideForReplacements) && httpContextAccessor.HttpContext.Items[Constants.WiserUriOverrideForReplacements] is Uri wiserUriOverride)
-        {
-            input = replacementsMediator.DoReplacements(input, QueryHelpers.ParseQuery(wiserUriOverride.Query), forQuery, defaultFormatter: String.Empty, unsafeSource: UnsafeSources.HttpRequest);
-        }
-        else
-        {
-            input = replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Request.Query, forQuery, defaultFormatter: String.Empty, unsafeSource: UnsafeSources.HttpRequest);
-        }
-
-        // POST variables.
-        if (httpContextAccessor.HttpContext.Request.HasFormContentType)
-        {
-            input = replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Request.Form, forQuery, defaultFormatter: String.Empty, unsafeSource: UnsafeSources.HttpRequest);
-        }
-
-        // Cookies.
-        input = replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Request.Cookies, forQuery, defaultFormatter: String.Empty, unsafeSource: UnsafeSources.HttpRequest);
-
-        // Request cache.
-        input = replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Items.Select(x => new KeyValuePair<string, string>(x.Key?.ToString(), x.Value?.ToString())), forQuery, defaultFormatter: defaultFormatter);
-
-        return input;
+        return replacementsMediator.DoHttpRequestReplacements(input, forQuery, defaultFormatter);
     }
 
     /// <inheritdoc />
     public string DoSessionReplacements(string input, bool forQuery = false, string defaultFormatter = "HtmlEncode")
     {
-        if (httpContextAccessor?.HttpContext?.Features.Get<ISessionFeature>()?.Session == null || !httpContextAccessor.HttpContext.Session.IsAvailable)
-        {
-            return input;
-        }
-
-        return replacementsMediator.DoReplacements(input, httpContextAccessor.HttpContext.Session, forQuery, defaultFormatter: defaultFormatter);
+        return replacementsMediator.DoSessionReplacements(input, forQuery, defaultFormatter);
     }
 
     /// <inheritdoc />
@@ -331,7 +298,13 @@ public class StringReplacementsService(
     }
 
     /// <inheritdoc />
-    public string RemoveTemplateVariables(string input, string prefix = "{", string suffix = "}")
+    public string RemoveTemplateVariables(string input)
+    {
+        return replacementsMediator.RemoveTemplateVariables(input);
+    }
+
+    /// <inheritdoc />
+    public string RemoveTemplateVariables(string input, string prefix, string suffix)
     {
         return replacementsMediator.RemoveTemplateVariables(input, prefix, suffix);
     }
@@ -401,7 +374,7 @@ public class StringReplacementsService(
         {
             var repeaterName = repeater.Groups[1].Value;
 
-            // Find the repeats and duplicate the sub-templates as much as needed, the variables will be automatically numbered, example {orderlines(0).description}.
+            // Find the repeats and duplicate the sub-templates as much as needed, the variables will be automatically numbered, example {orderLines(0).description}.
             foreach (Match m in Regex.Matches(inputString, $"{{repeat:{repeaterName}}}(.*?){{/repeat:{repeaterName}}}", RegexOptions.Singleline, TimeSpan.FromSeconds(30)))
             {
                 // Then loop through each repeater.
@@ -467,7 +440,7 @@ public class StringReplacementsService(
         }
 
         // Replace all variables
-        // Get matches like: {customer.address.streetline1}
+        // Get matches like: {customer.address.street}
         foreach (Match m in PrecompiledRegexes.MultiPartReplacementRegex.Matches(inputString))
         {
             var value = GetPropertyValue(input, MakeColumnValueFromVariable(m.Value));
@@ -502,7 +475,7 @@ public class StringReplacementsService(
         // Evaluate template, working with if...else...then statements
         if (evaluateTemplate)
         {
-            inputString = EvaluateTemplate(inputString);
+            inputString = replacementsMediator.EvaluateTemplate(inputString);
         }
 
         return inputString;
@@ -515,7 +488,7 @@ public class StringReplacementsService(
     /// <param name="variable">The variable to turn into a column name.</param>
     /// <param name="prefix">The prefix of the variable. Defaults to '{'.</param>
     /// <param name="suffix">The suffix of the variable. Defaults to '}'.</param>
-    /// <returns></returns>
+    /// <returns>A value that can be used as a key, column name or property name.</returns>
     private static string MakeColumnValueFromVariable(string variable, string prefix = "{", string suffix = "}")
     {
         var output = variable.Trim();
@@ -542,9 +515,9 @@ public class StringReplacementsService(
     /// <summary>
     /// Attempts to retrieve a value from the supplied <see cref="JToken"/> instance.
     /// </summary>
-    /// <param name="input"></param>
-    /// <param name="propertyName"></param>
-    /// <returns></returns>
+    /// <param name="input">The <see cref="JToken"/> object to get the value from.</param>
+    /// <param name="propertyName">The name of the property to get the value of.</param>
+    /// <returns>A <see cref="JToken"/> object with the value, or <c>null</c> if the value wasn't found.</returns>
     private static JToken GetPropertyValue(JToken input, string propertyName)
     {
         if (input == null)
@@ -560,36 +533,36 @@ public class StringReplacementsService(
                 return null;
             }
 
-            var newPropertyName = propertyName.Replace(propertyName.Split('.')[0] + ".", "");
+            var newPropertyName = propertyName.Replace($"{propertyName.Split('.')[0]}.", "");
             var value = GetPropertyValue((JToken) propertyInfo.GetValue(input, null), newPropertyName);
             return value != null ? value.ToString() : $"{{{propertyName}}}";
         }
 
         if (propertyName.Contains('('))
         {
-            var m = PrecompiledRegexes.IndexedPropertyRegex.Match(propertyName);
-            if (!m.Success)
+            var match = PrecompiledRegexes.IndexedPropertyRegex.Match(propertyName);
+            if (!match.Success)
             {
                 return $"{{{propertyName}}}";
             }
 
             JToken innerValue;
 
-            if (!String.IsNullOrWhiteSpace(m.Groups[3].Value))
+            if (!String.IsNullOrWhiteSpace(match.Groups[3].Value))
             {
-                innerValue = GetPropertyValue(input, m.Groups[1].Value);
+                innerValue = GetPropertyValue(input, match.Groups[1].Value);
                 if (innerValue is not {Type: JTokenType.Array})
                 {
                     return null;
                 }
 
-                var innerArrayValue = ((JArray) innerValue)[Convert.ToInt32(m.Groups[2].Value)];
-                return GetPropertyValue(innerArrayValue, m.Groups[3].Value.TrimStart('.'));
+                var innerArrayValue = ((JArray) innerValue)[Convert.ToInt32(match.Groups[2].Value)];
+                return GetPropertyValue(innerArrayValue, match.Groups[3].Value.TrimStart('.'));
             }
 
-            innerValue = GetPropertyValue(input, m.Groups[1].Value);
+            innerValue = GetPropertyValue(input, match.Groups[1].Value);
             return innerValue.Type == JTokenType.Array
-                ? ((JArray) innerValue)[Convert.ToInt32(m.Groups[2].Value)].ToString()
+                ? ((JArray) innerValue)[Convert.ToInt32(match.Groups[2].Value)].ToString()
                 : $"{{{propertyName}}}";
         }
 
