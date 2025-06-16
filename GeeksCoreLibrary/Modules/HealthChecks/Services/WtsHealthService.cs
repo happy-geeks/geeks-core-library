@@ -38,7 +38,7 @@ public class WtsHealthService(IDatabaseConnection databaseConnection, IHttpConte
         // If a timeId has been provided only check that specific timeId.
         if (timeId.HasValue)
         {
-            conditions.Add("timeId = ?timeId");
+            conditions.Add("time_id = ?timeId");
             databaseConnection.AddParameter("timeId", timeId.Value);
         }
 
