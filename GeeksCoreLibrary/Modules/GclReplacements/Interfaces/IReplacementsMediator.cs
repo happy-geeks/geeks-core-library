@@ -166,12 +166,20 @@ public interface IReplacementsMediator
 
     /// <summary>
     /// Removes any template variables that are present in the input string.
+    /// This will remove all variable types that are used in the GeeksCoreLibrary (e.g. '{x}', '[T{x}]', etc.).
     /// </summary>
-    /// <param name="input"></param>
-    /// <param name="prefix">Optional: The string that is used as the prefix for every variable that needs to be removed. Default value is "{".</param>
-    /// <param name="suffix">Optional: The string that is used as the suffix for every variable that needs to be removed. Default value is "}".</param>
+    /// <param name="input">The input string.</param>
     /// <returns>The original string without variables.</returns>
-    string RemoveTemplateVariables(string input, string prefix = "{", string suffix = "}");
+    string RemoveTemplateVariables(string input);
+
+    /// <summary>
+    /// Removes any template variables that are present in the input string.
+    /// </summary>
+    /// <param name="input">The input string.</param>
+    /// <param name="prefix">The string that is used as the prefix for every variable that needs to be removed.</param>
+    /// <param name="suffix">The string that is used as the suffix for every variable that needs to be removed.</param>
+    /// <returns>The original string without variables.</returns>
+    string RemoveTemplateVariables(string input, string prefix, string suffix);
 
     /// <summary>
     /// Checks for any replacement variables in a string and returns an array of <see cref="StringReplacementVariable"/>.
@@ -196,7 +204,7 @@ public interface IReplacementsMediator
     /// <param name="input"></param>
     /// <param name="forQuery">Optional: Set to <see langword="true"/> to make all replaced values safe against SQL injection.</param>
     /// <param name="defaultFormatter">Optional: The default formatter to use. This should be HtmlEncode for anything that gets output to the browser. Default value is "HtmlEncode".</param>
-    /// <returns></returns>
+    /// <returns>The original string with all HTTP request replacements done.</returns>
     string DoHttpRequestReplacements(string input, bool forQuery = false, string defaultFormatter = "HtmlEncode");
 
     /// <summary>
@@ -205,6 +213,6 @@ public interface IReplacementsMediator
     /// <param name="input"></param>
     /// <param name="forQuery">Optional: Set to <see langword="true"/> to make all replaced values safe against SQL injection.</param>
     /// <param name="defaultFormatter">Optional: The default formatter to use. This should be HtmlEncode for anything that gets output to the browser. Default value is "HtmlEncode".</param>
-    /// <returns></returns>
+    /// <returns>The original string with all session replacements done.</returns>
     string DoSessionReplacements(string input, bool forQuery = false, string defaultFormatter = "HtmlEncode");
 }
