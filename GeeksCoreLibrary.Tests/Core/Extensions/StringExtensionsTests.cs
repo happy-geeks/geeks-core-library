@@ -265,33 +265,47 @@ public class StringExtensionsTests
     }
 
     [Test]
-    [TestCase("", "")]
-    [TestCase(TestValue, TestValue)]
-    [TestCase("Test+test2", "Test_test2")]
-    [TestCase("this&test2", "this_test2")]
-    [TestCase(@"this+&!@#$%^&*()/\<>;:'test2", @"this__!@#$%^_();'test2")]
-    public void StripIllegalFilenameCharacters_DifferentStrings_ReturnsValidPathNames(string input, string expected)
+    [TestCase("", false)]
+    [TestCase(TestValue, false)]
+    [TestCase("Test+test2", true)]
+    [TestCase("this&test2", true)]
+    [TestCase(@"this+&!@#$%^&*()/\<>;:'test2", true)]
+    public void StripIllegalFilenameCharacters_DifferentStrings_ReturnsValidPathNames(string input, bool shouldBeChanged)
     {
         // Act
         var actual = input.StripIllegalFilenameCharacters();
 
         // Assert
-        actual.Should().Be(expected, "because we expect a valid file name");
+        if (shouldBeChanged)
+        {
+            actual.Should().NotBe(input, "because we expect the string to be changed to a valid file name");
+        }
+        else
+        {
+            actual.Should().Be(input, "because we expect the string to remain unchanged as it is already valid");
+        }
     }
 
     [Test]
-    [TestCase("", "")]
-    [TestCase(TestValue, TestValue)]
-    [TestCase("Test+test2", "Test_test2")]
-    [TestCase("this&test2", "this_test2")]
-    [TestCase(@"this+&!@#$%^&*()/\<>;:'test2", @"this__!@#$%^_();'test2")]
-    public void StripIllegalPathCharacters_DifferentStrings_ReturnsValidPathNames(string input, string expected)
+    [TestCase("", false)]
+    [TestCase(TestValue, false)]
+    [TestCase("Test+test2", true)]
+    [TestCase("this&test2", true)]
+    [TestCase(@"this+&!@#$%^&*()/\<>;:'test2", true)]
+    public void StripIllegalPathCharacters_DifferentStrings_ReturnsValidPathNames(string input, bool shouldBeChanged)
     {
         // Act
         var actual = input.StripIllegalPathCharacters();
 
         // Assert
-        actual.Should().Be(expected, "because we expect a valid path name");
+        if (shouldBeChanged)
+        {
+            actual.Should().NotBe(input, "because we expect the string to be changed to a valid file name");
+        }
+        else
+        {
+            actual.Should().Be(input, "because we expect the string to remain unchanged as it is already valid");
+        }
     }
 
     /// <summary>
