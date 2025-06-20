@@ -81,6 +81,11 @@ public class JavaScriptService : IJavaScriptService, ITransientService
         try
         {
             result = Evaluate(script);
+            if (result is Newtonsoft.Json.Linq.JToken jToken)
+            {
+                return jToken.ToObject<T>();
+            }
+
             return result is not IConvertible ? default : (T) Convert.ChangeType(result, typeof(T));
         }
         catch (Exception exception) when (exception is InvalidCastException or FormatException)
