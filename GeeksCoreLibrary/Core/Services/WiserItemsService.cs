@@ -2131,10 +2131,11 @@ public class WiserItemsService(
         }
 
         // Then check the permissions for the specific item, they overwrite permissions of the module.
+        databaseConnection.AddParameter("entityName", entityType);
         permissionsQuery = $"""
                             SELECT permission.permissions
                             FROM {WiserTableNames.WiserUserRoles} AS user_role
-                            LEFT JOIN {WiserTableNames.WiserPermission} AS permission ON permission.role_id = user_role.role_id AND permission.item_id = ?itemId
+                            LEFT JOIN {WiserTableNames.WiserPermission} AS permission ON permission.role_id = user_role.role_id AND permission.item_id = ?itemId AND (permission.entity_name = ?entityName OR permission.entity_name = '')
                             WHERE user_role.user_id = ?userId
                             AND (user_role.ip_addresses IS NULL OR JSON_CONTAINS(user_role.ip_addresses, JSON_QUOTE(?userIp)))
                             """;
@@ -2531,7 +2532,7 @@ public class WiserItemsService(
             permissionsQueryPart = $"""
                                     # Check permissions. Default permissions are everything enabled, so if the user has no role or the role has no permissions on this item, they are allowed everything.
                                     LEFT JOIN {WiserTableNames.WiserUserRoles} user_role ON user_role.user_id = ?userId
-                                    LEFT JOIN {WiserTableNames.WiserPermission} permission ON permission.role_id = user_role.role_id AND permission.item_id = item.id
+                                    LEFT JOIN {WiserTableNames.WiserPermission} permission ON permission.role_id = user_role.role_id AND permission.item_id = item.id AND (permission.entity_name = item.entity_type OR permission.entity_name = '')
                                     """;
             where.Add("(permission.id IS NULL OR (permission.permissions & 1) > 0)");
         }
@@ -2710,7 +2711,7 @@ public class WiserItemsService(
             permissionsQueryPart = $"""
                                     # Check permissions. Default permissions are everything enabled, so if the user has no role or the role has no permissions on this item, they are allowed everything.
                                     LEFT JOIN {WiserTableNames.WiserUserRoles} user_role ON user_role.user_id = ?userId
-                                    LEFT JOIN {WiserTableNames.WiserPermission} permission ON permission.role_id = user_role.role_id AND permission.item_id = item.id
+                                    LEFT JOIN {WiserTableNames.WiserPermission} permission ON permission.role_id = user_role.role_id AND permission.item_id = item.id AND (permission.entity_name = item.entity_type OR permission.entity_name = '')
                                     """;
             where.Add("(permission.id IS NULL OR (permission.permissions & 1) > 0)");
         }
@@ -3260,12 +3261,12 @@ public class WiserItemsService(
             wiserItemLinkQueryBuilder.Append($"""
                                                # Check permissions. Default permissions are everything enabled, so if the user has no role or the role has no permissions on this item, they are allowed everything.
                                               	                                                LEFT JOIN {WiserTableNames.WiserUserRoles} user_role ON user_role.user_id = ?userId
-                                              	                                                LEFT JOIN {WiserTableNames.WiserPermission} permission ON permission.role_id = user_role.role_id AND permission.item_id = item.id
+                                              	                                                LEFT JOIN {WiserTableNames.WiserPermission} permission ON permission.role_id = user_role.role_id AND permission.item_id = item.id AND (permission.entity_name = item.entity_type OR permission.entity_name = '')
                                               """);
             parentItemIdQueryBuilder.Append($"""
                                               # Check permissions. Default permissions are everything enabled, so if the user has no role or the role has no permissions on this item, they are allowed everything.
                                              	                                                LEFT JOIN {WiserTableNames.WiserUserRoles} user_role ON user_role.user_id = ?userId
-                                             	                                                LEFT JOIN {WiserTableNames.WiserPermission} permission ON permission.role_id = user_role.role_id AND permission.item_id = item.id
+                                             	                                                LEFT JOIN {WiserTableNames.WiserPermission} permission ON permission.role_id = user_role.role_id AND permission.item_id = item.id AND (permission.entity_name = item.entity_type OR permission.entity_name = '')
                                              """);
         }
 
