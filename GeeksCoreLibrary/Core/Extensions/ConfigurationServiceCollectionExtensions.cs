@@ -237,7 +237,7 @@ public static class ConfigurationServiceCollectionExtensions
         if (isWeb)
         {
             var healthChecks = services.AddHealthChecks().AddCheck<SystemServiceHealth>("System Services Health Check", tags: ["System"]);
-            if (!String.IsNullOrWhiteSpace(gclSettings.ConnectionStringForWriting))
+            if (!String.IsNullOrWhiteSpace(gclSettings.ConnectionString))
             {
                 healthChecks.AddMySql(gclSettings.ConnectionString, name: "MySqlRead", tags: ["Database"])
                     .AddCheck<WtsHealthService>("WTS Health Check", HealthStatus.Degraded, ["WTS", "Wiser Task Scheduler"])
