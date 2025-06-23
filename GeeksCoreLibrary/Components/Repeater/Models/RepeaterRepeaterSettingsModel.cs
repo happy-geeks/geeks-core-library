@@ -2,8 +2,8 @@
 
 namespace GeeksCoreLibrary.Components.Repeater.Models;
 
-class RepeaterRepeaterSettingsModel
+internal class RepeaterRepeaterSettingsModel
 {
     [DefaultValue(true)]
-    internal string bannerBannerUsesProductBlockSpace { get; set; }
+    internal string BannerUsesProductBlockSpace { get; set; }
 }

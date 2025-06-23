@@ -23,7 +23,7 @@ public class RepeaterTemplateModel
     [CmsProperty(
         PrettyName = "Item template",
         Description = "This template will be rendered for every item/row of this layer.",
-        DeveloperRemarks = "",
+        DeveloperRemarks = "You can use the {subLayer} placeholder to render the next layer of this item on that location. If you don't use this placeholder, the next layer will be rendered right after the ItemTemplate.",
         DisplayOrder = 20,
         ComponentMode = "NonLegacy",
         TextEditorType = CmsAttributes.CmsTextEditorType.HtmlEditor

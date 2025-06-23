@@ -21,6 +21,7 @@ using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Constants = GeeksCoreLibrary.Components.Repeater.Models.Constants;
 
 namespace GeeksCoreLibrary.Components.Repeater;
 
@@ -198,9 +199,11 @@ public class Repeater : CmsComponent<RepeaterCmsSettingsModel, Repeater.LegacyCo
         // Replacement data for some generic values.
         var genericReplacements = new Dictionary<string, string>
         {
-            {"volgnr", "1"},
-            {"rowindex", "0"},
-            {"resultcount", parsedData.Rows.Count.ToString()}
+            {Constants.LegacyRowNumberPlaceholder, "1"},
+            {Constants.RowNumberPlaceholder, "1"},
+            {Constants.RowIndexPlaceholder, "0"},
+            {Constants.LegacyResultCountPlaceholder, parsedData.Rows.Count.ToString()},
+            {Constants.RowCountPlaceholder, parsedData.Rows.Count.ToString()}
         };
         string templateHtml;
 
@@ -295,9 +298,9 @@ public class Repeater : CmsComponent<RepeaterCmsSettingsModel, Repeater.LegacyCo
                 var query = Settings.DataQuery;
 
                 // Replace the {filters} variable by the joins from the filter component
-                if (query.Contains("{filters}", StringComparison.OrdinalIgnoreCase))
+                if (query.Contains(Constants.FiltersPlaceholder, StringComparison.OrdinalIgnoreCase))
                 {
-                    query = query.Replace("{filters}", (await filtersService.GetFilterQueryPartAsync()).JoinPart.ToString(), StringComparison.OrdinalIgnoreCase);
+                    query = query.Replace(Constants.FiltersPlaceholder, (await filtersService.GetFilterQueryPartAsync()).JoinPart.ToString(), StringComparison.OrdinalIgnoreCase);
                 }
 
                 if (query.Contains("{filters(", StringComparison.OrdinalIgnoreCase))
@@ -306,13 +309,13 @@ public class Repeater : CmsComponent<RepeaterCmsSettingsModel, Repeater.LegacyCo
                 }
 
                 // Replace the {page_limit} variable for paging.
-                if (query.Contains("{page_limit}", StringComparison.OrdinalIgnoreCase) || !query.Contains(" LIMIT ", StringComparison.OrdinalIgnoreCase))
+                if (query.Contains(Constants.PageLimitPlaceholder, StringComparison.OrdinalIgnoreCase) || !query.Contains(" LIMIT ", StringComparison.OrdinalIgnoreCase))
                 {
                     var limitClause = "";
 
                     if (Settings.ItemsPerPage == 0)
                     {
-                        query = query.Replace("{page_limit}", "", StringComparison.OrdinalIgnoreCase);
+                        query = query.Replace(Constants.PageLimitPlaceholder, "", StringComparison.OrdinalIgnoreCase);
                     }
                     else
                     {
@@ -356,9 +359,9 @@ public class Repeater : CmsComponent<RepeaterCmsSettingsModel, Repeater.LegacyCo
                             : $" LIMIT {startIndex - totalBanners + bannersForCurrentPage}, {itemsPerPage - bannersForCurrentPage}";
                     }
 
-                    if (query.Contains("{page_limit}", StringComparison.OrdinalIgnoreCase))
+                    if (query.Contains(Constants.PageLimitPlaceholder, StringComparison.OrdinalIgnoreCase))
                     {
-                        query = query.Replace("{page_limit}", limitClause, StringComparison.OrdinalIgnoreCase);
+                        query = query.Replace(Constants.PageLimitPlaceholder, limitClause, StringComparison.OrdinalIgnoreCase);
                     }
                     else
                     {
@@ -403,10 +406,13 @@ public class Repeater : CmsComponent<RepeaterCmsSettingsModel, Repeater.LegacyCo
             // Replacement data for some generic values.
             var genericReplacements = new Dictionary<string, string>
             {
-                {"volgnr", (index + 1).ToString()},
-                {"rowindex", index.ToString()},
-                {"resultcount", data.Rows.Count.ToString()},
-                {"uniqueResultCount", data.Rows.Count.ToString()}
+                {Constants.LegacyRowNumberPlaceholder, (index + 1).ToString()},
+                {Constants.RowNumberPlaceholder, (index + 1).ToString()},
+                {Constants.RowIndexPlaceholder, index.ToString()},
+                {Constants.LegacyResultCountPlaceholder, data.Rows.Count.ToString()},
+                {Constants.RowCountPlaceholder, data.Rows.Count.ToString()},
+                {Constants.LegacyUniqueResultCountPlaceholder, data.Rows.Count.ToString()},
+                {Constants.DistinctRowCountPlaceholder, data.Rows.Count.ToString()}
             };
             string templateHtml;
 
@@ -536,11 +542,10 @@ public class Repeater : CmsComponent<RepeaterCmsSettingsModel, Repeater.LegacyCo
     /// <param name="data">The data to parse.</param>
     /// <param name="templateCollection">The collection of templates, for parsing multi layered data.</param>
     /// <param name="depth">The current depth/level.</param>
-    /// <returns>A string.</returns>
-    private async Task<string> ParseMultiLayerDataAsync(DataTable data, SortedList<string, RepeaterTemplateModel> templateCollection, int depth = 1)
+    /// <param name="parentDataRow">Optional: The <see cref="DataRow"/> of the parent layer, to use for replacements in the NoDataRow template.</param>
+    /// <returns>The rendered HTML template for the layer of the Repeater.</returns>
+    private async Task<string> ParseMultiLayerDataAsync(DataTable data, SortedList<string, RepeaterTemplateModel> templateCollection, int depth = 1, DataRow parentDataRow = null)
     {
-        var html = new StringBuilder();
-
         // If the maximum depth has been released, stop processing.
         if (templateCollection.Keys.Count <= depth)
         {
@@ -551,6 +556,7 @@ public class Repeater : CmsComponent<RepeaterCmsSettingsModel, Repeater.LegacyCo
         var currentIdentifier = templateCollection.Keys[depth];
 
         var dataColumns = data.Columns.Cast<DataColumn>();
+        var dataRows = data.Rows.Cast<DataRow>().ToList();
 
         // Check column existence
         if (dataColumns.All(e => e.ColumnName != currentIdentifier))
@@ -559,30 +565,37 @@ public class Repeater : CmsComponent<RepeaterCmsSettingsModel, Repeater.LegacyCo
         }
 
         // Get all unique IDs for the current level/depth.
-        var columnIds = data.AsEnumerable().Where(dataRow => !dataRow.IsNull(currentIdentifier)).Select(dataRow => dataRow[currentIdentifier].ToString()).Distinct().ToList();
+        var columnIds = dataRows.Where(dataRow => !dataRow.IsNull(currentIdentifier)).Select(dataRow => dataRow[currentIdentifier].ToString()).Distinct().ToList();
+        if (columnIds.Count == 0)
+        {
+            // If there are no IDs, return the no data template.
+            return await StringReplacementsService.DoAllReplacementsAsync(templateCollection[currentIdentifier].NoDataTemplate, parentDataRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, false);
+        }
 
         // Parse template for each row.
+        var html = new StringBuilder();
         for (var index = 0; index < columnIds.Count; index++)
         {
             var currentIdentifierValue = columnIds[index];
-            // New main section.
-            var relevantData = (from dataRow in data.AsEnumerable()
-                where dataRow[currentIdentifier].ToString() == currentIdentifierValue
-                select dataRow).CopyToDataTable();
 
+            // New main section.
+            var relevantData = dataRows.Where(dataRow => dataRow[currentIdentifier].ToString() == currentIdentifierValue).CopyToDataTable();
             var firstRow = relevantData.Rows.Count != 0 ? relevantData.Rows[0] : null;
 
             // Replacement data for some generic values.
             var genericReplacements = new Dictionary<string, string>
             {
-                {"volgnr", (index + 1).ToString()},
-                {"rowindex", index.ToString()},
-                {"resultcount", data.Rows.Count.ToString()},
-                {"uniqueResultCount", columnIds.Count.ToString()}
+                {Constants.LegacyRowNumberPlaceholder, (index + 1).ToString()},
+                {Constants.RowNumberPlaceholder, (index + 1).ToString()},
+                {Constants.RowIndexPlaceholder, index.ToString()},
+                {Constants.LegacyResultCountPlaceholder, data.Rows.Count.ToString()},
+                {Constants.RowCountPlaceholder, data.Rows.Count.ToString()},
+                {Constants.LegacyUniqueResultCountPlaceholder, data.Rows.Count.ToString()},
+                {Constants.DistinctRowCountPlaceholder, columnIds.Count.ToString()}
             };
-            string templateHtml;
 
             // Add the header template.
+            string templateHtml;
             if ((Settings.LegacyMode && depth < templateCollection.Keys.Count - 1) || index == 0)
             {
                 templateHtml = templateCollection[currentIdentifier].HeaderTemplate;
@@ -594,7 +607,7 @@ public class Repeater : CmsComponent<RepeaterCmsSettingsModel, Repeater.LegacyCo
             // Add the items to the HTML.
             if (relevantData.Rows.Count == 0)
             {
-                html.Append(templateCollection[currentIdentifier].NoDataTemplate);
+                html.Append(await StringReplacementsService.DoAllReplacementsAsync(templateCollection[currentIdentifier].NoDataTemplate, firstRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, false));
             }
             else
             {
@@ -608,11 +621,19 @@ public class Repeater : CmsComponent<RepeaterCmsSettingsModel, Repeater.LegacyCo
 
                 templateHtml = templateCollection[currentIdentifier].ItemTemplate;
                 templateHtml = StringReplacementsService.DoReplacements(templateHtml, genericReplacements);
-
-                html.Append(await StringReplacementsService.DoAllReplacementsAsync(templateHtml, firstRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, false));
+                templateHtml = await StringReplacementsService.DoAllReplacementsAsync(templateHtml, firstRow, Settings.HandleRequest, Settings.EvaluateIfElseInTemplates, false);
 
                 // Recursive call to parse the next layer of data.
-                html.Append(await ParseMultiLayerDataAsync(relevantData, templateCollection, depth + 1));
+                var subLayerHtml = await ParseMultiLayerDataAsync(relevantData, templateCollection, depth + 1, firstRow);
+                if (templateHtml.Contains(Constants.SubLayerPlaceholder, StringComparison.OrdinalIgnoreCase))
+                {
+                    html.Append(templateHtml.Replace(Constants.SubLayerPlaceholder, subLayerHtml, StringComparison.OrdinalIgnoreCase));
+                }
+                else
+                {
+                    html.Append(templateHtml);
+                    html.Append(subLayerHtml);
+                }
             }
 
             // Add the footer template.
