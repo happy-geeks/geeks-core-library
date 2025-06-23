@@ -1075,7 +1075,7 @@ public class MySqlDatabaseHelpersService : IDatabaseHelpersService, IScopedServi
     public async Task<IList<string>> GetColumnEnumValues(string tableName, string columnName)
     {
         var enums = new List<string>();
-        var data = await databaseConnection.GetAsync($"SELECT COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '{tableName}' AND COLUMN_NAME = '{columnName}'");
+        var data = await databaseConnection.GetAsync($"SELECT COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = {tableName.ToMySqlSafeValue(true)} AND COLUMN_NAME = {columnName.ToMySqlSafeValue(true)}");
         if (data.Rows.Count == 0)
         {
             return enums;
@@ -1094,7 +1094,7 @@ public class MySqlDatabaseHelpersService : IDatabaseHelpersService, IScopedServi
     /// <inheritdoc />
     public async Task UpdateColumnEnumValues(string tableName, ColumnSettingsModel column)
     {
-        string enums = string.Join(",", column.EnumValues.Select(v => $"'{v}'"));
-        await databaseConnection.ExecuteAsync($"ALTER TABLE `{tableName}` MODIFY COLUMN `{column.Name}` enum({enums}) NOT NULL;");
+        string enums = string.Join(",", column.EnumValues.Select(v => v.ToMySqlSafeValue(true)));
+        await databaseConnection.ExecuteAsync($"ALTER TABLE `{tableName.ToMySqlSafeValue(false)}` MODIFY COLUMN `{column.Name.ToMySqlSafeValue(false)}` enum({enums}) NOT NULL;");
     }
 }
