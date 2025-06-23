@@ -299,4 +299,16 @@ public class CachedDatabaseHelpersService(
     {
         await databaseHelpersService.OptimizeTablesAsync(tableNames);
     }
+
+    /// <inheritdoc />
+    public async Task<IList<string>> GetColumnEnumValues(string tableName, string columnName)
+    {
+        return await databaseHelpersService.GetColumnEnumValues(tableName, columnName);
+    }
+
+    /// <inheritdoc />
+    public async Task UpdateColumnEnumValues(string tableName, ColumnSettingsModel column)
+    {
+        await databaseHelpersService.UpdateColumnEnumValues(tableName, column);
+    }
 }
