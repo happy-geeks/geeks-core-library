@@ -257,4 +257,19 @@ public interface IDatabaseHelpersService
     /// <param name="tableNames">The name(s) of the table(s) to optimize.</param>
     /// <returns></returns>
     Task OptimizeTablesAsync(params string[] tableNames);
+
+    /// <summary>
+    /// Get the enum values of a column that has the enum type
+    /// </summary>
+    /// <param name="tableName">The name of the table.</param>
+    /// <param name="columnName">The name of the column.</param>
+    /// <returns>A list of the enum values of the specified column.</returns>
+    Task<IList<string>> GetColumnEnumValues(string tableName, string columnName);
+
+    /// <summary>
+    /// Update the enum values of a column to the values specified in the settings model.
+    /// </summary>
+    /// <param name="tableName">The name of the table.</param>
+    /// <param name="column">The desired settings of the column.</param>
+    Task UpdateColumnEnumValues(string tableName, ColumnSettingsModel column);
 }

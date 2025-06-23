@@ -221,7 +221,7 @@ public class WiserTableDefinitions
         new()
         {
             Name = WiserTableNames.WiserEntityProperty,
-            LastUpdate = new DateTime(2025, 6, 10),
+            LastUpdate = new DateTime(2025, 6, 23),
             Columns =
             [
                 new ColumnSettingsModel("id", MySqlDbType.Int32, notNull: true, isPrimaryKey: true, autoIncrement: true),

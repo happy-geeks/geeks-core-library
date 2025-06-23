@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using GeeksCoreLibrary.Core.DependencyInjection.Interfaces;
 using GeeksCoreLibrary.Core.Extensions;
@@ -353,6 +354,16 @@ public class MySqlDatabaseHelpersService : IDatabaseHelpersService, IScopedServi
         foreach (var column in columnsToAdd)
         {
             await databaseHelpersService.AddColumnToTableAsync(tableName, column, false, databaseName);
+        }
+
+        // check enum columns, maybe possible values are updated
+        foreach (var column in columns.Where(c => c.Type == MySqlDbType.Enum))
+        {
+            var currentEnumValues = await databaseHelpersService.GetColumnEnumValues(tableName, column.Name);
+            if (!column.EnumValues.SequenceEqual(currentEnumValues))
+            {
+                await databaseHelpersService.UpdateColumnEnumValues(tableName, column);
+            }
         }
 
         // Update primary key if needed.
@@ -1058,5 +1069,32 @@ public class MySqlDatabaseHelpersService : IDatabaseHelpersService, IScopedServi
         }
 
         await databaseConnection.ExecuteAsync($"OPTIMIZE TABLE {String.Join(',', tableNames.Select(tableName => $"`{tableName.ToMySqlSafeValue(false)}`"))}");
+    }
+
+    /// <inheritdoc />
+    public async Task<IList<string>> GetColumnEnumValues(string tableName, string columnName)
+    {
+        var enums = new List<string>();
+        var data = await databaseConnection.GetAsync($"SELECT COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '{tableName}' AND COLUMN_NAME = '{columnName}'");
+        if (data.Rows.Count == 0)
+        {
+            return enums;
+        }
+
+        var raw = data.Rows[0].Field<string>("COLUMN_TYPE");
+        var matches = Regex.Matches(raw, "'([^']*)'");
+        foreach (Match match in matches)
+        {
+            enums.Add(match.Groups[1].Value);
+        }
+
+        return enums;
+    }
+
+    /// <inheritdoc />
+    public async Task UpdateColumnEnumValues(string tableName, ColumnSettingsModel column)
+    {
+        string enums = string.Join(",", column.EnumValues.Select(v => $"'{v}'"));
+        await databaseConnection.ExecuteAsync($"ALTER TABLE `{tableName}` MODIFY COLUMN `{column.Name}` enum({enums}) NOT NULL;");
     }
 }
