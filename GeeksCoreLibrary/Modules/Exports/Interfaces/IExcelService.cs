@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.IO;
 using Newtonsoft.Json.Linq;
 
 namespace GeeksCoreLibrary.Modules.Exports.Interfaces;
@@ -21,11 +22,25 @@ public interface IExcelService
     List<string> GetColumnNames(string filePath);
 
     /// <summary>
+    /// Get the values of each cell from the first row as column names.
+    /// </summary>
+    /// <param name="stream">The Excel file stream to read from.</param>
+    /// <returns></returns>
+    List<string> GetColumnNames(Stream stream);
+
+    /// <summary>
     /// Get the number of rows in the file.
     /// </summary>
     /// <param name="filePath">The path to the Excel file to read from.</param>
     /// <returns></returns>
     int GetRowCount(string filePath);
+
+    /// <summary>
+    /// Get the number of rows in the file.
+    /// </summary>
+    /// <param name="stream">The Excel file stream to read from.</param>
+    /// <returns></returns>
+    int GetRowCount(Stream stream);
 
     /// <summary>
     /// Get the lines from the Excel file.
@@ -36,4 +51,14 @@ public interface IExcelService
     /// <param name="firstColumnAreIds">If the first column are for IDs of Wiser Item the default value will be set on "0" to indicate a new item instead of an empty string.</param>
     /// <returns></returns>
     List<List<string>> GetLines(string filePath, int numberOfColumns, bool skipFirstLine = false, bool firstColumnAreIds = false);
+
+    /// <summary>
+    /// Get the lines from the Excel file.
+    /// </summary>
+    /// <param name="stream">The Excel file stream to read from.</param>
+    /// <param name="numberOfColumns">The number of columns that need to be retrieved for each row.</param>
+    /// <param name="skipFirstLine">Optional: If set to true the first line will not be included in the results.</param>
+    /// <param name="firstColumnAreIds">If the first column are for IDs of Wiser Item the default value will be set on "0" to indicate a new item instead of an empty string.</param>
+    /// <returns></returns>
+    List<List<string>> GetLines(Stream stream, int numberOfColumns, bool skipFirstLine = false, bool firstColumnAreIds = false);
 }
