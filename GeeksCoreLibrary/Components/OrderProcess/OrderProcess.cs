@@ -880,6 +880,11 @@ public class OrderProcess : CmsComponent<OrderProcessCmsSettingsModel, OrderProc
             ["title"] =  await languagesService.GetTranslationAsync($"orderProcess_paymentMethod_{paymentMethod.Title}_title", defaultValue: paymentMethod.Title ?? ""),
             ["logoPropertyName"] =  Constants.PaymentMethodLogoProperty,
             ["fee"] =  paymentMethod.Fee,
+            ["hasFee"] = paymentMethod.Fee > 0,
+            ["percentageFee"] = paymentMethod.PercentageFee,
+            ["hasPercentageFee"] = paymentMethod.PercentageFee > 0,
+            ["hasAnyFees"] = paymentMethod.Fee > 0 || paymentMethod.PercentageFee > 0,
+            ["hasBothFees"] = paymentMethod.Fee > 0 && paymentMethod.PercentageFee > 0,
             ["paymentMethodFieldName"] =  Constants.PaymentMethodProperty,
             ["checked"] = selectedMethodId == paymentMethod.Id ? "checked" : String.Empty,
         };

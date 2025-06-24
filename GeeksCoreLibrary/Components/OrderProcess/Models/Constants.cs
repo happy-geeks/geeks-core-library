@@ -141,6 +141,8 @@ public class Constants
 
     public const string PaymentMethodFeeProperty = "paymentmethodfee";
 
+    public const string PaymentMethodPercentageFeeProperty = "paymentmethodpercentagefee";
+
     public const string PaymentMethodVisibilityProperty = "paymentmethodvisible";
 
     public const string PaymentMethodLogoProperty = "paymentmethodlogo";
@@ -156,9 +158,9 @@ public class Constants
     public const string PaymentMethodUseMinimalAmountProperty = "paymentmethoduseminimalamount";
 
     public const string PaymentMethodUseMaximumAmountProperty = "paymentmethodusemaximumamount";
-    
+
     public const string PaymentMethodUrlRegexProperty = "paymentmethodurlregex";
-    
+
     public const string PaymentMethodLanguageCodesProperty = "paymentmethodlanguagecodes";
 
     public const string OrderProcessBasketToConceptOrderMethodProperty = "baskettoconceptordermethod";

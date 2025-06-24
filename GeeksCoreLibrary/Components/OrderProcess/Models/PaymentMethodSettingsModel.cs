@@ -24,6 +24,11 @@ public class PaymentMethodSettingsModel : OrderProcessBaseModel
     public decimal Fee { get; set; }
 
     /// <summary>
+    /// Gets or sets the percentage fee that the user needs to pay to use this payment method.
+    /// </summary>
+    public decimal PercentageFee { get; set; }
+
+    /// <summary>
     /// Gets or sets when the field should be visible.
     /// </summary>
     public OrderProcessFieldVisibilityTypes Visibility { get; set; }
@@ -34,7 +39,7 @@ public class PaymentMethodSettingsModel : OrderProcessBaseModel
     public bool UseMinimalAmountCheck { get; set; }
 
     /// <summary>
-    /// Gets or sets the check for making this payment method unavailable if we go over a certain amount 
+    /// Gets or sets the check for making this payment method unavailable if we go over a certain amount
     /// </summary>
     public bool UseMaximumAmountCheck { get; set; }
 
@@ -44,7 +49,7 @@ public class PaymentMethodSettingsModel : OrderProcessBaseModel
     public decimal MinimalAmountCheck { get; set; }
 
     /// <summary>
-    /// Gets or sets the amount for the maximum check. 
+    /// Gets or sets the amount for the maximum check.
     /// </summary>
     public decimal MaximumAmountCheck { get; set; }
 

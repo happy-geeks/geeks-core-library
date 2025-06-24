@@ -498,6 +498,7 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
                          paymentServiceProvider.title AS paymentServiceProviderTitle,
                          paymentServiceProviderType.`value` AS paymentServiceProviderType,
                          CAST(paymentMethodFee.value AS DECIMAL(65,30)) AS paymentMethodFee,
+                         CAST(paymentMethodPercentageFee.value AS DECIMAL(65,30)) AS paymentMethodPercentageFee,
                          paymentMethodVisibility.`value` AS paymentMethodVisibility,
                          paymentMethodExternalName.`value` AS paymentMethodExternalName,
                          CAST(paymentMethodMinimalAmount.value AS DECIMAL(65,30)) AS paymentMethodMinimalAmount,
@@ -516,6 +517,7 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
                      JOIN {WiserTableNames.WiserItemLink} AS paymentMethodLink ON paymentMethodLink.destination_item_id = orderProcess.id AND paymentMethodLink.type = {Constants.PaymentMethodToOrderProcessLinkType}
                      JOIN {WiserTableNames.WiserItem} AS paymentMethod ON paymentMethod.id = paymentMethodLink.item_id AND paymentMethod.entity_type = '{Constants.PaymentMethodEntityType}' AND paymentMethod.published_environment & ?environment != 0
                      LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodFee ON paymentMethodFee.item_id = paymentMethod.id AND paymentMethodFee.`key` = '{Constants.PaymentMethodFeeProperty}'
+                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodPercentageFee ON paymentMethodPercentageFee.item_id = paymentMethod.id AND paymentMethodPercentageFee.`key` = '{Constants.PaymentMethodPercentageFeeProperty}'
                      LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodVisibility ON paymentMethodVisibility.item_id = paymentMethod.id AND paymentMethodVisibility.`key` = '{Constants.PaymentMethodVisibilityProperty}'
                      LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodExternalName ON paymentMethodExternalName.item_id = paymentMethod.id AND paymentMethodExternalName.`key` = '{Constants.PaymentMethodExternalNameProperty}'
                      LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodMinimalAmount ON paymentMethodMinimalAmount.item_id = paymentMethod.id AND paymentMethodMinimalAmount.`key` = '{Constants.PaymentMethodMinimalAmountProperty}'
@@ -545,7 +547,7 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
         {
             return results;
         }
-        
+
         // Get total amount of order.
         // This is needed to account for minimum and maximum prices.
         var shoppingBaskets = await shoppingBasketsService.GetShoppingBasketsAsync();
@@ -555,14 +557,14 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
         {
             totalPrice += await shoppingBasketsService.GetPriceAsync(main, lines, basketSettings);
         }
-        
+
         var languageCode = await languagesService.GetLanguageCodeAsync();
         var originalPath = httpContextAccessor.HttpContext?.Items[Modules.Templates.Models.Constants.OriginalPathAndQueryStringKey]?.ToString();
-        
+
         foreach (DataRow dataRow in dataTable.Rows)
         {
             var paymentMethod = await DataRowToPaymentMethodSettingsModelAsync(dataRow);
-            
+
             // check if total price is below the minimal
             if (paymentMethod.UseMinimalAmountCheck && totalPrice < paymentMethod.MinimalAmountCheck)
             {
@@ -574,7 +576,7 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
             {
                 continue;
             }
-            
+
             if (loggedInUser != null && paymentMethod.Visibility switch
                 {
                     OrderProcessFieldVisibilityTypes.Always => false,
@@ -585,7 +587,7 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
             {
                 continue;
             }
-            
+
             if (paymentMethod.PaymentMethodLanguageCodes.Count != 0)
             {
                 if (!paymentMethod.PaymentMethodLanguageCodes.Contains(languageCode, StringComparer.OrdinalIgnoreCase))
@@ -696,6 +698,7 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
                          paymentServiceProvider.title AS paymentServiceProviderTitle,
                          paymentServiceProviderType.`value` AS paymentServiceProviderType,
                          CAST(paymentMethodFee.value AS decimal(65,30)) AS paymentMethodFee,
+                         CAST(paymentMethodPercentageFee.value AS decimal(65,30)) AS paymentMethodPercentageFee,
                          paymentMethodVisibility.`value` AS paymentMethodVisibility,
                          paymentMethodExternalName.`value` AS paymentMethodExternalName,
                          CAST(paymentMethodMinimalAmount.value AS decimal(65,30)) AS paymentMethodMinimalAmount,
@@ -710,6 +713,7 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
                          paymentServiceProviderSkipWhenOrderAmountEqualsZero.`value` AS paymentServiceProviderSkipWhenOrderAmountEqualsZero
                      FROM {WiserTableNames.WiserItem} AS paymentMethod
                      LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodFee ON paymentMethodFee.item_id = paymentMethod.id AND paymentMethodFee.`key` = '{Constants.PaymentMethodFeeProperty}'
+                     LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodPercentageFee ON paymentMethodPercentageFee.item_id = paymentMethod.id AND paymentMethodPercentageFee.`key` = '{Constants.PaymentMethodPercentageFeeProperty}'
                      LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodVisibility ON paymentMethodVisibility.item_id = paymentMethod.id AND paymentMethodVisibility.`key` = '{Constants.PaymentMethodVisibilityProperty}'
                      LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodExternalName ON paymentMethodExternalName.item_id = paymentMethod.id AND paymentMethodExternalName.`key` = '{Constants.PaymentMethodExternalNameProperty}'
                      LEFT JOIN {WiserTableNames.WiserItemDetail} AS paymentMethodMinimalAmount ON paymentMethodMinimalAmount.item_id = paymentMethod.id AND paymentMethodMinimalAmount.`key` = '{Constants.PaymentMethodMinimalAmountProperty}'
@@ -1412,9 +1416,10 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
     {
         // Build the payment settings model.
         var fee = dataRow.Field<decimal?>("paymentMethodFee") ?? 0;
+        var percentageFee = dataRow.Field<decimal?>("paymentMethodPercentageFee") ?? 0;
         var minimalAmountProperty = dataRow.Field<decimal?>(Constants.PaymentMethodMinimalAmountProperty) ?? 0;
         var maximumAmountProperty = dataRow.Field<decimal?>(Constants.PaymentMethodMaximumAmountProperty) ?? 0;
-        
+
         var paymentMethodLanguageCodes = dataRow.Field<string>(Constants.PaymentMethodLanguageCodesProperty) ?? String.Empty;
 
         var result = new PaymentMethodSettingsModel
@@ -1422,6 +1427,7 @@ public class OrderProcessesService : IOrderProcessesService, IScopedService
             Id = dataRow.Field<ulong>("paymentMethodId"),
             Title = dataRow.Field<string>("paymentMethodTitle"),
             Fee = fee,
+            PercentageFee = percentageFee,
             Visibility = EnumHelpers.ToEnum<OrderProcessFieldVisibilityTypes>(dataRow.Field<string>("paymentMethodVisibility") ?? "Always"),
             ExternalName = dataRow.Field<string>("paymentMethodExternalName"),
             UseMinimalAmountCheck = Convert.ToBoolean(dataRow.Field<long>(Constants.PaymentMethodUseMinimalAmountProperty)),
