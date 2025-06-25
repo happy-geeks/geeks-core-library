@@ -241,11 +241,28 @@ public class ExcelService : IExcelService, IScopedService
     }
 
     /// <inheritdoc />
+    public List<string> GetColumnNames(Stream excelStream)
+    {
+        using var stream = SpreadsheetDocument.Open(excelStream, false);
+        return GetColumnNames(stream);
+    }
+
+    /// <inheritdoc />
     public List<string> GetColumnNames(string filePath)
+    {
+        using var document = SpreadsheetDocument.Open(filePath, false);
+        return GetColumnNames(document);
+    }
+
+    /// <summary>
+    /// Get the values of each cell from the first row as column names.
+    /// </summary>
+    /// <param name="document">The SpreadsheetDocument to read from.</param>
+    /// <returns></returns>
+    private List<string> GetColumnNames(SpreadsheetDocument document)
     {
         var columnNames = new List<string>();
 
-        using var document = SpreadsheetDocument.Open(filePath, false);
         var workbookPart = document.WorkbookPart;
         if (workbookPart == null)
         {
@@ -282,9 +299,26 @@ public class ExcelService : IExcelService, IScopedService
     }
 
     /// <inheritdoc />
+    public int GetRowCount(Stream excelStream)
+    {
+        using var stream = SpreadsheetDocument.Open(excelStream, false);
+        return GetRowCount(stream);
+    }
+
+    /// <inheritdoc />
     public int GetRowCount(string filePath)
     {
         using var document = SpreadsheetDocument.Open(filePath, false);
+        return GetRowCount(document);
+    }
+
+    /// <summary>
+    /// Get the number of rows in the file.
+    /// </summary>
+    /// <param name="document">The SpreadsheetDocument to read from.</param>
+    /// <returns></returns>
+    private int GetRowCount(SpreadsheetDocument document)
+    {
         var workbookPart = document.WorkbookPart;
         if (workbookPart == null)
         {
@@ -298,11 +332,31 @@ public class ExcelService : IExcelService, IScopedService
     }
 
     /// <inheritdoc />
+    public List<List<string>> GetLines(Stream excelStream, int numberOfColumns, bool skipFirstLine = false, bool firstColumnAreIds = false)
+    {
+        using var stream = SpreadsheetDocument.Open(excelStream, false);
+        return GetLines(stream, numberOfColumns, skipFirstLine, firstColumnAreIds);
+    }
+
+    /// <inheritdoc />
     public List<List<string>> GetLines(string filePath, int numberOfColumns, bool skipFirstLine = false, bool firstColumnAreIds = false)
+    {
+        using var document = SpreadsheetDocument.Open(filePath, false);
+        return GetLines(document, numberOfColumns, skipFirstLine, firstColumnAreIds);
+    }
+
+    /// <summary>
+    /// Get the lines from the Excel file.
+    /// </summary>
+    /// <param name="document">The SpreadsheetDocument to read from.</param>
+    /// <param name="numberOfColumns">The number of columns that need to be retrieved for each row.</param>
+    /// <param name="skipFirstLine">Optional: If set to true the first line will not be included in the results.</param>
+    /// <param name="firstColumnAreIds">If the first column are for IDs of Wiser Item the default value will be set on "0" to indicate a new item instead of an empty string.</param>
+    /// <returns></returns>
+    public List<List<string>> GetLines(SpreadsheetDocument document, int numberOfColumns, bool skipFirstLine = false, bool firstColumnAreIds = false)
     {
         var result = new List<List<string>>();
 
-        using var document = SpreadsheetDocument.Open(filePath, false);
         var workbookPart = document.WorkbookPart;
         if (workbookPart == null)
         {
