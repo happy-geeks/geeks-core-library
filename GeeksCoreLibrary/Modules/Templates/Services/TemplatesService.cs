@@ -984,7 +984,7 @@ public class TemplatesService(
         {
             return input;
         }
-        
+
         foreach (Match m in PrecompiledRegexes.ImageTemplatingRegex.Matches(input))
         {
             var replacementParameters = m.Groups[1].Value.Split(":");
@@ -1074,7 +1074,7 @@ public class TemplatesService(
                                                                AND content_type LIKE 'image%'
                                                                ORDER BY id ASC
                                                                """);
-            
+
             var items = PrecompiledRegexes.ImageTemplatingSetsRegex.Matches(m.Groups[1].Value);
             var totalItems = items.Count;
             var index = 1;
@@ -1209,11 +1209,12 @@ public class TemplatesService(
 
                 input = input.Replace(m.Groups[0].Value, templateContent, StringComparison.OrdinalIgnoreCase);
             }
-            
+
             foreach (Match m in PrecompiledRegexes.InclusionsRegex.Matches(input))
             {
                 var templateName = m.Groups[1].Value;
                 var queryString = m.Groups[3].Value.Replace("&amp;", "&");
+                var queryStringValues = HttpUtility.ParseQueryString(queryString);
                 if (templateName.Contains('{'))
                 {
                     // Make sure replaces for the template name are done
@@ -1236,10 +1237,12 @@ public class TemplatesService(
 
                 var content = template.Content;
 
-                // Execute pre load query for html template includes if available
+                // Execute pre-load query for html template includes, if available.
                 if (template.Type == TemplateTypes.Html && !String.IsNullOrWhiteSpace(template.PreLoadQuery))
                 {
-                    var query = await DoReplacesAsync(templatesService, template.PreLoadQuery, forQuery: true, templateType: TemplateTypes.Query);
+                    // Allow the pre-load query to use the query string values from the include.
+                    var query = replacementsMediator.DoReplacements(template.PreLoadQuery, queryStringValues, forQuery: true);
+                    query = await DoReplacesAsync(templatesService, query, forQuery: true, templateType: TemplateTypes.Query);
                     var dataTable = await databaseConnection.GetAsync(query);
 
                     if (dataTable.Rows.Count > 0)
@@ -1248,8 +1251,7 @@ public class TemplatesService(
                     }
                 }
 
-                var values = HttpUtility.ParseQueryString(queryString);
-                content = replacementsMediator.DoReplacements(content, values, forQuery);
+                content = replacementsMediator.DoReplacements(content, queryStringValues, forQuery);
 
                 if (handleStringReplacements)
                 {
@@ -1461,7 +1463,7 @@ public class TemplatesService(
         {
             query = query.Replace("{filters}", (await filtersService.GetFilterQueryPartAsync()).JoinPart.ToString(), StringComparison.OrdinalIgnoreCase);
         }
-        
+
         var pusherMatches = PrecompiledRegexes.PusherRegex.Matches(query);
         foreach (Match match in pusherMatches)
         {
