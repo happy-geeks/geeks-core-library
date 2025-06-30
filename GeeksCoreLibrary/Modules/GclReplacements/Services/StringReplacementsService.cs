@@ -446,30 +446,42 @@ public class StringReplacementsService(
             var value = GetPropertyValue(input, MakeColumnValueFromVariable(m.Value));
             var stringValue = "";
 
-            if (value != null)
+            switch (value)
             {
-                if (value is JValue jValue)
+                case null:
+                    continue;
+                case JValue jValue:
                 {
-                    if (jValue.Value != null)
+                    stringValue = jValue.Type switch
                     {
-                        stringValue = jValue.Value<string>();
-                    }
+                        JTokenType.Comment or JTokenType.Integer or JTokenType.Float or JTokenType.String or JTokenType.Boolean or JTokenType.Uri or JTokenType.Guid or JTokenType.Raw => jValue.Value<string>(),
+                        JTokenType.Null or JTokenType.Undefined or JTokenType.None or JTokenType.Object or JTokenType.Array or JTokenType.Constructor or JTokenType.Property or JTokenType.Bytes => String.Empty,
+                        JTokenType.Date or JTokenType.TimeSpan => jValue.Value switch
+                        {
+                            DateTime dateTime => dateTime.ToString("yyyy-MM-dd HH:mm:ss"),
+                            DateTimeOffset dateTimeOffset => dateTimeOffset.LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss"),
+                            TimeSpan timeSpan => timeSpan.ToString(),
+                            _ => jValue.Value?.ToString() ?? String.Empty
+                        },
+                        _ => throw new ArgumentOutOfRangeException(nameof(jValue.Type), jValue.Type.ToString(), null)
+                    };
+
+                    break;
                 }
-                else
-                {
+                default:
                     stringValue = value.ToString();
-                }
-
-                var variableName = MakeColumnValueFromVariable(m.Groups[1].Value);
-                var replacementData = new Dictionary<string, string>
-                {
-                    {
-                        variableName, stringValue
-                    }
-                };
-
-                inputString = replacementsMediator.DoReplacements(inputString, replacementData, caseSensitive: false);
+                    break;
             }
+
+            var variableName = MakeColumnValueFromVariable(m.Groups[1].Value);
+            var replacementData = new Dictionary<string, string>
+            {
+                {
+                    variableName, stringValue
+                }
+            };
+
+            inputString = replacementsMediator.DoReplacements(inputString, replacementData, caseSensitive: false);
         }
 
         // Evaluate template, working with if...else...then statements
