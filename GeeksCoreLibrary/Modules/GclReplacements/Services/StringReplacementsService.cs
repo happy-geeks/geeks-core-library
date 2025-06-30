@@ -444,18 +444,22 @@ public class StringReplacementsService(
         foreach (Match m in PrecompiledRegexes.MultiPartReplacementRegex.Matches(inputString))
         {
             var value = GetPropertyValue(input, MakeColumnValueFromVariable(m.Value));
-            var stringValue = "";
+            string stringValue;
 
             switch (value)
             {
                 case null:
+                    // If the value is null, ignore it and continue to the next match.
                     continue;
                 case JValue jValue:
                 {
                     stringValue = jValue.Type switch
                     {
+                        // These types can be converted to a string directly.
                         JTokenType.Comment or JTokenType.Integer or JTokenType.Float or JTokenType.String or JTokenType.Boolean or JTokenType.Uri or JTokenType.Guid or JTokenType.Raw => jValue.Value<string>(),
+                        // These types are either empty or not convertible to a string, so return an empty string.
                         JTokenType.Null or JTokenType.Undefined or JTokenType.None or JTokenType.Object or JTokenType.Array or JTokenType.Constructor or JTokenType.Property or JTokenType.Bytes => String.Empty,
+                        // These types can be converted to a string using a specific format.
                         JTokenType.Date or JTokenType.TimeSpan => jValue.Value switch
                         {
                             DateTime dateTime => dateTime.ToString("yyyy-MM-dd HH:mm:ss"),
@@ -463,23 +467,20 @@ public class StringReplacementsService(
                             TimeSpan timeSpan => timeSpan.ToString(),
                             _ => jValue.Value?.ToString() ?? String.Empty
                         },
+                        // If the type is not recognized, throw an exception. This can happen if Newtonsoft.Json is updated and a new type is added, in which case we will want to know about it.
                         _ => throw new ArgumentOutOfRangeException(nameof(jValue.Type), jValue.Type.ToString(), null)
                     };
 
                     break;
                 }
                 default:
+                    // If the value is not a JValue, convert it to a string.
                     stringValue = value.ToString();
                     break;
             }
 
             var variableName = MakeColumnValueFromVariable(m.Groups[1].Value);
-            var replacementData = new Dictionary<string, string>
-            {
-                {
-                    variableName, stringValue
-                }
-            };
+            var replacementData = new Dictionary<string, string> {{variableName, stringValue}};
 
             inputString = replacementsMediator.DoReplacements(inputString, replacementData, caseSensitive: false);
         }
