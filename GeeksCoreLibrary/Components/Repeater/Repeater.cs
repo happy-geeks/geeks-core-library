@@ -199,11 +199,11 @@ public class Repeater : CmsComponent<RepeaterCmsSettingsModel, Repeater.LegacyCo
         // Replacement data for some generic values.
         var genericReplacements = new Dictionary<string, string>
         {
-            {Constants.LegacyRowNumberPlaceholder, "1"},
-            {Constants.RowNumberPlaceholder, "1"},
-            {Constants.RowIndexPlaceholder, "0"},
-            {Constants.LegacyResultCountPlaceholder, parsedData.Rows.Count.ToString()},
-            {Constants.RowCountPlaceholder, parsedData.Rows.Count.ToString()}
+            {Constants.LegacyRowNumberVariableName, "1"},
+            {Constants.RowNumberVariableName, "1"},
+            {Constants.RowIndexVariableName, "0"},
+            {Constants.LegacyResultCountVariableName, parsedData.Rows.Count.ToString()},
+            {Constants.RowCountVariableName, parsedData.Rows.Count.ToString()}
         };
         string templateHtml;
 
@@ -406,13 +406,13 @@ public class Repeater : CmsComponent<RepeaterCmsSettingsModel, Repeater.LegacyCo
             // Replacement data for some generic values.
             var genericReplacements = new Dictionary<string, string>
             {
-                {Constants.LegacyRowNumberPlaceholder, (index + 1).ToString()},
-                {Constants.RowNumberPlaceholder, (index + 1).ToString()},
-                {Constants.RowIndexPlaceholder, index.ToString()},
-                {Constants.LegacyResultCountPlaceholder, data.Rows.Count.ToString()},
-                {Constants.RowCountPlaceholder, data.Rows.Count.ToString()},
-                {Constants.LegacyUniqueResultCountPlaceholder, data.Rows.Count.ToString()},
-                {Constants.DistinctRowCountPlaceholder, data.Rows.Count.ToString()}
+                {Constants.LegacyRowNumberVariableName, (index + 1).ToString()},
+                {Constants.RowNumberVariableName, (index + 1).ToString()},
+                {Constants.RowIndexVariableName, index.ToString()},
+                {Constants.LegacyResultCountVariableName, data.Rows.Count.ToString()},
+                {Constants.RowCountVariableName, data.Rows.Count.ToString()},
+                {Constants.LegacyUniqueResultCountVariableName, data.Rows.Count.ToString()},
+                {Constants.DistinctRowCountVariableName, data.Rows.Count.ToString()}
             };
             string templateHtml;
 
@@ -585,13 +585,13 @@ public class Repeater : CmsComponent<RepeaterCmsSettingsModel, Repeater.LegacyCo
             // Replacement data for some generic values.
             var genericReplacements = new Dictionary<string, string>
             {
-                {Constants.LegacyRowNumberPlaceholder, (index + 1).ToString()},
-                {Constants.RowNumberPlaceholder, (index + 1).ToString()},
-                {Constants.RowIndexPlaceholder, index.ToString()},
-                {Constants.LegacyResultCountPlaceholder, data.Rows.Count.ToString()},
-                {Constants.RowCountPlaceholder, data.Rows.Count.ToString()},
-                {Constants.LegacyUniqueResultCountPlaceholder, data.Rows.Count.ToString()},
-                {Constants.DistinctRowCountPlaceholder, columnIds.Count.ToString()}
+                {Constants.LegacyRowNumberVariableName, (index + 1).ToString()},
+                {Constants.RowNumberVariableName, (index + 1).ToString()},
+                {Constants.RowIndexVariableName, index.ToString()},
+                {Constants.LegacyResultCountVariableName, data.Rows.Count.ToString()},
+                {Constants.RowCountVariableName, data.Rows.Count.ToString()},
+                {Constants.LegacyUniqueResultCountVariableName, data.Rows.Count.ToString()},
+                {Constants.DistinctRowCountVariableName, columnIds.Count.ToString()}
             };
 
             // Add the header template.

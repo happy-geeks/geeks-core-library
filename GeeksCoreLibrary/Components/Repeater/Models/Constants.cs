@@ -3,16 +3,17 @@
 public class Constants
 {
     // Legacy placeholders for Repeater templates.
-    public const string LegacyRowNumberPlaceholder = "{volgnr}";
-    public const string LegacyResultCountPlaceholder = "{ResultCount}";
-    public const string LegacyUniqueResultCountPlaceholder = "{UniqueResultCount}";
+    public const string LegacyRowNumberVariableName = "volgnr";
+    public const string LegacyResultCountVariableName = "ResultCount";
+    public const string LegacyUniqueResultCountVariableName = "UniqueResultCount";
 
     // Placeholders used in Repeater templates.
+    public const string RowNumberVariableName = "RowNumber";
+    public const string RowIndexVariableName = "RowIndex";
+    public const string RowCountVariableName = "RowCount";
+    public const string DistinctRowCountVariableName = "DistinctRowCount";
+
     public const string SubLayerPlaceholder = "{SubLayer}";
-    public const string RowNumberPlaceholder = "{RowNumber}";
-    public const string RowIndexPlaceholder = "{RowIndex}";
-    public const string RowCountPlaceholder = "{RowCount}";
-    public const string DistinctRowCountPlaceholder = "{DistinctRowCount}";
     public const string FiltersPlaceholder = "{Filters}";
     public const string PageLimitPlaceholder = "{page_limit}";
 }
