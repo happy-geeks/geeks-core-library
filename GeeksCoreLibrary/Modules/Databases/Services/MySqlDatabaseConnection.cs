@@ -856,7 +856,7 @@ public class MySqlDatabaseConnection : IDatabaseConnection, IScopedService
                 long longValue => query.Replace($"?{key}", longValue.ToString()),
                 ulong ulongValue => query.Replace($"?{key}", ulongValue.ToString()),
                 decimal decimalValue => query.Replace($"?{key}", decimalValue.ToString(CultureInfo.InvariantCulture)),
-                _ => query.Replace($"?{key}", value?.ToString().ToMySqlSafeValue(true))
+                _ => query.Replace($"?{key}", value.ToString().ToMySqlSafeValue(true))
             };
         }
 
