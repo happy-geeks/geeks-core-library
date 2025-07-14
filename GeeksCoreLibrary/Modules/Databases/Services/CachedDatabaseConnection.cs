@@ -281,4 +281,12 @@ public class CachedDatabaseConnection(
     {
         return await databaseConnection.BulkInsertAsync(dataTable, tableName, useWritingConnectionIfAvailable, useInsertIgnore);
     }
+
+#if DEBUG
+    /// <inheritdoc />
+    public string ReplaceVariablesInQueryForDebugging(string query)
+    {
+        return databaseConnection.ReplaceVariablesInQueryForDebugging(query);
+    }
+#endif
 }

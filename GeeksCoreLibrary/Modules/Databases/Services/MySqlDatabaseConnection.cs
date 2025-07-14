@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -834,6 +835,34 @@ public class MySqlDatabaseConnection : IDatabaseConnection, IScopedService
 
         return await ExecuteAsync(query.ToString(), useWritingConnectionIfAvailable);
     }
+
+#if DEBUG
+    /// <inheritdoc />
+    public string ReplaceVariablesInQueryForDebugging(string query)
+    {
+        if (String.IsNullOrWhiteSpace(query))
+        {
+            return query;
+        }
+
+        foreach (var (key, value) in parameters)
+        {
+            query = value switch
+            {
+                null => query.Replace($"?{key}", "NULL"),
+                DateTime dateTimeValue => query.Replace($"?{key}", $"'{dateTimeValue:yyyy-MM-dd HH:mm:ss}'"),
+                string stringValue => query.Replace($"?{key}", $"'{stringValue}'"),
+                int intValue => query.Replace($"?{key}", intValue.ToString()),
+                long longValue => query.Replace($"?{key}", longValue.ToString()),
+                ulong ulongValue => query.Replace($"?{key}", ulongValue.ToString()),
+                decimal decimalValue => query.Replace($"?{key}", decimalValue.ToString(CultureInfo.InvariantCulture)),
+                _ => query.Replace($"?{key}", value.ToString().ToMySqlSafeValue(true))
+            };
+        }
+
+        return query;
+    }
+#endif
 
     /// <summary>
     /// Checks whether the log table (for logging the opening and closing of database connections) exists.

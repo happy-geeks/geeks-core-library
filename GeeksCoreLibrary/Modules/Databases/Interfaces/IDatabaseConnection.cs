@@ -194,4 +194,15 @@ public interface IDatabaseConnection : IAsyncDisposable, IDisposable
     /// <param name="useWritingConnectionIfAvailable">Optional: Use the writing connection to get information, if there is one available. If we detect that your query contains a database modification, then we will always use the write connection string, no matter what you enter here.</param>
     /// <param name="useInsertIgnore">Optional: Whether to use INSERT IGNORE instead of INSERT, to ignore errors such as duplicate keys.</param>
     Task<int> BulkInsertAsync(DataTable dataTable, string tableName, bool useWritingConnectionIfAvailable = true, bool useInsertIgnore = false);
+
+#if DEBUG
+    /// <summary>
+    /// Replace all variables in the query with their values, for debugging purposes.
+    /// This will replace all parameters in the query starting with the '?' character with their values, so you can see the actual query that is executed and debug it.
+    /// <br /><b><i>Never call this method in production code, as it will expose the query to SQL injection attacks.</i></b>
+    /// </summary>
+    /// <param name="query">The query that you want to debug.</param>
+    /// <returns>The query with all known values clearly visible.</returns>
+    string ReplaceVariablesInQueryForDebugging(string query);
+#endif
 }
