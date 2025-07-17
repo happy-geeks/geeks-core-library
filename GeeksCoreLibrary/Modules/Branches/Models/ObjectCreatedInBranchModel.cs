@@ -34,8 +34,7 @@ public class ObjectCreatedInBranchModel
     public bool AlsoUndeleted { get; set; }
 
     /// <summary>
-    /// The columns that we generated temporary values for when creating the object in production.
-    /// We need to keep track of these columns, so that we can remove the temporary values after we're done merging.
+    /// Gets or sets whether the item was created with the unique indexes already up to date or already found a match in the production database.
     /// </summary>
-    public List<ColumnSettingsModel> ColumnsWithTemporaryValues { get; set; } = [];
+    public bool UniqueIndexValuesAlreadyUpToDate { get; set; }
 }
