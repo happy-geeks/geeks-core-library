@@ -34,8 +34,8 @@
         <PackageReference Include="DocumentFormat.OpenXml" Version="3.3.0" />
         <PackageReference Include="FluentFTP" Version="53.0.1" />
         <PackageReference Include="GoogleAuthenticator" Version="3.2.0" />
-        <PackageReference Include="HtmlAgilityPack" Version="1.12.1" />
-        <PackageReference Include="JetBrains.Annotations" Version="2024.3.0" />
+        <PackageReference Include="HtmlAgilityPack" Version="1.12.2" />
+        <PackageReference Include="JetBrains.Annotations" Version="2025.2.0" />
         <PackageReference Include="LazyCache.AspNetCore" Version="2.4.0" />
         <PackageReference Include="Magick.NET-Q8-x64" Version="14.7.0" />
         <PackageReference Include="MailKit" Version="4.13.0" />
