@@ -540,14 +540,7 @@ public class StringReplacementsService(
 
         if (propertyName.Contains('.') && !propertyName.Split('.')[0].Contains('('))
         {
-            var propertyInfo = input.GetType().GetProperty(propertyName.Split('.')[0], BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
-            if (propertyInfo == null)
-            {
-                return null;
-            }
-
-            var newPropertyName = propertyName.Replace($"{propertyName.Split('.')[0]}.", "");
-            var value = GetPropertyValue((JToken) propertyInfo.GetValue(input, null), newPropertyName);
+            var value = input.SelectToken(propertyName);
             return value != null ? value.ToString() : $"{{{propertyName}}}";
         }
 
