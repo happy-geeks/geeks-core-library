@@ -190,6 +190,7 @@ public static class DbDataReaderExtensions
                 GroupingValueColumnName = reader.GetStringHandleNull("grouping_value_column_name"),
                 GroupingKeyColumnName = reader.GetStringHandleNull("grouping_key_column_name")
             };
+            queryTemplate.UsedForRedirect = reader.GetBoolean("query_used_for_redirect");
 
             return queryTemplate;
         }

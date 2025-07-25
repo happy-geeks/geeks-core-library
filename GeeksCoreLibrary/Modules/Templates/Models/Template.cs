@@ -181,7 +181,7 @@ public class Template
     public string LoginRedirectUrl { get; set; }
 
     /// <summary>
-    /// Gets or sets whether thie template can be used as the default header.
+    /// Gets or sets whether the template can be used as the default header.
     /// </summary>
     public bool IsDefaultHeader { get; set; }
 

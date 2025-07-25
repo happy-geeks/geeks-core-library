@@ -10,6 +10,7 @@ using GeeksCoreLibrary.Modules.Objects.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Enums;
 using GeeksCoreLibrary.Modules.Templates.Interfaces;
 using GeeksCoreLibrary.Modules.Templates.Models;
+using GeeksCoreLibrary.Modules.GclReplacements.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Mvc.Controllers;
@@ -26,7 +27,7 @@ public class RewriteUrlToTemplateMiddleware(RequestDelegate next, ILogger<Rewrit
     /// Invoke the middleware.
     /// Services are added here instead of the constructor, because the constructor of a middleware can only contain Singleton services.
     /// </summary>
-    public async Task Invoke(HttpContext context, IObjectsService objectsService, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IActionDescriptorCollectionProvider actionDescriptorCollectionProvider)
+    public async Task Invoke(HttpContext context, IObjectsService objectsService, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IActionDescriptorCollectionProvider actionDescriptorCollectionProvider, IReplacementsMediator replacementsMediator)
     {
         logger.LogDebug("Invoked RewriteUrlToTemplateMiddleware");
 
@@ -90,7 +91,7 @@ public class RewriteUrlToTemplateMiddleware(RequestDelegate next, ILogger<Rewrit
             context.Items.Add(Constants.OriginalPathAndQueryStringKey, $"{path}{queryString.Value}");
         }
 
-        await HandleRewritesAsync(context, path, queryString, templatesService, objectsService, databaseConnection);
+        await HandleRewritesAsync(context, path, queryString, templatesService, objectsService, databaseConnection, replacementsMediator);
 
         await next.Invoke(context);
     }
@@ -105,7 +106,7 @@ public class RewriteUrlToTemplateMiddleware(RequestDelegate next, ILogger<Rewrit
     /// <param name="templatesService">The templates service.</param>
     /// <param name="objectsService">The objects service.</param>
     /// <param name="databaseConnection">The database connection.</param>
-    private async Task HandleRewritesAsync(HttpContext context, string path, QueryString queryStringFromUrl, ITemplatesService templatesService, IObjectsService objectsService, IDatabaseConnection databaseConnection)
+    private async Task HandleRewritesAsync(HttpContext context, string path, QueryString queryStringFromUrl, ITemplatesService templatesService, IObjectsService objectsService, IDatabaseConnection databaseConnection, IReplacementsMediator replacementsMediator)
     {
         logger.LogDebug($"Start HandleRewrites, path: {path}");
 
@@ -127,15 +128,30 @@ public class RewriteUrlToTemplateMiddleware(RequestDelegate next, ILogger<Rewrit
                 queryString = queryString.Add(matchGroup.Name, matchGroup.Value);
             }
 
-            // Extra query string in the template.
-            queryString = CombineQueryString(queryString, $"?templateId={template.Id}");
-            queryString = CombineQueryString(queryString, queryStringFromUrl.Value);
-
             // Redirect to the correct controller.
             switch (template.Type)
             {
                 case TemplateTypes.Html:
                     context.Request.Path = "/template.gcl";
+                    break;
+                case TemplateTypes.Query when template is QueryTemplate{ UsedForRedirect: true }:
+                    var redirectTo = await RunRedirectQuery(template, queryString, databaseConnection, templatesService, replacementsMediator);
+                    if (redirectTo is null)
+                    {
+                        context.Response.StatusCode = StatusCodes.Status404NotFound;
+                        return;
+                    }
+
+                    if (Int32.TryParse(redirectTo, out Int32 templateId))
+                    {
+                        template.Id = templateId;
+                        context.Request.Path = "/template.gcl";
+                    }
+                    else
+                    {
+                        context.Request.Path = redirectTo;
+                        return;
+                    }
                     break;
                 case TemplateTypes.Query:
                     context.Request.Path = "/json.gcl";
@@ -146,6 +162,10 @@ public class RewriteUrlToTemplateMiddleware(RequestDelegate next, ILogger<Rewrit
                 default:
                     throw new ArgumentOutOfRangeException(nameof(template.Type), template.Type.ToString(), null);
             }
+
+            // Extra query string in the template.
+            queryString = CombineQueryString(queryString, $"?templateId={template.Id}");
+            queryString = CombineQueryString(queryString, queryStringFromUrl.Value);
 
             context.Request.QueryString = queryString;
 
@@ -268,8 +288,32 @@ public class RewriteUrlToTemplateMiddleware(RequestDelegate next, ILogger<Rewrit
                 continue;
             }
 
+            var template = await templatesService.GetTemplateAsync(number);
+            if (template is QueryTemplate { UsedForRedirect: true })
+            {
+                var redirectTo = await RunRedirectQuery(template, queryString, databaseConnection, templatesService, replacementsMediator);
+                if (redirectTo is null)
+                {
+                    context.Response.StatusCode = StatusCodes.Status404NotFound;
+                    return;
+                }
+
+                if (Int32.TryParse(redirectTo, out Int32 templateId))
+                {
+                    queryString = CombineQueryString(queryString, $"?templateid={templateId}");
+                }
+                else
+                {
+                    context.Request.Path = redirectTo;
+                    return;
+                }
+            }
+            else
+            {
+                queryString = CombineQueryString(queryString, $"?templateid={urlMatchLastPart.Replace("?", "&")}");
+            }
+
             // Extra query string in the template.
-            queryString = CombineQueryString(queryString, $"?templateid={urlMatchLastPart.Replace("?", "&")}");
             queryString = CombineQueryString(queryString, queryStringFromUrl.Value);
 
             // It is a template.
@@ -279,6 +323,43 @@ public class RewriteUrlToTemplateMiddleware(RequestDelegate next, ILogger<Rewrit
             // We found a template that matches the URL, so we can exit the function here.
             return;
         }
+    }
+
+    private async Task<string> RunRedirectQuery(Template template, QueryString queryString, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IReplacementsMediator replacementsMediator)
+    {
+        var queryStringCollection = System.Web.HttpUtility.ParseQueryString(queryString.ToString());
+        var query = template.Content;
+
+        query = replacementsMediator.DoReplacements(query, queryStringCollection, forQuery: true);
+        query = await templatesService.DoReplacesAsync(query, forQuery: true, templateType: TemplateTypes.Query);
+
+        var dataTable = await databaseConnection.GetAsync(query);
+        if (dataTable.Rows.Count != 1)
+            throw new Exception($"Redirect query (id {template.Id}) returned {dataTable.Rows.Count} results, expected one!");
+
+        var dataRow = dataTable.Rows[0];
+        string result = null;
+        foreach (DataColumn column in dataTable.Columns)
+        {
+            switch (column.ColumnName.ToLower())
+            {
+                case "templateid":
+                    var id = dataRow.IsNull(column) ? 0 : Convert.ToInt64(dataRow[column]);
+                    if (id > 0)
+                        result = id.ToString();
+                    break;
+                case "redirecturl":
+                    var url = dataRow.Field<string>(column);
+                    if (!String.IsNullOrWhiteSpace(url))
+                        result = url;
+                    break;
+                default:
+                    queryString = queryString.Add(column.ColumnName, dataRow.Field<string>(column));
+                    break;
+            }
+        }
+
+        return result;
     }
 
     /// <summary>
