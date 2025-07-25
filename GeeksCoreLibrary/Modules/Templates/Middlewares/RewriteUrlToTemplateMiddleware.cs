@@ -335,8 +335,7 @@ public class RewriteUrlToTemplateMiddleware(RequestDelegate next, ILogger<Rewrit
 
         var dataTable = await databaseConnection.GetAsync(query);
         if (dataTable.Rows.Count != 1)
-            // TODO: log error
-            return null;
+            throw new Exception($"Redirect query (id {template.Id}) returned {dataTable.Rows.Count} results, expected one!");
 
         var dataRow = dataTable.Rows[0];
         string result = null;
