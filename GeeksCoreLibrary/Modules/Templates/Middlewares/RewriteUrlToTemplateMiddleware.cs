@@ -344,7 +344,7 @@ public class RewriteUrlToTemplateMiddleware(RequestDelegate next, ILogger<Rewrit
             switch (column.ColumnName.ToLower())
             {
                 case "templateid":
-                    var id = dataRow.Field<long>(column);
+                    var id = dataRow.IsNull(column) ? 0 : Convert.ToInt64(dataRow[column]);
                     if (id > 0)
                         result = id.ToString();
                     break;
