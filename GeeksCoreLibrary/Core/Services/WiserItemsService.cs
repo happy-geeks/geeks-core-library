@@ -1760,7 +1760,7 @@ public class WiserItemsService(
             }
             catch (GclQueryException queryException)
             {
-                if (!createNewTransaction)
+                if (!createNewTransaction || alreadyHadTransaction)
                 {
                     throw;
                 }
