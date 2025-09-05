@@ -45,7 +45,7 @@
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.8" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.8" />
         <PackageReference Include="MySqlConnector" Version="2.4.0" />
-        <PackageReference Include="PDFsharp" Version="6.2.0" />
+        <PackageReference Include="PDFsharp" Version="6.2.1" />
         <PackageReference Include="RestSharp" Version="112.1.0" />
         <PackageReference Include="ObjectCloner" Version="2.2.2" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
