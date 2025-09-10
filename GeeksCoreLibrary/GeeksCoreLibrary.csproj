@@ -39,7 +39,7 @@
         <PackageReference Include="LazyCache.AspNetCore" Version="2.4.0" />
         <PackageReference Include="Magick.NET-Q8-x64" Version="14.8.1" />
         <PackageReference Include="MailKit" Version="4.13.0" />
-        <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="9.0.8" />
+        <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="9.0.9" />
         <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.8" />
         <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.8" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.8" />
