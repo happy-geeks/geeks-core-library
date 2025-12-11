@@ -357,17 +357,17 @@ public class RewriteUrlToTemplateMiddleware(RequestDelegate next, ILogger<Rewrit
 
         var dataTable = await databaseConnection.GetAsync(query);
         if (dataTable.Rows.Count != 1)
-            throw new Exception($"Redirect query (id {template.Id}) returned {dataTable.Rows.Count} results, expected one!");
+            throw new InvalidOperationException($"Redirect query (id {template.Id}) returned {dataTable.Rows.Count} results, expected one!");
 
         var dataRow = dataTable.Rows[0];
-        var dict = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
+        var queryResults = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
         foreach (DataColumn column in dataTable.Columns)
         {
             string value = dataRow[column] == DBNull.Value ? "" : dataRow[column].ToString();
-            dict.Add(column.ColumnName, value);
+            queryResults.Add(column.ColumnName, value);
         }
 
-        return dict;
+        return queryResults;
     }
 
     /// <summary>
