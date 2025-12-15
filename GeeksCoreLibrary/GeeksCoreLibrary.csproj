@@ -43,7 +43,7 @@
         <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.10" />
         <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.10" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.9" />
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.9" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.1" />
         <PackageReference Include="MySqlConnector" Version="2.4.0" />
         <PackageReference Include="PDFsharp" Version="6.2.2" />
         <PackageReference Include="RestSharp" Version="112.1.0" />
