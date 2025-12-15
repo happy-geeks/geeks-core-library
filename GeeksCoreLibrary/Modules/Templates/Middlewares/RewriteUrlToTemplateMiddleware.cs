@@ -93,7 +93,9 @@ public class RewriteUrlToTemplateMiddleware(RequestDelegate next, ILogger<Rewrit
 
         await HandleRewritesAsync(context, path, queryString, templatesService, objectsService, databaseConnection, replacementsMediator);
 
-        await next.Invoke(context);
+        // if a Redirect() has been called, don't invoke the next context
+        if (context.Response.StatusCode != 302)
+            await next.Invoke(context);
     }
 
     /// <summary>
@@ -135,21 +137,31 @@ public class RewriteUrlToTemplateMiddleware(RequestDelegate next, ILogger<Rewrit
                     context.Request.Path = "/template.gcl";
                     break;
                 case TemplateTypes.Query when template is QueryTemplate{ UsedForRedirect: true }:
-                    var redirectTo = await RunRedirectQuery(template, queryString, databaseConnection, templatesService, replacementsMediator);
-                    if (redirectTo is null)
+                    var redirectResults = await RunRedirectQuery(template, queryString, databaseConnection, templatesService, replacementsMediator);
+
+                    // if we need to redirect, do that (this sets StatusCode to 302)
+                    if (redirectResults.ContainsKey("redirecturl"))
                     {
-                        context.Response.StatusCode = StatusCodes.Status404NotFound;
+                        context.Response.Redirect(redirectResults["redirecturl"]);
                         return;
                     }
-
-                    if (Int32.TryParse(redirectTo, out Int32 templateId))
+                    // if the redirect result is a number, it's a template id, so use that
+                    if (redirectResults.ContainsKey("templateid") && Int32.TryParse(redirectResults["templateid"], out Int32 templateId))
                     {
-                        template.Id = templateId;
                         context.Request.Path = "/template.gcl";
+                        template.Id = templateId;
+                        foreach (var kvp in redirectResults)
+                        {
+                            if (kvp.Key.Equals("templateid", StringComparison.InvariantCultureIgnoreCase))
+                                continue;
+
+                            queryString.Add(kvp.Key, kvp.Value);
+                        }
                     }
+                    // If the query doesn't give a (correct) result, we go 404.
                     else
                     {
-                        context.Request.Path = redirectTo;
+                        context.Response.StatusCode = StatusCodes.Status404NotFound;
                         return;
                     }
                     break;
@@ -291,20 +303,30 @@ public class RewriteUrlToTemplateMiddleware(RequestDelegate next, ILogger<Rewrit
             var template = await templatesService.GetTemplateAsync(number);
             if (template is QueryTemplate { UsedForRedirect: true })
             {
-                var redirectTo = await RunRedirectQuery(template, queryString, databaseConnection, templatesService, replacementsMediator);
-                if (redirectTo is null)
+                var redirectResults = await RunRedirectQuery(template, queryString, databaseConnection, templatesService, replacementsMediator);
+
+                // if we need to redirect, do that (this sets StatusCode to 302)
+                if (redirectResults.ContainsKey("redirecturl"))
                 {
-                    context.Response.StatusCode = StatusCodes.Status404NotFound;
+                    context.Response.Redirect(redirectResults["redirecturl"]);
                     return;
                 }
-
-                if (Int32.TryParse(redirectTo, out Int32 templateId))
+                // if the redirect result is a number, it's a template id, so use that
+                if (redirectResults.ContainsKey("templateid") && Int32.TryParse(redirectResults["templateid"], out Int32 templateId))
                 {
-                    queryString = CombineQueryString(queryString, $"?templateid={templateId}");
+                    queryString = CombineQueryString(queryString, $"?templateid={urlMatchLastPart.Replace($"{number}", $"{templateId}").Replace("?", "&")}");
+                    foreach (var kvp in redirectResults)
+                    {
+                        if (kvp.Key.Equals("templateid", StringComparison.InvariantCultureIgnoreCase))
+                            continue;
+
+                        queryString.Add(kvp.Key, kvp.Value);
+                    }
                 }
+                // If the query doesn't give a (correct) result, we go 404.
                 else
                 {
-                    context.Request.Path = redirectTo;
+                    context.Response.StatusCode = StatusCodes.Status404NotFound;
                     return;
                 }
             }
@@ -325,7 +347,7 @@ public class RewriteUrlToTemplateMiddleware(RequestDelegate next, ILogger<Rewrit
         }
     }
 
-    private async Task<string> RunRedirectQuery(Template template, QueryString queryString, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IReplacementsMediator replacementsMediator)
+    private async Task<Dictionary<string, string>> RunRedirectQuery(Template template, QueryString queryString, IDatabaseConnection databaseConnection, ITemplatesService templatesService, IReplacementsMediator replacementsMediator)
     {
         var queryStringCollection = System.Web.HttpUtility.ParseQueryString(queryString.ToString());
         var query = template.Content;
@@ -335,31 +357,17 @@ public class RewriteUrlToTemplateMiddleware(RequestDelegate next, ILogger<Rewrit
 
         var dataTable = await databaseConnection.GetAsync(query);
         if (dataTable.Rows.Count != 1)
-            throw new Exception($"Redirect query (id {template.Id}) returned {dataTable.Rows.Count} results, expected one!");
+            throw new InvalidOperationException($"Redirect query (id {template.Id}) returned {dataTable.Rows.Count} results, expected one!");
 
         var dataRow = dataTable.Rows[0];
-        string result = null;
+        var queryResults = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
         foreach (DataColumn column in dataTable.Columns)
         {
-            switch (column.ColumnName.ToLower())
-            {
-                case "templateid":
-                    var id = dataRow.IsNull(column) ? 0 : Convert.ToInt64(dataRow[column]);
-                    if (id > 0)
-                        result = id.ToString();
-                    break;
-                case "redirecturl":
-                    var url = dataRow.Field<string>(column);
-                    if (!String.IsNullOrWhiteSpace(url))
-                        result = url;
-                    break;
-                default:
-                    queryString = queryString.Add(column.ColumnName, dataRow.Field<string>(column));
-                    break;
-            }
+            string value = dataRow[column] == DBNull.Value ? "" : dataRow[column].ToString();
+            queryResults.Add(column.ColumnName, value);
         }
 
-        return result;
+        return queryResults;
     }
 
     /// <summary>
