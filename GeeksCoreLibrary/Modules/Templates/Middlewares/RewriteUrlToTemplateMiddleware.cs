@@ -300,6 +300,9 @@ public class RewriteUrlToTemplateMiddleware(RequestDelegate next, ILogger<Rewrit
                 continue;
             }
 
+            // Extra query string in the template.
+            queryString = CombineQueryString(queryString, queryStringFromUrl.Value);
+
             var template = await templatesService.GetTemplateAsync(number);
             if (template is QueryTemplate { UsedForRedirect: true })
             {
@@ -334,9 +337,6 @@ public class RewriteUrlToTemplateMiddleware(RequestDelegate next, ILogger<Rewrit
             {
                 queryString = CombineQueryString(queryString, $"?templateid={urlMatchLastPart.Replace("?", "&")}");
             }
-
-            // Extra query string in the template.
-            queryString = CombineQueryString(queryString, queryStringFromUrl.Value);
 
             // It is a template.
             context.Request.Path = "/template.gcl";
