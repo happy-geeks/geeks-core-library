@@ -5,11 +5,11 @@
         <OutputType>Library</OutputType>
         <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
         <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
-        <Version>5.3.2512.1</Version>
+        <Version>5.3.2601.1</Version>
         <Company>Happy Horizon B.V.</Company>
         <Description>Our base/core library that we use for most of our other projects.</Description>
-        <AssemblyVersion>5.3.2512.1</AssemblyVersion>
-        <FileVersion>5.3.2512.1</FileVersion>
+        <AssemblyVersion>5.3.2601.1</AssemblyVersion>
+        <FileVersion>5.3.2601.1</FileVersion>
         <PackageDescription>Geeks Core Library</PackageDescription>
         <RepositoryUrl>https://github.com/happy-geeks/geeks-core-library.git</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
@@ -45,7 +45,7 @@
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.9" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.9" />
         <PackageReference Include="MySqlConnector" Version="2.5.0" />
-        <PackageReference Include="PDFsharp" Version="6.2.2" />
+        <PackageReference Include="PDFsharp" Version="6.2.3" />
         <PackageReference Include="RestSharp" Version="112.1.0" />
         <PackageReference Include="ObjectCloner" Version="2.2.2" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
