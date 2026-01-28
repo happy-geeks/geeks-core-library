@@ -14,10 +14,11 @@ using GeeksCoreLibrary.Modules.Templates.Models;
 using GeeksCoreLibrary.Modules.Templates.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
@@ -30,7 +31,6 @@ public class WebPageController(
     IPagesService pagesService,
     IDataSelectorsService dataSelectorsService,
     IWiserItemsService wiserItemsService,
-    IActionContextAccessor actionContextAccessor = null,
     IHttpContextAccessor httpContextAccessor = null,
     ITempDataProvider tempDataProvider = null,
     IViewComponentHelper viewComponentHelper = null)
@@ -40,16 +40,16 @@ public class WebPageController(
     [Route("cmspage.jcl")]
     public async Task<IActionResult> WebPageAsync()
     {
-        if (httpContextAccessor?.HttpContext == null || actionContextAccessor?.ActionContext == null)
+        if (httpContextAccessor?.HttpContext == null)
         {
             throw new Exception("No httpContext found. Did you add the dependency in Program.cs or Startup.cs?");
         }
 
-        var context = HttpContext;
+        var httpContext = httpContextAccessor.HttpContext;
         string cmsPagePath;
         string webPageIdString;
         var isErrorPage = false;
-        if (context.Request.Query.TryGetValue("errorCode", out var errorCodeString))
+        if (httpContext.Request.Query.TryGetValue("errorCode", out var errorCodeString))
         {
             cmsPagePath = $"error_{errorCodeString}";
             webPageIdString = String.Empty;
@@ -57,16 +57,16 @@ public class WebPageController(
         }
         else
         {
-            cmsPagePath = HttpContextHelpers.GetRequestValue(context, "gclcmspagepath");
-            webPageIdString = HttpContextHelpers.GetRequestValue(context, "id");
+            cmsPagePath = HttpContextHelpers.GetRequestValue(httpContext, "gclcmspagepath");
+            webPageIdString = HttpContextHelpers.GetRequestValue(httpContext, "id");
             if (String.IsNullOrWhiteSpace(cmsPagePath))
             {
-                cmsPagePath = HttpContextHelpers.GetRequestValue(context, "jclcmspagepath");
+                cmsPagePath = HttpContextHelpers.GetRequestValue(httpContext, "jclcmspagepath");
             }
 
             if (String.IsNullOrWhiteSpace(webPageIdString))
             {
-                webPageIdString = HttpContextHelpers.GetRequestValue(context, "jclcmspageid");
+                webPageIdString = HttpContextHelpers.GetRequestValue(httpContext, "jclcmspageid");
             }
         }
 
@@ -82,10 +82,10 @@ public class WebPageController(
         var cssTemplates = new List<int>();
         var externalJavascript = new List<PageResourceModel>();
         var externalCss = new List<PageResourceModel>();
-        var ombouw = !String.Equals(HttpContextHelpers.GetRequestValue(context, "ombouw"), "false", StringComparison.OrdinalIgnoreCase);
+        var ombouw = !String.Equals(HttpContextHelpers.GetRequestValue(httpContext, "ombouw"), "false", StringComparison.OrdinalIgnoreCase);
 
         var contentToWrite = new StringBuilder();
-        var url = (string) context.Items[Constants.OriginalPathAndQueryStringKey];
+        var url = (string) httpContext.Items[Constants.OriginalPathAndQueryStringKey];
 
         // Header template.
         if (ombouw)
@@ -93,12 +93,28 @@ public class WebPageController(
             contentToWrite.Append(await pagesService.GetGlobalHeader(url, javascriptTemplates, cssTemplates));
         }
 
-        // Create a fake ViewContext (but with a real ActionContext and a real HttpContext).
+        // In endpoint routing, the action info lives on the matched endpoint metadata.
+        var endpoint = httpContext.GetEndpoint();
+        var actionDescriptor =
+            endpoint?.Metadata.GetMetadata<ActionDescriptor>()
+            ?? throw new Exception("No ActionDescriptor found on the current endpoint. Are you executing inside an MVC endpoint?");
+
+        // Build RouteData (helps certain MVC/view features that expect it)
+        var routeData = httpContext.GetRouteData() ?? new RouteData();
+        foreach (var kvp in httpContext.Request.RouteValues)
+        {
+            routeData.Values[kvp.Key] = kvp.Value;
+        }
+
+        // Build ActionContext without IActionContextAccessor
+        var actionContext = new ActionContext(httpContext, routeData, actionDescriptor);
+
+        // Create a ViewContext
         var viewContext = new ViewContext(
-            actionContextAccessor.ActionContext,
+            actionContext,
             NullView.Instance,
             new ViewDataDictionary(new EmptyModelMetadataProvider(), new ModelStateDictionary()),
-            new TempDataDictionary(httpContextAccessor.HttpContext, tempDataProvider),
+            new TempDataDictionary(httpContext, tempDataProvider),
             TextWriter.Null,
             new HtmlHelperOptions());
 

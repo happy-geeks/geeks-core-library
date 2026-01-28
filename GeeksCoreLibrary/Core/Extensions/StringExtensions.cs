@@ -253,14 +253,27 @@ public static class StringExtensions
             }
 
             var passwordBytes = Encoding.UTF8.GetBytes(encryptionKey);
-            using var deriveBytes = new Rfc2898DeriveBytes(passwordBytes, salt, 2, HashAlgorithmName.SHA1);
-            const int keySize = 256;
-            const int blockSize = 128;
+            const int keySizeBits = 256;
+            const int blockSizeBits = 128;
+
+            const int keyLength = keySizeBits / 8;      // 32
+            const int ivLength = blockSizeBits / 8;     // 16
+            const int total = keyLength + ivLength;     // 48
+
+            // PBKDF2 -> get 48 bytes once, then split into Key and IV
+            var keyPlusIv = Rfc2898DeriveBytes.Pbkdf2(
+                password: passwordBytes,
+                salt: salt,
+                iterations: 2,
+                hashAlgorithm: HashAlgorithmName.SHA1,
+                outputLength: total);
+
             using var aesManaged = Aes.Create();
-            aesManaged.KeySize = keySize;
-            aesManaged.BlockSize = blockSize;
-            aesManaged.Key = deriveBytes.GetBytes(Convert.ToInt32(keySize / 8));
-            aesManaged.IV = deriveBytes.GetBytes(Convert.ToInt32(blockSize / 8));
+            aesManaged.KeySize = keySizeBits;
+            aesManaged.BlockSize = blockSizeBits;
+
+            aesManaged.Key = keyPlusIv[..keyLength];
+            aesManaged.IV  = keyPlusIv[keyLength..];
             using var encryptor = aesManaged.CreateEncryptor(aesManaged.Key, aesManaged.IV);
             using var memoryStream = new MemoryStream();
             using (var cryptoStream = new CryptoStream(memoryStream, encryptor, CryptoStreamMode.Write))
@@ -349,15 +362,27 @@ public static class StringExtensions
             var passwordBytes = Encoding.UTF8.GetBytes(encryptionKey);
             var inputBytes = Convert.FromBase64String(input);
 
-            using var deriveBytes = new Rfc2898DeriveBytes(passwordBytes, salt, 2, HashAlgorithmName.SHA1);
-            const int keySize = 256;
-            const int blockSize = 128;
+            const int keySizeBits = 256;
+            const int blockSizeBits = 128;
+
+            const int keyLength = keySizeBits / 8;      // 32
+            const int ivLength = blockSizeBits / 8;     // 16
+            const int total = keyLength + ivLength;     // 48
+
+            // PBKDF2 -> get 48 bytes once, then split into Key and IV
+            var keyPlusIv = Rfc2898DeriveBytes.Pbkdf2(
+                password: passwordBytes,
+                salt: salt,
+                iterations: 2,
+                hashAlgorithm: HashAlgorithmName.SHA1,
+                outputLength: total);
 
             using var aesManaged = Aes.Create();
-            aesManaged.KeySize = keySize;
-            aesManaged.BlockSize = blockSize;
-            aesManaged.Key = deriveBytes.GetBytes(Convert.ToInt32(keySize / 8));
-            aesManaged.IV = deriveBytes.GetBytes(Convert.ToInt32(blockSize / 8));
+            aesManaged.KeySize = keySizeBits;
+            aesManaged.BlockSize = blockSizeBits;
+
+            aesManaged.Key = keyPlusIv[..keyLength];
+            aesManaged.IV  = keyPlusIv[keyLength..];
             using var decryptor = aesManaged.CreateDecryptor(aesManaged.Key, aesManaged.IV);
             using var memoryStream = new MemoryStream(inputBytes);
             using var cryptoStream = new CryptoStream(memoryStream, decryptor, CryptoStreamMode.Read);
@@ -479,9 +504,21 @@ public static class StringExtensions
 
             // Derive the key and IV from the password and the salt.
             var passwordBytes = Encoding.UTF8.GetBytes(encryptionKey);
-            var rfc2898DeriveBytes = new Rfc2898DeriveBytes(passwordBytes, saltBytes, 2, HashAlgorithmName.SHA1);
-            var keyBytes = rfc2898DeriveBytes.GetBytes(aes.KeySize / 8);
-            var ivBytes = rfc2898DeriveBytes.GetBytes(aes.BlockSize / 8);
+
+            var keyLength = aes.KeySize / 8;      
+            var ivLength = aes.BlockSize / 8;     
+            var total = keyLength + ivLength;     
+
+            // PBKDF2 -> get bytes once, then split into Key and IV
+            var keyPlusIv = Rfc2898DeriveBytes.Pbkdf2(
+                password: passwordBytes,
+                salt: saltBytes,
+                iterations: 2,
+                hashAlgorithm: HashAlgorithmName.SHA1,
+                outputLength: total);
+            
+            var keyBytes = keyPlusIv[..keyLength];
+            var ivBytes = keyPlusIv[keyLength..];
 
             aes.Key = keyBytes;
             var resultBytes = aes.EncryptCbc(inputBytes, ivBytes);
@@ -579,9 +616,20 @@ public static class StringExtensions
 
             // Derive the key and IV from the password and the salt.
             var passwordBytes = Encoding.UTF8.GetBytes(encryptionKey);
-            var rfc2898DeriveBytes = new Rfc2898DeriveBytes(passwordBytes, saltBytes, 2, HashAlgorithmName.SHA1);
-            var keyBytes = rfc2898DeriveBytes.GetBytes(aes.KeySize / 8);
-            var ivBytes = rfc2898DeriveBytes.GetBytes(aes.BlockSize / 8);
+            var keyLength = aes.KeySize / 8;      
+            var ivLength = aes.BlockSize / 8;     
+            var total = keyLength + ivLength;     
+
+            // PBKDF2 -> get bytes once, then split into Key and IV
+            var keyPlusIv = Rfc2898DeriveBytes.Pbkdf2(
+                password: passwordBytes,
+                salt: saltBytes,
+                iterations: 2,
+                hashAlgorithm: HashAlgorithmName.SHA1,
+                outputLength: total);
+            
+            var keyBytes = keyPlusIv[..keyLength];
+            var ivBytes = keyPlusIv[keyLength..];
             aes.Key = keyBytes;
             // Perform the decryption.
             var decryptedBytes = aes.DecryptCbc(inputBytes, ivBytes);

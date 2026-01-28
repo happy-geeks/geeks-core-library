@@ -26,10 +26,11 @@ using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
@@ -51,7 +52,6 @@ public class LegacyTemplatesService : ITemplatesService
     private readonly IHttpContextAccessor httpContextAccessor;
     private readonly IViewComponentHelper viewComponentHelper;
     private readonly ITempDataProvider tempDataProvider;
-    private readonly IActionContextAccessor actionContextAccessor;
     private readonly IWebHostEnvironment webHostEnvironment;
     private readonly IObjectsService objectsService;
     private readonly ILanguagesService languagesService;
@@ -72,7 +72,6 @@ public class LegacyTemplatesService : ITemplatesService
         IAccountsService accountsService,
         IHttpClientService httpClientService,
         IHttpContextAccessor httpContextAccessor = null,
-        IActionContextAccessor actionContextAccessor = null,
         IWebHostEnvironment webHostEnvironment = null,
         IViewComponentHelper viewComponentHelper = null,
         ITempDataProvider tempDataProvider = null)
@@ -84,7 +83,6 @@ public class LegacyTemplatesService : ITemplatesService
         this.httpContextAccessor = httpContextAccessor;
         this.viewComponentHelper = viewComponentHelper;
         this.tempDataProvider = tempDataProvider;
-        this.actionContextAccessor = actionContextAccessor;
         this.webHostEnvironment = webHostEnvironment;
         this.filtersService = filtersService;
         this.objectsService = objectsService;
@@ -1171,10 +1169,12 @@ public class LegacyTemplatesService : ITemplatesService
             return "";
         }
 
-        if (httpContextAccessor?.HttpContext == null || actionContextAccessor?.ActionContext == null)
+        if (httpContextAccessor?.HttpContext == null)
         {
             throw new Exception("No httpContext found. Did you add the dependency in Program.cs or Startup.cs?");
         }
+        
+        var httpContext = httpContextAccessor.HttpContext;
 
         string viewComponentName;
         switch (dynamicContent.Name)
@@ -1230,12 +1230,28 @@ public class LegacyTemplatesService : ITemplatesService
                 return $"<!-- Dynamic content type '{dynamicContent.Name}' not supported yet. Content ID: {dynamicContent.Id} -->";
         }
 
-        // Create a fake ViewContext (but with a real ActionContext and a real HttpContext).
+        // In endpoint routing, the action info lives on the matched endpoint metadata.
+        var endpoint = httpContext.GetEndpoint();
+        var actionDescriptor =
+            endpoint?.Metadata.GetMetadata<ActionDescriptor>()
+            ?? throw new Exception("No ActionDescriptor found on the current endpoint. Are you executing inside an MVC endpoint?");
+
+        // Build RouteData (helps certain MVC/view features that expect it)
+        var routeData = httpContext.GetRouteData() ?? new RouteData();
+        foreach (var kvp in httpContext.Request.RouteValues)
+        {
+            routeData.Values[kvp.Key] = kvp.Value;
+        }
+
+        // Build ActionContext without IActionContextAccessor
+        var actionContext = new ActionContext(httpContext, routeData, actionDescriptor);
+
+        // Create a ViewContext
         var viewContext = new ViewContext(
-            actionContextAccessor.ActionContext,
+            actionContext,
             NullView.Instance,
             new ViewDataDictionary(new EmptyModelMetadataProvider(), new ModelStateDictionary()),
-            new TempDataDictionary(httpContextAccessor.HttpContext, tempDataProvider),
+            new TempDataDictionary(httpContext, tempDataProvider),
             TextWriter.Null,
             new HtmlHelperOptions());
 

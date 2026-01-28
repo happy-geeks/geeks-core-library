@@ -28,10 +28,12 @@ using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
@@ -59,7 +61,6 @@ public class TemplatesService(
     IHttpClientService httpClientService,
     IBranchesService branchesService,
     IHttpContextAccessor httpContextAccessor = null,
-    IActionContextAccessor actionContextAccessor = null,
     IViewComponentHelper viewComponentHelper = null,
     IWebHostEnvironment webHostEnvironment = null,
     ITempDataProvider tempDataProvider = null)
@@ -1330,10 +1331,13 @@ public class TemplatesService(
             return "";
         }
 
-        if (httpContextAccessor?.HttpContext == null || actionContextAccessor?.ActionContext == null)
+        var httpContext = httpContextAccessor?.HttpContext;
+        if (httpContext is null)
         {
-            throw new Exception("No httpContext found. Did you add the dependency in Program.cs or Startup.cs?");
+            throw new Exception("No HttpContext found. Did you add AddHttpContextAccessor() and are you running inside an HTTP request?");
         }
+
+        
 
         var logRenderingOfComponent = await ComponentRenderingShouldBeLoggedAsync(dynamicContent.Id);
         var error = "";
@@ -1348,12 +1352,28 @@ public class TemplatesService(
 
             var viewComponentName = dynamicContent.Name;
 
-            // Create a fake ViewContext (but with a real ActionContext and a real HttpContext).
+            // In endpoint routing, the action info lives on the matched endpoint metadata.
+            var endpoint = httpContext.GetEndpoint();
+            var actionDescriptor =
+                endpoint?.Metadata.GetMetadata<ActionDescriptor>()
+                ?? throw new Exception("No ActionDescriptor found on the current endpoint. Are you executing inside an MVC endpoint?");
+
+            // Build RouteData (helps certain MVC/view features that expect it)
+            var routeData = httpContext.GetRouteData() ?? new RouteData();
+            foreach (var kvp in httpContext.Request.RouteValues)
+            {
+                routeData.Values[kvp.Key] = kvp.Value;
+            }
+
+            // Build ActionContext without IActionContextAccessor
+            var actionContext = new ActionContext(httpContext, routeData, actionDescriptor);
+
+            // Create a ViewContext
             var viewContext = new ViewContext(
-                actionContextAccessor.ActionContext,
+                actionContext,
                 NullView.Instance,
                 new ViewDataDictionary(new EmptyModelMetadataProvider(), new ModelStateDictionary()),
-                new TempDataDictionary(httpContextAccessor.HttpContext, tempDataProvider),
+                new TempDataDictionary(httpContext, tempDataProvider),
                 TextWriter.Null,
                 new HtmlHelperOptions());
 

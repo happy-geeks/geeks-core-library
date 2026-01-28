@@ -16,10 +16,11 @@ using GeeksCoreLibrary.Modules.Templates.Models;
 using GeeksCoreLibrary.Modules.Templates.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.AspNetCore.Routing;
 using Newtonsoft.Json;
 using Constants = GeeksCoreLibrary.Components.OrderProcess.Models.Constants;
 
@@ -32,7 +33,6 @@ public class OrderProcessesController(
     IDataSelectorsService dataSelectorsService,
     IOrderProcessesService orderProcessesService,
     IWiserItemsService wiserItemsService,
-    IActionContextAccessor actionContextAccessor = null,
     IHttpContextAccessor httpContextAccessor = null,
     IViewComponentHelper viewComponentHelper = null,
     ITempDataProvider tempDataProvider = null)
@@ -179,24 +179,38 @@ public class OrderProcessesController(
 
     private async Task<string> RenderAndExecuteComponentAsync(OrderProcess.ComponentModes componentMode, ulong orderProcessId)
     {
-        if (httpContextAccessor?.HttpContext == null || actionContextAccessor?.ActionContext == null)
+        var httpContext = httpContextAccessor?.HttpContext;
+        if (httpContext is null)
         {
-            throw new Exception("No httpContext found. Did you add the dependency in Program.cs or Startup.cs?");
+            throw new Exception("No HttpContext found. Did you add AddHttpContextAccessor() and are you running inside an HTTP request?");
         }
+        
+        var endpoint = httpContext.GetEndpoint();
+        var actionDescriptor =
+            endpoint?.Metadata.GetMetadata<ActionDescriptor>()
+            ?? throw new Exception("No ActionDescriptor found on the current endpoint. Are you executing inside an MVC endpoint?");
+        
+        var routeData = httpContext.GetRouteData() ?? new RouteData();
+        foreach (var kvp in httpContext.Request.RouteValues)
+        {
+            routeData.Values[kvp.Key] = kvp.Value;
+        }
+        
+        var actionContext = new ActionContext(httpContext, routeData, actionDescriptor);
 
-        // Create a fake ViewContext (but with a real ActionContext and a real HttpContext).
+        // Create a ViewContext with data extracted from the httpContext
         var viewContext = new ViewContext(
-            actionContextAccessor.ActionContext,
+            actionContext,
             NullView.Instance,
             new ViewDataDictionary(new EmptyModelMetadataProvider(), new ModelStateDictionary()),
-            new TempDataDictionary(httpContextAccessor.HttpContext, tempDataProvider),
+            new TempDataDictionary(httpContext, tempDataProvider),
             TextWriter.Null,
             new HtmlHelperOptions());
 
-        // Set the context in the ViewComponentHelper, so that the ViewComponents that we use actually have the proper context.
+        // Contextualize the helper so ViewComponents get proper context
         (viewComponentHelper as IViewContextAware)?.Contextualize(viewContext);
 
-        // Dynamically invoke the correct ViewComponent.
+        // Dynamically invoke the correct ViewComponent
         var orderProcessCmsSettings = new OrderProcessCmsSettingsModel
         {
             HandleRequest = true,
