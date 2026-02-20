@@ -184,19 +184,8 @@ public class OrderProcessesController(
         {
             throw new Exception("No HttpContext found. Did you add AddHttpContextAccessor() and are you running inside an HTTP request?");
         }
-        
-        var endpoint = httpContext.GetEndpoint();
-        var actionDescriptor =
-            endpoint?.Metadata.GetMetadata<ActionDescriptor>()
-            ?? throw new Exception("No ActionDescriptor found on the current endpoint. Are you executing inside an MVC endpoint?");
-        
-        var routeData = httpContext.GetRouteData() ?? new RouteData();
-        foreach (var kvp in httpContext.Request.RouteValues)
-        {
-            routeData.Values[kvp.Key] = kvp.Value;
-        }
-        
-        var actionContext = new ActionContext(httpContext, routeData, actionDescriptor);
+
+        var actionContext = HttpContextHelpers.ExtractActionContext(httpContext);
 
         // Create a ViewContext with data extracted from the httpContext
         var viewContext = new ViewContext(

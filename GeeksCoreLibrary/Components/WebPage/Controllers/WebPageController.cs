@@ -92,22 +92,8 @@ public class WebPageController(
         {
             contentToWrite.Append(await pagesService.GetGlobalHeader(url, javascriptTemplates, cssTemplates));
         }
-
-        // In endpoint routing, the action info lives on the matched endpoint metadata.
-        var endpoint = httpContext.GetEndpoint();
-        var actionDescriptor =
-            endpoint?.Metadata.GetMetadata<ActionDescriptor>()
-            ?? throw new Exception("No ActionDescriptor found on the current endpoint. Are you executing inside an MVC endpoint?");
-
-        // Build RouteData (helps certain MVC/view features that expect it)
-        var routeData = httpContext.GetRouteData() ?? new RouteData();
-        foreach (var kvp in httpContext.Request.RouteValues)
-        {
-            routeData.Values[kvp.Key] = kvp.Value;
-        }
-
-        // Build ActionContext without IActionContextAccessor
-        var actionContext = new ActionContext(httpContext, routeData, actionDescriptor);
+        
+        var actionContext = HttpContextHelpers.ExtractActionContext(httpContext);
 
         // Create a ViewContext
         var viewContext = new ViewContext(
