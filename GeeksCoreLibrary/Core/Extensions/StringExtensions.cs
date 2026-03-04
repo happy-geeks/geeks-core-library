@@ -185,39 +185,9 @@ public static class StringExtensions
     /// <returns>The encrypted string.</returns>
     public static string EncryptWithAes(this string input, string key = "", bool withDateTime = false, bool useSlowerButMoreSecureMethod = false)
     {
-        string encryptionKey;
         var stringToEncrypt = new StringBuilder(input);
 
-        // ReSharper disable once ConvertIfStatementToSwitchStatement
-        if (!String.IsNullOrWhiteSpace(key))
-        {
-            // Custom secret key passed in the parameters.
-            encryptionKey = key;
-        }
-        else if (withDateTime && !String.IsNullOrWhiteSpace(GclRequestContext.CurrentExpiringEncryptionKey))
-        {
-            // Per-request secret key for values that expire after a set time.
-            encryptionKey = GclRequestContext.CurrentExpiringEncryptionKey;
-        }
-        else if (withDateTime && !String.IsNullOrWhiteSpace(GclSettings.Current.ExpiringEncryptionKey))
-        {
-            // App-wide secret key for values that expire after a set time.
-            encryptionKey = GclSettings.Current.ExpiringEncryptionKey;
-        }
-        else if (!String.IsNullOrWhiteSpace(GclRequestContext.CurrentDefaultEncryptionKey))
-        {
-            // Per-request default secret key.
-            encryptionKey = GclRequestContext.CurrentDefaultEncryptionKey;
-        }
-        else if (!String.IsNullOrWhiteSpace(GclSettings.Current.DefaultEncryptionKey))
-        {
-            // App-wide default secret key.
-            encryptionKey = GclSettings.Current.DefaultEncryptionKey;
-        }
-        else
-        {
-            throw new MissingEncryptionKeyException($"No AES secret key set in {nameof(EncryptWithAes)}.");
-        }
+        var encryptionKey = ExtractEncryptionKey(key, withDateTime);
 
         if (withDateTime)
         {
@@ -253,27 +223,7 @@ public static class StringExtensions
             }
 
             var passwordBytes = Encoding.UTF8.GetBytes(encryptionKey);
-            const int keySizeBits = 256;
-            const int blockSizeBits = 128;
-
-            const int keyLength = keySizeBits / 8;      // 32
-            const int ivLength = blockSizeBits / 8;     // 16
-            const int total = keyLength + ivLength;     // 48
-
-            // PBKDF2 -> get 48 bytes once, then split into Key and IV
-            var keyPlusIv = Rfc2898DeriveBytes.Pbkdf2(
-                password: passwordBytes,
-                salt: salt,
-                iterations: 2,
-                hashAlgorithm: HashAlgorithmName.SHA1,
-                outputLength: total);
-
-            using var aesManaged = Aes.Create();
-            aesManaged.KeySize = keySizeBits;
-            aesManaged.BlockSize = blockSizeBits;
-
-            aesManaged.Key = keyPlusIv[..keyLength];
-            aesManaged.IV  = keyPlusIv[keyLength..];
+            using var aesManaged = GenerateAesKeyAndIv(passwordBytes, salt);
             using var encryptor = aesManaged.CreateEncryptor(aesManaged.Key, aesManaged.IV);
             using var memoryStream = new MemoryStream();
             using (var cryptoStream = new CryptoStream(memoryStream, encryptor, CryptoStreamMode.Write))
@@ -287,19 +237,9 @@ public static class StringExtensions
         }
     }
 
-    /// <summary>
-    /// Decrypts a value with AES.
-    /// </summary>
-    /// <param name="input">The string to decrypt.</param>
-    /// <param name="key">Optional: The encryption key to use. Default value is the value of "ExpiringEncryptionKey" (if withDateTime = true) or "DefaultEncryptionKey" (if withDateTime = false) from the app settings.</param>
-    /// <param name="withDateTime">Optional: Set the <see langword="true"/> if the value contains a validation date and time. Default is <see langword="false"/>.</param>
-    /// <param name="minutesValidOverride">Optional: If you want the encryption to be valid for a different amount of time than what it set in the app settings, you can change that here.</param>
-    /// <param name="useSlowerButMoreSecureMethod">Optional: Whether to use a more secure encryption, but that method is a lot slower. This method will use the code from this article: https://docs.microsoft.com/en-us/dotnet/standard/security/vulnerabilities-cbc-mode</param>
-    /// <returns>The decrypted string.</returns>
-    public static string DecryptWithAes(this string input, string key = "", bool withDateTime = false, int minutesValidOverride = 0, bool useSlowerButMoreSecureMethod = false)
+    private static string ExtractEncryptionKey(string key, bool withDateTime)
     {
         string encryptionKey;
-
         // ReSharper disable once ConvertIfStatementToSwitchStatement
         if (!String.IsNullOrWhiteSpace(key))
         {
@@ -328,8 +268,24 @@ public static class StringExtensions
         }
         else
         {
-            throw new MissingEncryptionKeyException($"No AES secret key set in {nameof(DecryptWithAes)}.");
+            throw new MissingEncryptionKeyException($"No AES secret key set in {nameof(EncryptWithAes)}.");
         }
+
+        return encryptionKey;
+    }
+
+    /// <summary>
+    /// Decrypts a value with AES.
+    /// </summary>
+    /// <param name="input">The string to decrypt.</param>
+    /// <param name="key">Optional: The encryption key to use. Default value is the value of "ExpiringEncryptionKey" (if withDateTime = true) or "DefaultEncryptionKey" (if withDateTime = false) from the app settings.</param>
+    /// <param name="withDateTime">Optional: Set the <see langword="true"/> if the value contains a validation date and time. Default is <see langword="false"/>.</param>
+    /// <param name="minutesValidOverride">Optional: If you want the encryption to be valid for a different amount of time than what it set in the app settings, you can change that here.</param>
+    /// <param name="useSlowerButMoreSecureMethod">Optional: Whether to use a more secure encryption, but that method is a lot slower. This method will use the code from this article: https://docs.microsoft.com/en-us/dotnet/standard/security/vulnerabilities-cbc-mode</param>
+    /// <returns>The decrypted string.</returns>
+    public static string DecryptWithAes(this string input, string key = "", bool withDateTime = false, int minutesValidOverride = 0, bool useSlowerButMoreSecureMethod = false)
+    {
+        var encryptionKey = ExtractEncryptionKey(key, withDateTime);
 
         string output;
 
@@ -362,27 +318,7 @@ public static class StringExtensions
             var passwordBytes = Encoding.UTF8.GetBytes(encryptionKey);
             var inputBytes = Convert.FromBase64String(input);
 
-            const int keySizeBits = 256;
-            const int blockSizeBits = 128;
-
-            const int keyLength = keySizeBits / 8;      // 32
-            const int ivLength = blockSizeBits / 8;     // 16
-            const int total = keyLength + ivLength;     // 48
-
-            // PBKDF2 -> get 48 bytes once, then split into Key and IV
-            var keyPlusIv = Rfc2898DeriveBytes.Pbkdf2(
-                password: passwordBytes,
-                salt: salt,
-                iterations: 2,
-                hashAlgorithm: HashAlgorithmName.SHA1,
-                outputLength: total);
-
-            using var aesManaged = Aes.Create();
-            aesManaged.KeySize = keySizeBits;
-            aesManaged.BlockSize = blockSizeBits;
-
-            aesManaged.Key = keyPlusIv[..keyLength];
-            aesManaged.IV  = keyPlusIv[keyLength..];
+            using var aesManaged = GenerateAesKeyAndIv(passwordBytes, salt);
             using var decryptor = aesManaged.CreateDecryptor(aesManaged.Key, aesManaged.IV);
             using var memoryStream = new MemoryStream(inputBytes);
             using var cryptoStream = new CryptoStream(memoryStream, decryptor, CryptoStreamMode.Read);
@@ -390,11 +326,11 @@ public static class StringExtensions
             output = streamReader.ReadToEnd();
         }
 
-        if (!withDateTime)
-        {
-            return output;
-        }
+        return !withDateTime ? output : ValidateEncryptionKeyDateTime(minutesValidOverride, output);
+    }
 
+    private static string ValidateEncryptionKeyDateTime(int minutesValidOverride, string output)
+    {
         // Contains a date time restriction.
         if (!output.Contains('~'))
         {
@@ -421,6 +357,41 @@ public static class StringExtensions
         }
 
         return output.Remove(output.Length - 15);
+    }
+
+    private static Aes GenerateAesKeyAndIv(byte[] passwordBytes, byte[] salt)
+    {
+        Aes aesManaged = null;
+        try
+        {
+            const int keySizeBits = 256;
+            const int blockSizeBits = 128;
+
+            const int keyLength = keySizeBits / 8;      // 32
+            const int ivLength = blockSizeBits / 8;     // 16
+            const int total = keyLength + ivLength;     // 48
+
+            // PBKDF2 -> get 48 bytes once, then split into Key and IV
+            var keyPlusIv = Rfc2898DeriveBytes.Pbkdf2(
+                password: passwordBytes,
+                salt: salt,
+                iterations: 2,
+                hashAlgorithm: HashAlgorithmName.SHA1,
+                outputLength: total);
+
+            aesManaged = Aes.Create();
+            aesManaged.KeySize = keySizeBits;
+            aesManaged.BlockSize = blockSizeBits;
+
+            aesManaged.Key = keyPlusIv[..keyLength];
+            aesManaged.IV  = keyPlusIv[keyLength..];
+            return aesManaged;
+        }
+        catch
+        {
+            aesManaged?.Dispose();
+            throw;
+        }
     }
 
     /// <summary>
@@ -505,20 +476,7 @@ public static class StringExtensions
             // Derive the key and IV from the password and the salt.
             var passwordBytes = Encoding.UTF8.GetBytes(encryptionKey);
 
-            var keyLength = aes.KeySize / 8;      
-            var ivLength = aes.BlockSize / 8;     
-            var total = keyLength + ivLength;     
-
-            // PBKDF2 -> get bytes once, then split into Key and IV
-            var keyPlusIv = Rfc2898DeriveBytes.Pbkdf2(
-                password: passwordBytes,
-                salt: saltBytes,
-                iterations: 2,
-                hashAlgorithm: HashAlgorithmName.SHA1,
-                outputLength: total);
-            
-            var keyBytes = keyPlusIv[..keyLength];
-            var ivBytes = keyPlusIv[keyLength..];
+            var (keyBytes, ivBytes) = DeriveKeyAndIvFromAes(aes, passwordBytes, saltBytes);
 
             aes.Key = keyBytes;
             var resultBytes = aes.EncryptCbc(inputBytes, ivBytes);
@@ -616,20 +574,7 @@ public static class StringExtensions
 
             // Derive the key and IV from the password and the salt.
             var passwordBytes = Encoding.UTF8.GetBytes(encryptionKey);
-            var keyLength = aes.KeySize / 8;      
-            var ivLength = aes.BlockSize / 8;     
-            var total = keyLength + ivLength;     
-
-            // PBKDF2 -> get bytes once, then split into Key and IV
-            var keyPlusIv = Rfc2898DeriveBytes.Pbkdf2(
-                password: passwordBytes,
-                salt: saltBytes,
-                iterations: 2,
-                hashAlgorithm: HashAlgorithmName.SHA1,
-                outputLength: total);
-            
-            var keyBytes = keyPlusIv[..keyLength];
-            var ivBytes = keyPlusIv[keyLength..];
+            var (keyBytes, ivBytes) = DeriveKeyAndIvFromAes(aes, passwordBytes, saltBytes);
             aes.Key = keyBytes;
             // Perform the decryption.
             var decryptedBytes = aes.DecryptCbc(inputBytes, ivBytes);
@@ -638,37 +583,26 @@ public static class StringExtensions
             output = Encoding.UTF8.GetString(decryptedBytes);
         }
 
-        if (!withDateTime)
-        {
-            return output;
-        }
+        return !withDateTime ? output : ValidateEncryptionKeyDateTime(minutesValidOverride, output);
+    }
 
-        // Contains a date time restriction.
-        if (!output.Contains('~'))
-        {
-            throw new Exception("GCL DecryptWithAes: Expected encrypted value with datetime.");
-        }
+    private static (byte[] keyBytes, byte[] ivBytes) DeriveKeyAndIvFromAes(Aes aes, byte[] passwordBytes, byte[] saltBytes)
+    {
+        var keyLength = aes.KeySize / 8;      
+        var ivLength = aes.BlockSize / 8;     
+        var total = keyLength + ivLength;     
 
-        var separatorIndex = output.LastIndexOf('~');
-        var date = DateTime.ParseExact(output[(separatorIndex + 1)..], "yyyyMMddHHmmss", CultureInfo.InvariantCulture);
-        var hoursValid = GclRequestContext.CurrentTemporaryEncryptionHoursValid ?? GclSettings.Current.TemporaryEncryptionHoursValid;
-        var minutesValid = minutesValidOverride;
-        if (minutesValid <= 0 && hoursValid > 0)
-        {
-            minutesValid = hoursValid * 60;
-        }
-
-        if (minutesValid <= 0)
-        {
-            minutesValid = 24 * 60;
-        }
-
-        if (date.AddMinutes(minutesValid) < DateTime.Now)
-        {
-            throw new Exception("GCL DecryptWithAes: The encrypted value has expired.");
-        }
-
-        return output.Remove(output.Length - 15);
+        // PBKDF2 -> get bytes once, then split into Key and IV
+        var keyPlusIv = Rfc2898DeriveBytes.Pbkdf2(
+            password: passwordBytes,
+            salt: saltBytes,
+            iterations: 2,
+            hashAlgorithm: HashAlgorithmName.SHA1,
+            outputLength: total);
+            
+        var keyBytes = keyPlusIv[..keyLength];
+        var ivBytes = keyPlusIv[keyLength..];
+        return (keyBytes, ivBytes);
     }
 
     /// <summary>
