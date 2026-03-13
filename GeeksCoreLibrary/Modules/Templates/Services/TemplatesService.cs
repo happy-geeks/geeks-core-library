@@ -28,12 +28,9 @@ using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Abstractions;
-using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
-using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
@@ -76,7 +73,7 @@ public class TemplatesService(
             throw new ArgumentNullException($"One of the parameters {nameof(id)} or {nameof(name)} must contain a value");
         }
 
-        var (joinPart, whereClause) = GenerateTemplateQueryConditions(id, name, null, parentId, parentName);
+        var (joinPart, whereClause) = GenerateTemplateQueryConditions(id, name, null, parentId, parentName, skipParentJoin: true);
 
         var query = $"""
                      SELECT
@@ -292,7 +289,7 @@ public class TemplatesService(
         };
     }
 
-    private (string joinPart, List<string> whereClause) GenerateTemplateQueryConditions(int id, string name, TemplateTypes? type, int parentId, string parentName)
+    private (string joinPart, List<string> whereClause) GenerateTemplateQueryConditions(int id, string name, TemplateTypes? type, int parentId, string parentName, bool skipParentJoin = false)
     {
         var joinPart = "";
         var whereClause = new List<string>();
@@ -310,24 +307,17 @@ public class TemplatesService(
         if (id > 0)
         {
             databaseConnection.AddParameter("id", id);
+            if (!skipParentJoin)
+                joinPart += $" JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)";
             whereClause.Add("template.template_id = ?id");
         }
         else
         {
             databaseConnection.AddParameter("name", name);
+            if (!skipParentJoin)
+                joinPart += $" JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)";
             whereClause.Add("template.template_name = ?name");
             useTypeFilter = type.HasValue;
-        }
-
-        if (parentId > 0)
-        {
-            databaseConnection.AddParameter("parentId", parentId);
-            whereClause.Add("template.parent_id = ?parentId");
-        }
-        else if (!String.IsNullOrWhiteSpace(parentName))
-        {
-            databaseConnection.AddParameter("parentName", parentName);
-            whereClause.Add("parent1.template_name = ?parentName");
         }
 
         if (useTypeFilter)
