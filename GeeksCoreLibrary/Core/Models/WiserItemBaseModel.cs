@@ -120,7 +120,7 @@ public abstract class WiserItemBaseModel
     /// <param name="saveAsIs">Optional: Set to <c>true</c> to skip any conversion or hashing that the GCL might do when saving this value to the database. Such as for passwords, when you already hashed them yourself.</param>
     public void SetDetail(WiserItemDetailModel detail, bool append = false, bool markChangedAsFalse = false, string format = null, bool saveAsIs = false)
     {
-        SetDetail(detail.Key, detail.Value, append, detail.ReadOnly, detail.GroupName, detail.LanguageCode, markChangedAsFalse, format, saveAsIs, detail.IsLinkProperty, detail.LinkType, detail.ItemLinkId);
+        SetDetail(detail.Key, detail.Value, append, detail.ReadOnly, detail.GroupName, detail.LanguageCode, detail.Id, markChangedAsFalse, format, saveAsIs, detail.IsLinkProperty, detail.LinkType, detail.ItemLinkId);
     }
 
     /// <summary>
@@ -139,7 +139,7 @@ public abstract class WiserItemBaseModel
     /// <param name="isLinkProperty">Optional: Whether the detail is for wiser_itemlinkdetail, instead of wiser_itemdetail. If this is <c>true</c>, then <see cref="linkType"/> and  <see cref="itemLinkId"/> must also be specified. Default is <c>false</c>.</param>
     /// <param name="linkType">The link type number, must be specified if <see cref="isLinkProperty"/> is set to <c>true</c>.</param>
     /// <param name="itemLinkId">The ID of the link between two items, must be specified if <see cref="isLinkProperty"/> is set to <c>true</c>.</param>
-    public void SetDetail(string key, object value, bool append = false, bool enableReadOnly = false, string groupName = null, string languageCode = null, bool markChangedAsFalse = false, string format = null, bool saveAsIs = false, bool isLinkProperty = false, int linkType = 0, ulong itemLinkId = 0)
+    public void SetDetail(string key, object value, bool append = false, bool enableReadOnly = false, string groupName = null, string languageCode = null, ulong detailId = 0, bool markChangedAsFalse = false, string format = null, bool saveAsIs = false, bool isLinkProperty = false, int linkType = 0, ulong itemLinkId = 0)
     {
         // TODO: Add a check for read only, so that we can't use this function to update read only values?
         var detail = details.FirstOrDefault(d => String.Equals(d.Key, key, StringComparison.OrdinalIgnoreCase) &&
@@ -153,6 +153,7 @@ public abstract class WiserItemBaseModel
             // Add new item if key doesn't exist
             detail = new WiserItemDetailModel
             {
+                Id = detailId,
                 Key = key,
                 GroupName = groupName,
                 LanguageCode = languageCode,
