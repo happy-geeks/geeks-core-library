@@ -133,6 +133,7 @@ public abstract class WiserItemBaseModel
     /// <param name="enableReadOnly">Optional: Make the new value read only. Default is false.</param>
     /// <param name="groupName">Optional: The group name of the detail. Default is null.</param>
     /// <param name="languageCode">Optional: The language code of the detail. Default is null.</param>
+    /// <param name="detailId">Optional: the id of the detail. The default is 0.</param>
     /// <param name="markChangedAsFalse">Optional: Whether to mark the Changed property to false, so that it won't be saved if you save this item without changing this value after calling this function.</param>
     /// <param name="format">Optional: Formatting for converting certain types (such as numbers and dates) to string. Default is null.</param>
     /// <param name="saveAsIs">Optional: Set to <c>true</c> to skip any conversion or hashing that the GCL might do when saving this value to the database. Such as for passwords, when you already hashed them yourself.</param>
