@@ -1838,6 +1838,7 @@ public class TemplatesService(
                                   LEFT JOIN {WiserTableNames.WiserItemDetail} AS location ON location.item_id = widget.id AND location.`key` = '{Constants.PageWidgetLocationPropertyName}'
                                   LEFT JOIN {WiserTableNames.WiserItemLink} AS linkToParent ON linkToParent.item_id = widget.id AND linkToParent.type = {Constants.PageWidgetParentLinkType}
                                   WHERE widget.entity_type = '{Constants.PageWidgetEntityType}'
+                                        AND widget.published_environment & {(int) gclSettings.Environment} = {(int) gclSettings.Environment}
                                   ORDER BY IFNULL(linkToParent.destination_item_id, 0) ASC, IFNULL(linkToParent.ordering, widget.ordering) ASC
                                   """;
 
