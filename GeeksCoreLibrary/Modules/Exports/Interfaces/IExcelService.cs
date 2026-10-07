@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Data.Common;
 using System.IO;
 using Newtonsoft.Json.Linq;
 
@@ -61,4 +62,12 @@ public interface IExcelService
     /// <param name="firstColumnAreIds">If the first column are for IDs of Wiser Item the default value will be set on "0" to indicate a new item instead of an empty string.</param>
     /// <returns></returns>
     List<List<string>> GetLines(Stream stream, int numberOfColumns, bool skipFirstLine = false, bool firstColumnAreIds = false);
+
+    /// <summary>
+    /// Create an Excel file from a DbDataReader, processing rows one at a time to minimize memory usage.
+    /// </summary>
+    /// <param name="dataReader">The DbDataReader containing the data to export.</param>
+    /// <param name="sheetName">The name of the worksheet in the Excel file.</param>
+    /// <returns>The Excel file as a byte array.</returns>
+    byte[] DbDataReaderToExcel(DbDataReader dataReader, string sheetName = "Data");
 }
