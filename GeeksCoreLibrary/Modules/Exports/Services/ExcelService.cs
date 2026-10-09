@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -63,6 +64,64 @@ public class ExcelService : IExcelService, IScopedService
             };
 
             spreadsheetDocumentReferences.Worksheet.Append(autoFilter);
+        }
+
+        return memoryStream.ToArray();
+    }
+
+    /// <inheritdoc />
+    public byte[] DbDataReaderToExcel(DbDataReader dataReader, string sheetName = "Data")
+    {
+        ArgumentNullException.ThrowIfNull(dataReader);
+
+        using var memoryStream = new MemoryStream();
+
+        // Check if the data reader has any fields
+        if (dataReader.FieldCount == 0)
+        {
+            return memoryStream.ToArray();
+        }
+
+        using (var spreadsheetDocument = SpreadsheetDocument.Create(memoryStream, SpreadsheetDocumentType.Workbook))
+        {
+            var spreadsheetDocumentReferences = PrepareSpreadsheetDocument(spreadsheetDocument, sheetName);
+
+            // Add column names from the data reader
+            var columnNames = new List<object>();
+            for (var i = 0; i < dataReader.FieldCount; i++)
+            {
+                columnNames.Add(dataReader.GetName(i));
+            }
+
+            AddRow(columnNames, 1, spreadsheetDocumentReferences);
+
+            // Add data rows by reading from the DbDataReader one at a time
+            uint currentRow = 2;
+
+            while (dataReader.Read())
+            {
+                var rowColumnValues = new List<object>();
+
+                for (var i = 0; i < dataReader.FieldCount; i++)
+                {
+                    var value = dataReader.IsDBNull(i) ? null : dataReader.GetValue(i);
+                    rowColumnValues.Add(value);
+                }
+
+                AddRow(rowColumnValues, currentRow, spreadsheetDocumentReferences);
+                currentRow++;
+            }
+
+            // Add filters on the columns
+            if (columnNames.Count > 0 && currentRow > 2)
+            {
+                var autoFilter = new AutoFilter
+                {
+                    Reference = StringValue.FromString($"A1:{GetColumnNameFromIndex(columnNames.Count - 1)}{currentRow - 1}")
+                };
+
+                spreadsheetDocumentReferences.Worksheet.Append(autoFilter);
+            }
         }
 
         return memoryStream.ToArray();
