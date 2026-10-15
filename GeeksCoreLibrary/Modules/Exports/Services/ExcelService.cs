@@ -104,7 +104,7 @@ public class ExcelService : IExcelService, IScopedService
 
                 for (var i = 0; i < dataReader.FieldCount; i++)
                 {
-                    var value = dataReader.IsDBNull(i) ? null : dataReader.GetValue(i);
+                    var value = dataReader.IsDBNull(i) ? String.Empty : dataReader.GetValue(i);
                     rowColumnValues.Add(value);
                 }
 
