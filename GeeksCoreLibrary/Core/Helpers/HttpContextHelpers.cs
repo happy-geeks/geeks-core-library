@@ -212,6 +212,24 @@ public static class HttpContextHelpers
                || (includeServerVariables && httpContext.GetServerVariable(key) != null);
     }
 
+    public static ActionContext ExtractActionContext(HttpContext httpContext)
+    {
+        ArgumentNullException.ThrowIfNull(httpContext);
+        
+        var endpoint = httpContext.GetEndpoint();
+        var actionDescriptor =
+            endpoint?.Metadata.GetMetadata<ActionDescriptor>()
+            ?? new ActionDescriptor();
+        
+        var routeData = httpContext.GetRouteData() ?? new RouteData();
+        foreach (var kvp in httpContext.Request.RouteValues)
+        {
+            routeData.Values[kvp.Key] = kvp.Value;
+        }
+        
+        return new ActionContext(httpContext, routeData, actionDescriptor);
+    }
+
     /// <summary>
     /// Adds a new cookie to the response.
     /// </summary>
@@ -426,13 +444,6 @@ public static class HttpContextHelpers
         return httpContext?.Request == null
             ? new Uri("https://localhost/")
             : new Uri($"{(alwaysHttps ? "https" : httpContext.Request.Scheme)}://{httpContext.Request.Host.Value}{httpContext.Request.PathBase.Value}");
-    }
-
-    public static ActionContext CreateActionContext(HttpContext httpContext)
-    {
-        var routeData = httpContext.GetRouteData();
-        var actionContext = new ActionContext(httpContext, routeData, new ActionDescriptor());
-        return actionContext;
     }
 
     /// <summary>

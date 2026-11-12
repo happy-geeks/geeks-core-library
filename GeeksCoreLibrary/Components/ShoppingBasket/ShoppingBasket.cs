@@ -742,7 +742,7 @@ public class ShoppingBasket : CmsComponent<ShoppingBasketCmsSettingsModel, Shopp
         else
         {
             pdfFileResult.FileDownloadName = !String.IsNullOrWhiteSpace(filename) ? Path.GetFileName(filename) : $"{Settings.Description}.pdf";
-            await pdfFileResult.ExecuteResultAsync(HttpContextHelpers.CreateActionContext(HttpContext));
+            await pdfFileResult.ExecuteResultAsync(HttpContextHelpers.ExtractActionContext(HttpContext));
         }
 
         return String.Empty;

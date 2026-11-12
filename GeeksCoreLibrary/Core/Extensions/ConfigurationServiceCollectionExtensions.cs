@@ -299,7 +299,6 @@ public static class ConfigurationServiceCollectionExtensions
 
         // Manual additions.
         services.AddHttpContextAccessor();
-        services.AddSingleton<IActionContextAccessor, ActionContextAccessor>();
 
         services.AddSingleton<IFileSystem, FileSystem>();
         services.AddHostedService<FolderCleanupBackgroundService>();
