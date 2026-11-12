@@ -1,9 +1,13 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Xml;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Spreadsheet;
@@ -17,6 +21,11 @@ namespace GeeksCoreLibrary.Modules.Exports.Services;
 
 public class ExcelService : IExcelService, IScopedService
 {
+    /// <summary>
+    /// Excel worksheets are hard-limited to this many rows (including the header).
+    /// </summary>
+    private const uint ExcelMaxRows = 1_048_576;
+
     /// <inheritdoc />
     public byte[] JsonArrayToExcel(JArray data, string sheetName = "Data")
     {
@@ -70,61 +79,129 @@ public class ExcelService : IExcelService, IScopedService
     }
 
     /// <inheritdoc />
-    public byte[] DbDataReaderToExcel(DbDataReader dataReader, string sheetName = "Data")
+    public async Task DbDataReaderToExcelAsync(DbDataReader dataReader, Stream outputStream, string sheetName = "Data", CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(dataReader);
+        ArgumentNullException.ThrowIfNull(outputStream);
 
-        using var memoryStream = new MemoryStream();
-
-        // Check if the data reader has any fields
         if (dataReader.FieldCount == 0)
         {
-            return memoryStream.ToArray();
+            return;
         }
 
-        using (var spreadsheetDocument = SpreadsheetDocument.Create(memoryStream, SpreadsheetDocumentType.Workbook))
+        // OpenXML builds a ZIP package and requires a readable, seekable stream.
+        // HTTP response bodies are typically write-only and non-seekable, so buffer via a temp file.
+        if (!outputStream.CanRead || !outputStream.CanSeek)
         {
-            var spreadsheetDocumentReferences = PrepareSpreadsheetDocument(spreadsheetDocument, sheetName);
-
-            // Add column names from the data reader
-            var columnNames = new List<object>();
-            for (var i = 0; i < dataReader.FieldCount; i++)
+            var tempPath = Path.Combine(Path.GetTempPath(), $"gcl-excel-{Guid.NewGuid():N}.xlsx");
+            await using (var tempStream = new FileStream(
+                             tempPath,
+                             FileMode.CreateNew,
+                             FileAccess.ReadWrite,
+                             FileShare.None,
+                             bufferSize: 64 * 1024,
+                             FileOptions.Asynchronous | FileOptions.SequentialScan | FileOptions.DeleteOnClose))
             {
-                columnNames.Add(dataReader.GetName(i));
+                await WriteWorkbookToPackageStreamAsync(dataReader, tempStream, sheetName, leavePackageStreamOpen: true, cancellationToken);
+                tempStream.Position = 0;
+                await tempStream.CopyToAsync(outputStream, cancellationToken);
             }
 
-            AddRow(columnNames, 1, spreadsheetDocumentReferences);
+            return;
+        }
 
-            // Add data rows by reading from the DbDataReader one at a time
-            uint currentRow = 2;
+        await WriteWorkbookToPackageStreamAsync(dataReader, outputStream, sheetName, leavePackageStreamOpen: true, cancellationToken);
+    }
 
-            while (dataReader.Read())
+    /// <summary>
+    /// Creates the .xlsx package on a readable/seekable stream using OpenXmlWriter for row data.
+    /// </summary>
+    private async Task WriteWorkbookToPackageStreamAsync(
+        DbDataReader dataReader,
+        Stream packageStream,
+        string sheetName,
+        bool leavePackageStreamOpen,
+        CancellationToken cancellationToken)
+    {
+        // SpreadsheetDocument.Dispose closes its stream; optionally keep the caller's stream open.
+        Stream streamForPackage = leavePackageStreamOpen ? new NonClosingStream(packageStream) : packageStream;
+        try
+        {
+            using var spreadsheetDocument = SpreadsheetDocument.Create(streamForPackage, SpreadsheetDocumentType.Workbook);
+
+            var workbookPart = spreadsheetDocument.AddWorkbookPart();
+            workbookPart.Workbook = new Workbook(new FileVersion { ApplicationName = "Microsoft Office Excel" });
+
+            var worksheetPart = workbookPart.AddNewPart<WorksheetPart>();
+            var fieldCount = dataReader.FieldCount;
+            uint currentRow = 1;
+
+            using (var writer = OpenXmlWriter.Create(worksheetPart))
             {
-                var rowColumnValues = new List<object>();
+                writer.WriteStartElement(new Worksheet());
+                writer.WriteStartElement(new SheetData());
 
-                for (var i = 0; i < dataReader.FieldCount; i++)
+                // Header row
+                writer.WriteStartElement(new Row { RowIndex = currentRow });
+                for (var i = 0; i < fieldCount; i++)
                 {
-                    var value = dataReader.IsDBNull(i) ? String.Empty : dataReader.GetValue(i);
-                    rowColumnValues.Add(value);
+                    WriteInlineStringCell(writer, GetColumnNameFromIndex(i) + currentRow, dataReader.GetName(i));
+                }
+                writer.WriteEndElement(); // Row
+
+                while (await dataReader.ReadAsync(cancellationToken))
+                {
+                    currentRow++;
+                    if (currentRow > ExcelMaxRows)
+                    {
+                        throw new InvalidOperationException($"Excel worksheets are limited to {ExcelMaxRows} rows.");
+                    }
+
+                    writer.WriteStartElement(new Row { RowIndex = currentRow });
+                    for (var i = 0; i < fieldCount; i++)
+                    {
+                        var cellReference = GetColumnNameFromIndex(i) + currentRow;
+                        if (dataReader.IsDBNull(i))
+                        {
+                            WriteInlineStringCell(writer, cellReference, String.Empty);
+                            continue;
+                        }
+
+                        WriteCellValue(writer, cellReference, dataReader.GetValue(i));
+                    }
+                    writer.WriteEndElement(); // Row
                 }
 
-                AddRow(rowColumnValues, currentRow, spreadsheetDocumentReferences);
-                currentRow++;
+                writer.WriteEndElement(); // SheetData
+
+                if (fieldCount > 0 && currentRow >= 1)
+                {
+                    writer.WriteElement(new AutoFilter
+                    {
+                        Reference = StringValue.FromString($"A1:{GetColumnNameFromIndex(fieldCount - 1)}{currentRow}")
+                    });
+                }
+
+                writer.WriteEndElement(); // Worksheet
             }
 
-            // Add filters on the columns
-            if (columnNames.Count > 0 && currentRow > 2)
+            var sheets = workbookPart.Workbook.AppendChild(new Sheets());
+            sheets.Append(new Sheet
             {
-                var autoFilter = new AutoFilter
-                {
-                    Reference = StringValue.FromString($"A1:{GetColumnNameFromIndex(columnNames.Count - 1)}{currentRow - 1}")
-                };
+                Id = workbookPart.GetIdOfPart(worksheetPart),
+                SheetId = 1,
+                Name = sheetName
+            });
 
-                spreadsheetDocumentReferences.Worksheet.Append(autoFilter);
+            workbookPart.Workbook.Save();
+        }
+        finally
+        {
+            if (leavePackageStreamOpen)
+            {
+                await streamForPackage.DisposeAsync();
             }
         }
-
-        return memoryStream.ToArray();
     }
 
     /// <summary>
@@ -248,47 +325,54 @@ public class ExcelService : IExcelService, IScopedService
                 CellReference = GetColumnNameFromIndex(i) + rowNumber
             };
 
-            var columnType = rowColumnValues[i].GetType().ToString().ToLower();
-            if (rowColumnValues[i] is JValue jsonValue) // If the type is JValue get the original type.
+            var rawValue = rowColumnValues[i];
+            if (rawValue == null || rawValue is JValue { Type: JTokenType.Null })
             {
-                columnType = jsonValue.Type.ToString().ToLower();
+                AppendSharedStringCell(cell, spreadsheetDocumentReferences, String.Empty);
+                row.Append(cell);
+                continue;
+            }
+
+            var columnType = rawValue.GetType().ToString().ToLowerInvariant();
+            var unwrapped = rawValue;
+            if (rawValue is JValue jsonValue) // If the type is JValue get the original type.
+            {
+                columnType = jsonValue.Type.ToString().ToLowerInvariant();
+                unwrapped = jsonValue.Value;
             }
 
             switch (columnType)
             {
-                case "system.int32":
-                case "system.int64":
-                case "system.double":
+                case "system.byte":
                 case "system.sbyte":
+                case "system.int16":
+                case "system.uint16":
+                case "system.int32":
+                case "system.uint32":
+                case "system.int64":
+                case "system.uint64":
+                case "system.single":
+                case "system.double":
+                case "system.decimal":
                 case "integer":
                 case "float":
-                    cell.CellValue = new CellValue(rowColumnValues[i]?.ToString()?.Replace(",", ".") ?? "");
+                    cell.CellValue = new CellValue(Convert.ToString(unwrapped, CultureInfo.InvariantCulture) ?? String.Empty);
                     cell.DataType = CellValues.Number;
                     break;
 
                 case "system.datetime":
-                    var dateTimeEpoch = new DateTime(1900, 1, 1, 0, 0, 0, 0);
-                    var dateTime = Convert.ToDateTime(rowColumnValues[i]);
-                    var timeSpan = dateTime - dateTimeEpoch;
-                    double excelDateTime;
-
-                    if (timeSpan.Days >= 59)
-                    {
-                        excelDateTime = timeSpan.TotalDays + 2.0;
-                    }
-                    else
-                    {
-                        excelDateTime = timeSpan.TotalDays + 1.0;
-                    }
-
-                    cell.StyleIndex = 2;
-                    cell.CellValue = new CellValue(excelDateTime.ToString(CultureInfo.InvariantCulture).Replace(",", "."));
+                case "system.datetimeoffset":
+                case "datetime":
+                case "date":
+                    // Write ISO-8601 text instead of StyleIndex dates (no WorkbookStylesPart is created).
+                    var dateTime = unwrapped is DateTimeOffset dateTimeOffset
+                        ? dateTimeOffset.UtcDateTime
+                        : Convert.ToDateTime(unwrapped, CultureInfo.InvariantCulture);
+                    AppendSharedStringCell(cell, spreadsheetDocumentReferences, dateTime.ToString("o", CultureInfo.InvariantCulture));
                     break;
+
                 default:
-                    spreadsheetDocumentReferences.SharedStringTable.Append(new SharedStringItem(new Text(rowColumnValues[i]?.ToString() ?? "")));
-                    spreadsheetDocumentReferences.LastSharedStringIndex++;
-                    cell.CellValue = new CellValue(spreadsheetDocumentReferences.LastSharedStringIndex.ToString());
-                    cell.DataType = CellValues.SharedString;
+                    AppendSharedStringCell(cell, spreadsheetDocumentReferences, Convert.ToString(unwrapped, CultureInfo.InvariantCulture) ?? String.Empty);
                     break;
             }
 
@@ -296,6 +380,14 @@ public class ExcelService : IExcelService, IScopedService
         }
 
         spreadsheetDocumentReferences.SheetData.Append(row);
+    }
+
+    private static void AppendSharedStringCell(Cell cell, SpreadsheetDocumentReferencesModel spreadsheetDocumentReferences, string text)
+    {
+        spreadsheetDocumentReferences.SharedStringTable.Append(new SharedStringItem(new Text(SanitizeXmlText(text))));
+        spreadsheetDocumentReferences.LastSharedStringIndex++;
+        cell.CellValue = new CellValue(spreadsheetDocumentReferences.LastSharedStringIndex.ToString(CultureInfo.InvariantCulture));
+        cell.DataType = CellValues.SharedString;
     }
 
     /// <inheritdoc />
@@ -481,5 +573,137 @@ public class ExcelService : IExcelService, IScopedService
         }
 
         return result;
+    }
+
+    private static void WriteCellValue(OpenXmlWriter writer, string cellReference, object value)
+    {
+        switch (value)
+        {
+            case byte or sbyte or short or ushort or int or uint or long or ulong or float or double or decimal:
+                writer.WriteElement(new Cell
+                {
+                    CellReference = cellReference,
+                    DataType = CellValues.Number,
+                    CellValue = new CellValue(Convert.ToString(value, CultureInfo.InvariantCulture) ?? String.Empty)
+                });
+                break;
+
+            case DateTime dateTime:
+                WriteInlineStringCell(writer, cellReference, dateTime.ToString("o", CultureInfo.InvariantCulture));
+                break;
+
+            case DateTimeOffset dateTimeOffset:
+                WriteInlineStringCell(writer, cellReference, dateTimeOffset.UtcDateTime.ToString("o", CultureInfo.InvariantCulture));
+                break;
+
+            case bool boolean:
+                writer.WriteElement(new Cell
+                {
+                    CellReference = cellReference,
+                    DataType = CellValues.Boolean,
+                    CellValue = new CellValue(boolean)
+                });
+                break;
+
+            default:
+                WriteInlineStringCell(writer, cellReference, Convert.ToString(value, CultureInfo.InvariantCulture) ?? String.Empty);
+                break;
+        }
+    }
+
+    private static void WriteInlineStringCell(OpenXmlWriter writer, string cellReference, string text)
+    {
+        var cell = new Cell
+        {
+            CellReference = cellReference
+        };
+        SetInlineStringCell(cell, text);
+        writer.WriteElement(cell);
+    }
+
+    private static void SetInlineStringCell(Cell cell, string text)
+    {
+        cell.DataType = CellValues.InlineString;
+        cell.InlineString = new InlineString(new Text(SanitizeXmlText(text)));
+    }
+
+    /// <summary>
+    /// Removes characters that are illegal in XML 1.0 so OpenXML serialization cannot throw on dispose/save.
+    /// </summary>
+    private static string SanitizeXmlText(string value)
+    {
+        if (String.IsNullOrEmpty(value))
+        {
+            return value ?? String.Empty;
+        }
+
+        StringBuilder builder = null;
+        for (var i = 0; i < value.Length; i++)
+        {
+            var character = value[i];
+            if (XmlConvert.IsXmlChar(character))
+            {
+                builder?.Append(character);
+                continue;
+            }
+
+            if (builder == null)
+            {
+                builder = new StringBuilder(value.Length);
+                builder.Append(value, 0, i);
+            }
+        }
+
+        return builder?.ToString() ?? value;
+    }
+
+    /// <summary>
+    /// Forwards all operations to an inner stream but does not dispose it.
+    /// Needed because <see cref="SpreadsheetDocument"/> closes its stream on dispose.
+    /// </summary>
+    private sealed class NonClosingStream : Stream
+    {
+        private readonly Stream inner;
+
+        public NonClosingStream(Stream inner)
+        {
+            this.inner = inner;
+        }
+
+        public override bool CanRead => inner.CanRead;
+        public override bool CanSeek => inner.CanSeek;
+        public override bool CanWrite => inner.CanWrite;
+        public override long Length => inner.Length;
+
+        public override long Position
+        {
+            get => inner.Position;
+            set => inner.Position = value;
+        }
+
+        public override void Flush() => inner.Flush();
+
+        public override Task FlushAsync(System.Threading.CancellationToken cancellationToken) =>
+            inner.FlushAsync(cancellationToken);
+
+        public override int Read(byte[] buffer, int offset, int count) =>
+            inner.Read(buffer, offset, count);
+
+        public override long Seek(long offset, SeekOrigin origin) =>
+            inner.Seek(offset, origin);
+
+        public override void SetLength(long value) =>
+            inner.SetLength(value);
+
+        public override void Write(byte[] buffer, int offset, int count) =>
+            inner.Write(buffer, offset, count);
+
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, System.Threading.CancellationToken cancellationToken = default) =>
+            inner.WriteAsync(buffer, cancellationToken);
+
+        protected override void Dispose(bool disposing)
+        {
+            // Intentionally do not dispose the inner stream.
+        }
     }
 }

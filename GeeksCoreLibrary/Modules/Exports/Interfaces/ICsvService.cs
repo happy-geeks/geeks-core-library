@@ -1,5 +1,6 @@
 using System.Data.Common;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 
@@ -21,5 +22,6 @@ public interface ICsvService
     /// <param name="dataReader">The DbDataReader containing the data to export.</param>
     /// <param name="outputStream">The stream to write CSV data to.</param>
     /// <param name="delimiter">The delimiter to use between fields.</param>
-    Task DbDataReaderToCsvStreamAsync(DbDataReader dataReader, Stream outputStream, string delimiter = ";");
+    /// <param name="cancellationToken">Token used to stop reading/writing when the caller disconnects or times out.</param>
+    Task DbDataReaderToCsvStreamAsync(DbDataReader dataReader, Stream outputStream, string delimiter = ";", CancellationToken cancellationToken = default);
 }

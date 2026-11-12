@@ -1,6 +1,8 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Data.Common;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 
 namespace GeeksCoreLibrary.Modules.Exports.Interfaces;
@@ -64,10 +66,15 @@ public interface IExcelService
     List<List<string>> GetLines(Stream stream, int numberOfColumns, bool skipFirstLine = false, bool firstColumnAreIds = false);
 
     /// <summary>
-    /// Create an Excel file from a DbDataReader, processing rows one at a time to minimize memory usage.
+    /// Write an Excel file from a DbDataReader to a stream, processing rows one at a time to minimize memory usage.
+    /// Uses a forward-only OpenXML writer so large result sets are not buffered in an in-memory DOM.
+    /// When <paramref name="outputStream"/> is not readable and seekable (e.g. an HTTP response body),
+    /// the workbook is built in a temporary file and then copied to the output stream.
+    /// Stops with an error if the Excel sheet row limit (1,048,576) would be exceeded.
     /// </summary>
     /// <param name="dataReader">The DbDataReader containing the data to export.</param>
+    /// <param name="outputStream">The stream to write the Excel (.xlsx) package to. The stream is left open.</param>
     /// <param name="sheetName">The name of the worksheet in the Excel file.</param>
-    /// <returns>The Excel file as a byte array.</returns>
-    byte[] DbDataReaderToExcel(DbDataReader dataReader, string sheetName = "Data");
+    /// <param name="cancellationToken">Token used to stop reading/writing when the caller disconnects or times out.</param>
+    Task DbDataReaderToExcelAsync(DbDataReader dataReader, Stream outputStream, string sheetName = "Data", CancellationToken cancellationToken = default);
 }
