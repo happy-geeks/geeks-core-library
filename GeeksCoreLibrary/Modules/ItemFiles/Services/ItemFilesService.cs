@@ -527,7 +527,7 @@ public class ItemFilesService(
                     if (fillColor != MagickColors.Transparent)
                     {
                         frame.BackgroundColor = fillColor;
-                        frame.Alpha(AlphaOption.Remove);
+                        frame.Alpha(AlphaAction.Remove);
                     }
 
                     switch (resizeMode)
@@ -561,7 +561,7 @@ public class ItemFilesService(
                 if (fillColor != MagickColors.Transparent)
                 {
                     image.BackgroundColor = fillColor;
-                    image.Alpha(AlphaOption.Remove);
+                    image.Alpha(AlphaAction.Remove);
                 }
 
                 if (imageFormat.InList(MagickFormat.Jpg, MagickFormat.WebP))
@@ -612,7 +612,7 @@ public class ItemFilesService(
                     foreach (var frame in collection)
                     {
                         frame.BackgroundColor = fillColor;
-                        frame.Alpha(AlphaOption.Remove);
+                        frame.Alpha(AlphaAction.Remove);
                     }
                 }
 
@@ -630,7 +630,7 @@ public class ItemFilesService(
                 if (fillColor != MagickColors.Transparent)
                 {
                     image.BackgroundColor = fillColor;
-                    image.Alpha(AlphaOption.Remove);
+                    image.Alpha(AlphaAction.Remove);
                 }
 
                 if (imageFormat.InList(MagickFormat.Jpg, MagickFormat.WebP))
