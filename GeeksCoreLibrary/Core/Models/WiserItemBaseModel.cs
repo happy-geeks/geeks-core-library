@@ -120,7 +120,7 @@ public abstract class WiserItemBaseModel
     /// <param name="saveAsIs">Optional: Set to <c>true</c> to skip any conversion or hashing that the GCL might do when saving this value to the database. Such as for passwords, when you already hashed them yourself.</param>
     public void SetDetail(WiserItemDetailModel detail, bool append = false, bool markChangedAsFalse = false, string format = null, bool saveAsIs = false)
     {
-        SetDetail(detail.Key, detail.Value, append, detail.ReadOnly, detail.GroupName, detail.LanguageCode, markChangedAsFalse, format, saveAsIs, detail.IsLinkProperty, detail.LinkType, detail.ItemLinkId);
+        SetDetail(detail.Key, detail.Value, append, detail.ReadOnly, detail.GroupName, detail.LanguageCode, detail.Id, markChangedAsFalse, format, saveAsIs, detail.IsLinkProperty, detail.LinkType, detail.ItemLinkId);
     }
 
     /// <summary>
@@ -133,13 +133,14 @@ public abstract class WiserItemBaseModel
     /// <param name="enableReadOnly">Optional: Make the new value read only. Default is false.</param>
     /// <param name="groupName">Optional: The group name of the detail. Default is null.</param>
     /// <param name="languageCode">Optional: The language code of the detail. Default is null.</param>
+    /// <param name="detailId">Optional: the id of the detail. The default is 0.</param>
     /// <param name="markChangedAsFalse">Optional: Whether to mark the Changed property to false, so that it won't be saved if you save this item without changing this value after calling this function.</param>
     /// <param name="format">Optional: Formatting for converting certain types (such as numbers and dates) to string. Default is null.</param>
     /// <param name="saveAsIs">Optional: Set to <c>true</c> to skip any conversion or hashing that the GCL might do when saving this value to the database. Such as for passwords, when you already hashed them yourself.</param>
     /// <param name="isLinkProperty">Optional: Whether the detail is for wiser_itemlinkdetail, instead of wiser_itemdetail. If this is <c>true</c>, then <see cref="linkType"/> and  <see cref="itemLinkId"/> must also be specified. Default is <c>false</c>.</param>
     /// <param name="linkType">The link type number, must be specified if <see cref="isLinkProperty"/> is set to <c>true</c>.</param>
     /// <param name="itemLinkId">The ID of the link between two items, must be specified if <see cref="isLinkProperty"/> is set to <c>true</c>.</param>
-    public void SetDetail(string key, object value, bool append = false, bool enableReadOnly = false, string groupName = null, string languageCode = null, bool markChangedAsFalse = false, string format = null, bool saveAsIs = false, bool isLinkProperty = false, int linkType = 0, ulong itemLinkId = 0)
+    public void SetDetail(string key, object value, bool append = false, bool enableReadOnly = false, string groupName = null, string languageCode = null, ulong detailId = 0, bool markChangedAsFalse = false, string format = null, bool saveAsIs = false, bool isLinkProperty = false, int linkType = 0, ulong itemLinkId = 0)
     {
         // TODO: Add a check for read only, so that we can't use this function to update read only values?
         var detail = details.FirstOrDefault(d => String.Equals(d.Key, key, StringComparison.OrdinalIgnoreCase) &&
@@ -153,6 +154,7 @@ public abstract class WiserItemBaseModel
             // Add new item if key doesn't exist
             detail = new WiserItemDetailModel
             {
+                Id = detailId,
                 Key = key,
                 GroupName = groupName,
                 LanguageCode = languageCode,

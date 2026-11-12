@@ -768,11 +768,11 @@ public class FiltersService(
                 }
                 else if (!String.IsNullOrEmpty(filterGroup.ConnectedEntity) && !forItemPart)
                 {
-                    output = $"(fi{filterCounter}.`key` = CONCAT('{filterName.ToMySqlSafeValue(true)}, '{(filterGroup.FilterOnSeoValue ? "_SEO" : "")}'))";
+                    output = $"(fi{filterCounter}.`key` = CONCAT({filterName.ToMySqlSafeValue(true)}, '{(filterGroup.FilterOnSeoValue ? "_SEO" : "")}'))";
                 }
                 else
                 {
-                    output = $"(fi{filterCounter}.`key` = CONCAT('{filterName.ToMySqlSafeValue(true)}, '{(filterGroup.FilterOnSeoValue ? "_SEO" : "")}') AND (fi{filterCounter}.`value` IN ({filterValue.ToMySqlSafeValue(true).Replace(Constants.ValueSplitter, "','")})))";
+                    output = $"(fi{filterCounter}.`key` = CONCAT({filterName.ToMySqlSafeValue(true)}, '{(filterGroup.FilterOnSeoValue ? "_SEO" : "")}') AND (fi{filterCounter}.`value` IN ({filterValue.ToMySqlSafeValue(true).Replace(Constants.ValueSplitter, "','")})))";
                 }
             }
             else // single value selected
