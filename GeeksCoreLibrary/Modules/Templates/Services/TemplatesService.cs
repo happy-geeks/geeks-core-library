@@ -73,7 +73,49 @@ public class TemplatesService(
             throw new ArgumentNullException($"One of the parameters {nameof(id)} or {nameof(name)} must contain a value");
         }
 
-        var (joinPart, whereClause) = GenerateTemplateQueryConditions(id, name, null, parentId, parentName, skipParentJoin: true);
+        var joinPart = "";
+        var whereClause = new List<string>();
+        if (gclSettings.Environment == Environments.Development)
+        {
+            joinPart = $" JOIN (SELECT template_id, MAX(version) AS maxVersion FROM {WiserTableNames.WiserTemplate} GROUP BY template_id) AS maxVersion ON template.template_id = maxVersion.template_id AND template.version = maxVersion.maxVersion";
+        }
+        else
+        {
+            whereClause.Add($"(template.published_environment & {(int) gclSettings.Environment}) = {(int) gclSettings.Environment}");
+        }
+
+        var useTypeFilter = false;
+
+        if (id > 0)
+        {
+            databaseConnection.AddParameter("id", id);
+            whereClause.Add("template.template_id = ?id");
+        }
+        else
+        {
+            databaseConnection.AddParameter("name", name);
+            whereClause.Add("template.template_name = ?name");
+            useTypeFilter = type.HasValue;
+        }
+
+        if (parentId > 0)
+        {
+            databaseConnection.AddParameter("parentId", parentId);
+            whereClause.Add("template.parent_id = ?parentId");
+        }
+        else if (!String.IsNullOrWhiteSpace(parentName))
+        {
+            databaseConnection.AddParameter("parentName", parentName);
+            whereClause.Add("parent1.template_name = ?parentName");
+        }
+
+        if (useTypeFilter)
+        {
+            databaseConnection.AddParameter("templateType", (int) type.Value);
+            whereClause.Add("template.template_type = ?templateType");
+        }
+
+        whereClause.Add("template.removed = 0");
 
         var query = $"""
                      SELECT
@@ -180,7 +222,42 @@ public class TemplatesService(
             throw new ArgumentNullException($"One of the parameters {nameof(id)} or {nameof(name)} must contain a value");
         }
 
-        var (joinPart, whereClause) = GenerateTemplateQueryConditions(id, name, null, parentId, parentName);
+        var joinPart = "";
+        var whereClause = new List<string>();
+        if (gclSettings.Environment == Environments.Development)
+        {
+            joinPart = $" JOIN (SELECT template_id, MAX(version) AS maxVersion FROM {WiserTableNames.WiserTemplate} GROUP BY template_id) AS maxVersion ON template.template_id = maxVersion.template_id AND template.version = maxVersion.maxVersion";
+        }
+        else
+        {
+            whereClause.Add($"(template.published_environment & {(int) gclSettings.Environment}) = {(int) gclSettings.Environment}");
+        }
+
+        if (id > 0)
+        {
+            databaseConnection.AddParameter("id", id);
+            whereClause.Add("template.template_id = ?id");
+        }
+        else
+        {
+            databaseConnection.AddParameter("name", name);
+            whereClause.Add("template.template_name = ?name");
+        }
+
+        if (parentId > 0)
+        {
+            databaseConnection.AddParameter("parentId", parentId);
+            joinPart += $" JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)";
+            whereClause.Add("template.parent_id = ?parentId");
+        }
+        else if (!String.IsNullOrWhiteSpace(parentName))
+        {
+            databaseConnection.AddParameter("parentName", parentName);
+            joinPart += $" JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)";
+            whereClause.Add("parent1.template_name = ?parentName");
+        }
+
+        whereClause.Add("template.removed = 0");
 
         var query = $"""
                      SELECT
@@ -255,7 +332,49 @@ public class TemplatesService(
             throw new ArgumentNullException($"One of the parameters {nameof(id)} or {nameof(name)} must contain a value");
         }
 
-        var (joinPart, whereClause) = GenerateTemplateQueryConditions(id, name, type, parentId, parentName);
+        var joinPart = "";
+        var whereClause = new List<string>();
+        if (gclSettings.Environment == Environments.Development)
+        {
+            joinPart = $" JOIN (SELECT template_id, MAX(version) AS maxVersion FROM {WiserTableNames.WiserTemplate} GROUP BY template_id) AS maxVersion ON template.template_id = maxVersion.template_id AND template.version = maxVersion.maxVersion";
+        }
+        else
+        {
+            whereClause.Add($"(template.published_environment & {(int) gclSettings.Environment}) = {(int) gclSettings.Environment}");
+        }
+
+        var useTypeFilter = false;
+
+        if (id > 0)
+        {
+            databaseConnection.AddParameter("id", id);
+            whereClause.Add("template.template_id = ?id");
+        }
+        else
+        {
+            databaseConnection.AddParameter("name", name);
+            whereClause.Add("template.template_name = ?name");
+            useTypeFilter = type.HasValue;
+        }
+
+        if (parentId > 0)
+        {
+            databaseConnection.AddParameter("parentId", parentId);
+            whereClause.Add("template.parent_id = ?parentId");
+        }
+        else if (!String.IsNullOrWhiteSpace(parentName))
+        {
+            databaseConnection.AddParameter("parentName", parentName);
+            whereClause.Add("parent1.template_name = ?parentName");
+        }
+
+        if (useTypeFilter)
+        {
+            databaseConnection.AddParameter("templateType", (int) type.Value);
+            whereClause.Add("template.template_type = ?templateType");
+        }
+
+        whereClause.Add("template.removed = 0");
 
         var query = $"""
                      SELECT
@@ -289,8 +408,14 @@ public class TemplatesService(
         };
     }
 
-    private (string joinPart, List<string> whereClause) GenerateTemplateQueryConditions(int id, string name, TemplateTypes? type, int parentId, string parentName, bool skipParentJoin = false)
+    /// <inheritdoc />
+    public async Task<Template> GetTemplateCacheSettingsAsync(int id = 0, string name = "", int parentId = 0, string parentName = "")
     {
+        if (id <= 0 && String.IsNullOrEmpty(name))
+        {
+            throw new ArgumentNullException($"One of the parameters {nameof(id)} or {nameof(name)} must contain a value");
+        }
+
         var joinPart = "";
         var whereClause = new List<string>();
         if (gclSettings.Environment == Environments.Development)
@@ -302,43 +427,31 @@ public class TemplatesService(
             whereClause.Add($"(template.published_environment & {(int) gclSettings.Environment}) = {(int) gclSettings.Environment}");
         }
 
-        var useTypeFilter = false;
-
         if (id > 0)
         {
             databaseConnection.AddParameter("id", id);
-            if (!skipParentJoin)
-                joinPart += $" JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)";
             whereClause.Add("template.template_id = ?id");
         }
         else
         {
             databaseConnection.AddParameter("name", name);
-            if (!skipParentJoin)
-                joinPart += $" JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)";
             whereClause.Add("template.template_name = ?name");
-            useTypeFilter = type.HasValue;
         }
 
-        if (useTypeFilter)
+        if (parentId > 0)
         {
-            databaseConnection.AddParameter("templateType", (int) type.Value);
-            whereClause.Add("template.template_type = ?templateType");
+            databaseConnection.AddParameter("parentId", parentId);
+            joinPart += $" JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)";
+            whereClause.Add("template.parent_id = ?parentId");
+        }
+        else if (!String.IsNullOrWhiteSpace(parentName))
+        {
+            databaseConnection.AddParameter("parentName", parentName);
+            joinPart += $" JOIN {WiserTableNames.WiserTemplate} AS parent1 ON parent1.template_id = template.parent_id AND parent1.version = (SELECT MAX(version) FROM {WiserTableNames.WiserTemplate} WHERE template_id = template.parent_id)";
+            whereClause.Add("parent1.template_name = ?parentName");
         }
 
         whereClause.Add("template.removed = 0");
-        return (joinPart, whereClause);
-    }
-
-    /// <inheritdoc />
-    public async Task<Template> GetTemplateCacheSettingsAsync(int id = 0, string name = "", int parentId = 0, string parentName = "")
-    {
-        if (id <= 0 && String.IsNullOrEmpty(name))
-        {
-            throw new ArgumentNullException($"One of the parameters {nameof(id)} or {nameof(name)} must contain a value");
-        }
-
-        var (joinPart, whereClause) = GenerateTemplateQueryConditions(id, name, null, parentId, parentName);
 
         var query = $"""
                      SELECT
