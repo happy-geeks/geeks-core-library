@@ -28,7 +28,6 @@ using GeeksCoreLibrary.Modules.Templates.Models;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
@@ -59,7 +58,6 @@ public class TemplatesService(
     IHttpClientService httpClientService,
     IBranchesService branchesService,
     IHttpContextAccessor httpContextAccessor = null,
-    IActionContextAccessor actionContextAccessor = null,
     IViewComponentHelper viewComponentHelper = null,
     IWebHostEnvironment webHostEnvironment = null,
     ITempDataProvider tempDataProvider = null)
@@ -1330,10 +1328,13 @@ public class TemplatesService(
             return "";
         }
 
-        if (httpContextAccessor?.HttpContext == null || actionContextAccessor?.ActionContext == null)
+        var httpContext = httpContextAccessor?.HttpContext;
+        if (httpContext is null)
         {
-            throw new Exception("No httpContext found. Did you add the dependency in Program.cs or Startup.cs?");
+            throw new Exception("No HttpContext found. Did you add AddHttpContextAccessor() and are you running inside an HTTP request?");
         }
+
+        
 
         var logRenderingOfComponent = await ComponentRenderingShouldBeLoggedAsync(dynamicContent.Id);
         var error = "";
@@ -1348,12 +1349,14 @@ public class TemplatesService(
 
             var viewComponentName = dynamicContent.Name;
 
-            // Create a fake ViewContext (but with a real ActionContext and a real HttpContext).
+            var actionContext = HttpContextHelpers.ExtractActionContext(httpContext);
+
+            // Create a ViewContext
             var viewContext = new ViewContext(
-                actionContextAccessor.ActionContext,
+                actionContext,
                 NullView.Instance,
                 new ViewDataDictionary(new EmptyModelMetadataProvider(), new ModelStateDictionary()),
-                new TempDataDictionary(httpContextAccessor.HttpContext, tempDataProvider),
+                new TempDataDictionary(httpContext, tempDataProvider),
                 TextWriter.Null,
                 new HtmlHelperOptions());
 
